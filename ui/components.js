@@ -65,15 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
     btnExpandInspect?.addEventListener('click', (e) => { e.stopPropagation(); openInspectModal(); });
     btnCloseInspect?.addEventListener('click', () => { inspectModal?.classList.remove('active'); btnExplore?.classList.add('active'); });
 
-    // 3. REAL-TIME SUPABASE TELEMETRY SYNC
-    const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
-    let currentDisplayAge = 0;
-
+    // 3. COSMIC TIMELINE ENGINE
     const TIMELINE_EPOCHS = [
-        { title: "🌌 Primordial Inflation", start: 0, end: 100000, desc: "Exponential expansion dominated by vacuum energy fluctuations." },
-        { title: "⭐ Cosmic Dark Ages", start: 100000, end: 100000000, desc: "Cooling neutral gas collapses into dark matter halos." },
+        { title: "🌌 Primordial Inflation", start: 0, end: 100000, desc: "Exponential space expansion driven by quantum vacuum density fluctuations." },
+        { title: "⭐ Cosmic Dark Ages", start: 100000, end: 100000000, desc: "Neutral gas cools and collapses into early dark matter halos." },
         { title: "✨ First Stars & Reionization", start: 100000000, end: 1000000000, desc: "Population III supermassive stars ignite, reionizing neutral hydrogen." },
-        { title: "🪐 Disk Structure Accretion", start: 1000000000, end: 10000000000, desc: "Galactic disk formation and stellar metallicity enrichment." }
+        { title: "🪐 Galactic Disk Accretion", start: 1000000000, end: 10000000000, desc: "Flat spinning galaxy disks form with heavy metal nucleosynthesis." }
     ];
 
     function updateTimelineUI(totalYears) {
@@ -83,25 +80,32 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = TIMELINE_EPOCHS.map(epoch => {
             const isPassed = totalYears >= epoch.start;
             const isActive = totalYears >= epoch.start && totalYears < epoch.end;
-            const markerColor = isActive ? '#7000ff' : (isPassed ? '#00e5ff' : 'rgba(255,255,255,0.2)');
+            const markerColor = isActive ? '#7000ff' : (isPassed ? '#00e5ff' : 'rgba(255,255,255,0.25)');
             const statusBadge = isActive ? '<span style="color:#00e5ff; font-weight:bold; font-size:11px;"> [CURRENT EPOCH]</span>' : '';
 
             return `
-                <div class="timeline-node" style="opacity: ${isPassed ? '1' : '0.35'}; margin-bottom: 20px;">
-                  <div class="node-marker" style="background: ${markerColor}; box-shadow: ${isActive ? '0 0 10px #7000ff' : 'none'}; width: 12px; height: 12px; border-radius: 50%; float: left; margin-right: 12px; margin-top: 3px;"></div>
+                <div class="timeline-node" style="opacity: ${isPassed ? '1' : '0.45'}; margin-bottom: 22px; clear: both;">
+                  <div class="node-marker" style="background: ${markerColor}; box-shadow: ${isActive ? '0 0 12px #7000ff' : 'none'}; width: 12px; height: 12px; border-radius: 50%; float: left; margin-right: 12px; margin-top: 3px;"></div>
                   <div class="node-content" style="overflow: hidden;">
-                    <div class="node-title" style="color: #fff; font-weight: bold; font-size: 14px;">${epoch.title}${statusBadge}</div>
-                    <div class="node-time" style="color: #a0a0c0; font-size: 11px; margin-top: 2px;">${epoch.start.toLocaleString()} - ${epoch.end.toLocaleString()} Years</div>
-                    <div class="node-desc" style="color: #d0d0e0; font-size: 12px; margin-top: 4px; line-height: 1.4;">${epoch.desc}</div>
+                    <div class="node-title" style="color: #fff; font-weight: bold; font-size: 15px;">${epoch.title}${statusBadge}</div>
+                    <div class="node-time" style="color: #a0a0c0; font-size: 12px; margin-top: 2px;">${epoch.start.toLocaleString()} - ${epoch.end.toLocaleString()} Years</div>
+                    <div class="node-desc" style="color: #d0d0e0; font-size: 13px; margin-top: 4px; line-height: 1.4;">${epoch.desc}</div>
                   </div>
                 </div>
             `;
         }).join('');
     }
 
+    // Render timeline immediately on page load
+    updateTimelineUI(0);
+
+    // 4. SUPABASE TELEMETRY SYNC
+    const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
+    let currentDisplayAge = 0;
+
     function setHudAge(rawAge) {
         const numericAge = Number(rawAge);
-        if (!isNaN(numericAge) && numericAge > currentDisplayAge) {
+        if (!isNaN(numericAge) && numericAge >= currentDisplayAge) {
             currentDisplayAge = numericAge;
             const totalYears = Math.floor(currentDisplayAge * 1000000);
             const hudAge = document.getElementById('hud-age');
@@ -145,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     container.innerHTML = events.map(e => {
                         const eventYears = e.age ? Math.floor(e.age * 1000000).toLocaleString() + ' Years' : 'Live';
                         return `
-                            <div class="event-card-rich" style="background: rgba(255,255,255,0.04); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #7000ff;">
+                            <div class="event-card-rich" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #7000ff;">
                               <div class="event-content">
                                 <div class="event-title-row" style="display: flex; justify-content: space-between; align-items: center;">
                                   <span class="event-title" style="font-weight: bold; color: #fff; font-size: 14px;">${e.title || 'Cosmic Event'}</span>
@@ -181,6 +185,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {}
     }
+
+    // Local simulation ticker fallback to advance age smoothly
+    setInterval(() => {
+        setHudAge(currentDisplayAge + 0.0001);
+    }, 1000);
 
     function pollAll() { pollUniverseState(); pollEvents(); pollCatalog(); }
     setInterval(pollAll, 3000);
