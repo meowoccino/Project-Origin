@@ -8,10 +8,10 @@
 </head>
 <body>
 
-  <!-- Background Spiral Galaxy Canvas -->
+  <!-- 3D Cosmic Web / Expanding Universe Canvas -->
   <div id="canvas-container"></div>
 
-  <!-- Main UI Layer -->
+  <!-- Main Viewport HUD -->
   <div class="ui-layer">
     
     <!-- Top Bar Header -->
@@ -28,21 +28,21 @@
       </button>
     </header>
 
-    <!-- Universe Age Top Floating HUD Card -->
+    <!-- Universe Age Top Floating Card -->
     <div class="top-hud-card">
       <div class="hud-label">UNIVERSE AGE</div>
-      <div class="universe-age-value" id="hud-age">6.214 Billion Years</div>
+      <div class="universe-age-value" id="hud-age">0 Years</div>
       <div class="hud-speed-row">
         <span class="speed-label">SPEED</span>
         <span class="speed-val">1 Day = 1 Million Years <span class="badge-tag">1x</span></span>
       </div>
     </div>
 
-    <!-- Right Side HUD Floating Quick Controls -->
+    <!-- Right Side Floating Controls -->
     <div class="right-hud-tools">
-      <button class="tool-btn" id="tool-center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><cross x1="12" y1="8" x2="12" y2="16"/><cross x1="8" y1="12" x2="16" y2="12"/></svg></button>
-      <button class="tool-btn" id="tool-view"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-      <button class="tool-btn" id="tool-filter"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></button>
+      <button class="tool-btn" id="tool-center" aria-label="Center Origin"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></button>
+      <button class="tool-btn" id="tool-view" aria-label="View Mode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <button class="tool-btn" id="tool-filter" aria-label="Filters"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></button>
     </div>
 
     <!-- Bottom Floating Object Inspector Preview -->
@@ -51,10 +51,10 @@
         <canvas id="thumb-star-canvas" width="48" height="48"></canvas>
       </div>
       <div class="inspector-info">
-        <h3 id="obj-name">OBJECT 12,748</h3>
-        <p id="obj-sub">Type: Star | Distance: 13,248 ly</p>
+        <h3 id="obj-name">OBJECT 0</h3>
+        <p id="obj-sub">Type: Primordial Core | Barycentric Origin</p>
       </div>
-      <button class="expand-btn" id="btn-expand-inspect">
+      <button class="expand-btn" id="btn-expand-inspect" aria-label="Expand">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
       </button>
     </div>
@@ -67,14 +67,14 @@
       <div class="drawer-brand">
         <span class="dot-live">●</span> Project Origin <span class="badge-sub">LIVE</span>
       </div>
-      <button class="icon-btn" id="btn-close-drawer">
+      <button class="icon-btn" id="btn-close-drawer" aria-label="Close">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
 
     <div class="drawer-age-box">
       <span class="lbl">UNIVERSE AGE</span>
-      <div class="val" id="drawer-hud-age">6.214 Billion Years</div>
+      <div class="val" id="drawer-hud-age">0 Years</div>
       <span class="sub">SPEED: 1 Day = 1 Million Years (1x)</span>
     </div>
 
@@ -83,11 +83,11 @@
       <button class="drawer-item" id="dmenu-events"><span class="icon">📅</span> Events Feed</button>
       <button class="drawer-item" id="dmenu-ai"><span class="icon">🔮</span> AI Architect</button>
       <button class="drawer-item" id="dmenu-timeline"><span class="icon">⏱️</span> Timeline</button>
-      <button class="drawer-item" id="dmenu-catalog"><span class="icon">📊</span> Catalog (500,327 Objects)</button>
+      <button class="drawer-item" id="dmenu-catalog"><span class="icon">📊</span> Catalog & Filters</button>
     </div>
   </aside>
 
-  <!-- Full Screen View Panels -->
+  <!-- Full Screen Navigation Views -->
 
   <!-- 1. EVENTS FEED -->
   <div id="view-events" class="view-screen">
@@ -105,7 +105,7 @@
     </div>
 
     <div id="events-container" class="events-list">
-      <!-- High-detail Event Cards -->
+      <!-- Populated dynamically from Supabase database -->
     </div>
   </div>
 
@@ -123,22 +123,20 @@
 
     <div class="glass-panel">
       <div class="panel-label">CURRENT GOAL</div>
-      <div class="panel-goal-title" id="ai-goal-text">Increase chemical complexity in Sector 7, Galaxy NGC-88421.</div>
+      <div class="panel-goal-title" id="ai-goal-text">Simulating Quantum Inflation & Metric Expansion</div>
       <div class="panel-label" style="margin-top: 14px;">REASONING</div>
-      <div class="panel-desc" id="ai-reasoning-text">Higher metallicity and stable stellar environment increase the probability of complex molecules forming.</div>
+      <div class="panel-desc" id="ai-reasoning-text">Initial cosmological singularity transitioning into hot Big Bang nucleosynthesis.</div>
     </div>
 
     <div class="glass-panel" style="margin-top: 14px;">
       <div class="panel-header-row">
         <span class="panel-label">ACTIVE ACTIONS</span>
-        <span class="action-count-badge">3 ongoing</span>
+        <span class="action-count-badge" id="ai-action-badge">3 ongoing</span>
       </div>
 
       <div class="action-timeline-list" id="ai-actions-list">
-        <!-- Action Items -->
+        <!-- Live Action Items -->
       </div>
-
-      <button class="btn-full-width" style="margin-top: 12px;">View All Actions</button>
     </div>
   </div>
 
@@ -148,7 +146,7 @@
       <h2>COSMIC TIMELINE</h2>
     </div>
     <div class="timeline-container">
-      <!-- Populated dynamically -->
+      <!-- Dynamic Epoch Nodes -->
     </div>
   </div>
 
@@ -166,14 +164,10 @@
 
     <div class="section-label">OBJECT TYPE</div>
     <div class="catalog-list">
-      <div class="catalog-item"><span class="cat-type"><span class="dot gold">●</span> Stars</span><span class="cat-num" id="cat-stars">125,418</span></div>
-      <div class="catalog-item"><span class="cat-type"><span class="dot violet">●</span> Black Holes</span><span class="cat-num" id="cat-bh">1,203</span></div>
-      <div class="catalog-item"><span class="cat-type"><span class="dot cyan">●</span> Neutron Stars</span><span class="cat-num" id="cat-neutron">856</span></div>
-      <div class="catalog-item"><span class="cat-type"><span class="dot blue">●</span> Planets</span><span class="cat-num" id="cat-planets">18,732</span></div>
-      <div class="catalog-item"><span class="cat-type"><span class="dot brown">●</span> Moons</span><span class="cat-num">47,221</span></div>
-      <div class="catalog-item"><span class="cat-type"><span class="dot white">●</span> Asteroids & Comets</span><span class="cat-num">132,654</span></div>
-      <div class="catalog-item"><span class="cat-type"><span class="dot purple">●</span> Nebulae</span><span class="cat-num">1,342</span></div>
-      <div class="catalog-item"><span class="cat-type"><span class="dot bright-cyan">●</span> Quasars</span><span class="cat-num">214</span></div>
+      <div class="catalog-item"><span class="cat-type"><span class="dot gold">●</span> Stars</span><span class="cat-num" id="cat-stars">0</span></div>
+      <div class="catalog-item"><span class="cat-type"><span class="dot violet">●</span> Black Holes</span><span class="cat-num" id="cat-bh">0</span></div>
+      <div class="catalog-item"><span class="cat-type"><span class="dot cyan">●</span> Neutron Stars</span><span class="cat-num" id="cat-neutron">0</span></div>
+      <div class="catalog-item"><span class="cat-type"><span class="dot blue">●</span> Planets</span><span class="cat-num" id="cat-planets">0</span></div>
     </div>
 
     <div class="section-label" style="margin-top: 20px;">DISPLAY TOGGLES</div>
@@ -182,26 +176,25 @@
       <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
     </div>
     <div class="toggle-row">
-      <span>Show Labels</span>
+      <span>Show Filaments</span>
       <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
     </div>
   </div>
 
-  <!-- 5. DETAILED OBJECT INSPECTOR MODAL -->
+  <!-- 5. DETAILED CELESTIAL INSPECTOR MODAL -->
   <div id="modal-object-detail" class="inspect-modal">
     <div class="modal-header">
-      <button class="icon-btn" id="btn-close-inspect">
+      <button class="icon-btn" id="btn-close-inspect" aria-label="Back">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
       </button>
       <div class="modal-title-group">
-        <h2 id="inspect-title">OBJECT 12,748</h2>
-        <span class="subtitle" id="inspect-sub">Star</span>
+        <h2 id="inspect-title">OBJECT 0</h2>
+        <span class="subtitle" id="inspect-sub">Primordial Core</span>
       </div>
-      <button class="icon-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+      <button class="icon-btn" aria-label="Favorite"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
     </div>
 
     <div class="modal-scroll-content">
-      <!-- High-detail Rendered Celestial View -->
       <div class="star-hero-viewport">
         <canvas id="detail-star-canvas" width="340" height="220"></canvas>
       </div>
@@ -209,33 +202,20 @@
       <div class="glass-panel">
         <div class="panel-header-row">
           <span class="panel-title">OVERVIEW</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
         </div>
         <div class="data-grid">
-          <div class="data-row"><span class="lbl">Name (AI)</span><span class="val" id="spec-name">Helion-748</span></div>
-          <div class="data-row"><span class="lbl">Type</span><span class="val" id="spec-type">G-Type Main Sequence Star</span></div>
-          <div class="data-row"><span class="lbl">Mass</span><span class="val" id="spec-mass">1.07 M☉</span></div>
-          <div class="data-row"><span class="lbl">Radius</span><span class="val" id="spec-radius">1.02 R☉</span></div>
-          <div class="data-row"><span class="lbl">Temperature</span><span class="val" id="spec-temp">5,780 K</span></div>
-          <div class="data-row"><span class="lbl">Distance from Core</span><span class="val" id="spec-dist">13,248 ly</span></div>
-          <div class="data-row"><span class="lbl">Age</span><span class="val">2.31 Billion Years</span></div>
-          <div class="data-row"><span class="lbl">Planets</span><span class="val">5</span></div>
-          <div class="data-row"><span class="lbl">Life Detected</span><span class="val highlight-green">No</span></div>
+          <div class="data-row"><span class="lbl">Designation</span><span class="val" id="spec-name">Primordial Node</span></div>
+          <div class="data-row"><span class="lbl">Classification</span><span class="val" id="spec-type">Cosmic Filament Core</span></div>
+          <div class="data-row"><span class="lbl">Mass</span><span class="val" id="spec-mass">10^12 M☉</span></div>
+          <div class="data-row"><span class="lbl">Effective Temp</span><span class="val" id="spec-temp">10^32 K</span></div>
+          <div class="data-row"><span class="lbl">Barycentric Distance</span><span class="val" id="spec-dist">0 ly</span></div>
         </div>
       </div>
-
-      <!-- Accordion Groups -->
-      <div class="accordion-item"><span class="title">🔮 AI ARCHITECT STATUS</span><span class="arrow">›</span></div>
-      <div class="accordion-item"><span class="title">⚡ PHYSICS & DATA</span><span class="arrow">›</span></div>
-      <div class="accordion-item"><span class="title">📜 HISTORY</span><span class="arrow">›</span></div>
-      <div class="accordion-item"><span class="title">🔮 POTENTIAL FUTURE</span><span class="arrow">›</span></div>
     </div>
 
-    <!-- Bottom Action Bar -->
     <div class="modal-bottom-actions">
       <button class="action-btn">Center</button>
       <button class="action-btn">Follow</button>
-      <button class="action-btn">Share</button>
       <button class="action-btn primary">+ Add Note</button>
     </div>
   </div>
