@@ -1,67 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Continuous AI Universe Engine</title>
-    <link rel="stylesheet" href="ui/styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Project Origin</title>
 </head>
 <body>
-    <!-- Main 3D Canvas for Particle Renderer -->
-    <canvas id="universe-canvas"></canvas>
 
-    <!-- Overlay UI Header -->
-    <div id="hud-overlay">
-        <div id="cosmic-clock">Cosmic Age: <span id="age-display">t + 0.0 Myr</span></div>
-        <div id="node-count">Active Particles: <span id="nodes-display">500,000</span></div>
+  <!-- 3D WebGPU Viewport -->
+  <div id="canvas-container"></div>
+
+  <!-- UI HUD Overlay -->
+  <div class="ui-layer">
+    <div class="top-hud">
+      <div>
+        <span class="badge-live"><span class="badge-dot"></span> LIVE</span>
+        <div class="title-group">
+          <h1>Project Origin</h1>
+          <div class="universe-age" id="hud-age">0.00000 Myr</div>
+        </div>
+      </div>
+
+      <div class="floating-tools interactive">
+        <button class="tool-btn">🎯</button>
+        <button class="tool-btn">👁️</button>
+        <button class="tool-btn">⚙️</button>
+      </div>
     </div>
 
-    <!-- AI Thought Feed Overlay -->
-    <div id="ai-journal-panel">
-        <h3>AI Observer Log</h3>
-        <ul id="thought-list">
-            <li>Awaiting continuous simulation pulse from Oracle Cloud...</li>
-        </ul>
+    <!-- Inspector Card -->
+    <div class="inspector-card interactive">
+      <div class="object-info">
+        <h3 id="obj-name">OBJECT 12,748</h3>
+        <p id="obj-type">Type: Star | Mass: 1.07 M☉</p>
+      </div>
+      <button class="tool-btn" style="width:34px; height:34px;">›</button>
     </div>
+  </div>
 
-    <!-- JavaScript Module Loading -->
-    <script type="module">
-        import { fetchCosmicState, fetchAIJournal, subscribeToCosmicUpdates } from './services/supabase.js';
+  <!-- Full Screen Modals -->
+  <div id="view-events" class="view-screen">
+    <h2 class="screen-title">EVENTS FEED</h2>
+    <div id="events-container">
+      <div class="event-card">
+        <div class="event-title">💥 Big Bang Occurred</div>
+        <div class="event-desc">Primordial inflation wave initiated.</div>
+        <div class="event-time">t+0.00000 Myr</div>
+      </div>
+    </div>
+  </div>
 
-        // Load initial state on page start
-        async function initWebAssemblyViewer() {
-            const state = await fetchCosmicState();
-            if (state) {
-                document.getElementById('age-display').innerText = `t + ${state.cosmic_age_myr.toFixed(1)} Myr`;
-                document.getElementById('nodes-display').innerText = state.total_active_nodes.toLocaleString();
-            }
+  <div id="view-ai" class="view-screen">
+    <h2 class="screen-title">AI ARCHITECT</h2>
+    <div class="event-card" style="border-color: var(--accent-purple);">
+      <div class="event-title" style="color: var(--accent-purple);">CURRENT GOAL</div>
+      <div class="event-desc" style="font-size: 14px; margin-top:6px;">Monitor primordial expansion & gas cooling.</div>
+    </div>
+  </div>
 
-            const journals = await fetchAIJournal(5);
-            if (journals && journals.length > 0) {
-                const list = document.getElementById('thought-list');
-                list.innerHTML = '';
-                journals.forEach(entry => {
-                    const li = document.createElement('li');
-                    li.innerText = `[t+${entry.cosmic_age_myr} Myr]: ${entry.thought_log}`;
-                    list.appendChild(li);
-                });
-            }
-        }
+  <!-- Bottom Navigation Bar -->
+  <nav class="navbar">
+    <button class="nav-item active" id="btn-explore">
+      <span class="nav-icon">🪐</span>
+      <span>Explore</span>
+    </button>
+    <button class="nav-item" id="btn-events">
+      <span class="nav-icon">⚡</span>
+      <span>Events</span>
+    </button>
+    <button class="nav-item" id="btn-ai">
+      <span class="nav-icon">🧠</span>
+      <span>AI Architect</span>
+    </button>
+  </nav>
 
-        // Listen for live updates pushed by Oracle/AI
-        subscribeToCosmicUpdates(
-            (updatedState) => {
-                document.getElementById('age-display').innerText = `t + ${updatedState.cosmic_age_myr.toFixed(1)} Myr`;
-            },
-            (newThought) => {
-                const list = document.getElementById('thought-list');
-                const li = document.createElement('li');
-                li.innerText = `[t+${newThought.cosmic_age_myr} Myr]: ${newThought.thought_log}`;
-                list.insertBefore(li, list.firstChild);
-            }
-        );
-
-        initWebAssemblyViewer();
-    </script>
+  <!-- Vite Root Entry Point -->
+  <script type="module" src="/index.js"></script>
 </body>
 </html>
