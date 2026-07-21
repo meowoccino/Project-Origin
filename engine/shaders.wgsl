@@ -1,22 +1,14 @@
 // ============================================================================
-// PROJECT ORIGIN: PHYSICAL UNIVERSE COMPUTE & RENDER SHADER
-// Features: 8 Physical Attributes + Gravity + 3D Perspective Particle Rendering
+// PROJECT ORIGIN: COMPUTE & VISIBLE TOUCH CAMERA RENDER SHADER
 // ============================================================================
 
 struct Particle {
-    // 1. Position (x, y, z) & 3. Mass
     position : vec3<f32>,
     mass : f32,
-
-    // 2. Velocity (vx, vy, vz) & 4. Charge
     velocity : vec3<f32>,
     charge : f32,
-
-    // 8. Net Force Vector & 7. Entropy / Decay
     net_force : vec3<f32>,
     entropy_decay : f32,
-
-    // 5. Scale / Radius & 6. Composition & Alignment Padding
     scale_radius : f32,
     composition : u32,      // 0 = Dark Matter, 1 = Hydrogen Gas, 2 = Stellar Metal
     pad1 : f32,
@@ -28,12 +20,15 @@ struct CosmicParams {
     expansion_rate_h : f32,
     delta_time : f32,
     particle_count : u32,
+    zoom_level : f32,
+    rot_x : f32,
+    rot_y : f32,
+    aspect_ratio : f32,
 };
 
 @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
 @group(0) @binding(1) var<uniform> params : CosmicParams;
 
-// Pseudo-Random Generator
 fn hash31(p: f32) -> vec3<f32> {
     var p3 = fract(vec3<f32>(p * 0.1031, p * 0.1030, p * 0.0973));
     p3 += dot(p3, p3.yzx + 33.33);
@@ -50,10 +45,11 @@ fn init_big_bang(@builtin(global_invocation_id) global_id : vec3<u32>) {
     let random_dir = normalize(hash31(seed));
     let noise_factor = length(hash31(seed + 100.0));
 
-    let primordial_radius = 0.05 * noise_factor;
+    // Noticeably wider primordial cluster radius so objects are visible immediately
+    let primordial_radius = 12.0 * noise_factor + 0.5;
     particles[index].position = random_dir * primordial_radius;
 
-    let expansion_speed = 40.0 + (noise_factor * 20.0);
+    let expansion_speed = 15.0 + (noise_factor * 10.0);
     particles[index].velocity = random_dir * expansion_speed;
 
     if (noise_factor > 0.15) {
@@ -81,7 +77,7 @@ fn update_physics(@builtin(global_invocation_id) global_id : vec3<u32>) {
     var p = particles[index];
     let dt = params.delta_time;
     let G: f32 = 0.15;
-    let epsilon_sq: f32 = 1.0;
+    let epsilon_sq: f32 = 2.0;
 
     var accumulated_force = vec3<f32>(0.0);
 
@@ -115,7 +111,7 @@ fn update_physics(@builtin(global_invocation_id) global_id : vec3<u32>) {
     particles[index] = p;
 }
 
-// --- 3. RENDER: VERTEX SHADER ---
+// --- 3. RENDER: VERTEX SHADER WITH TOUCH CAMERA TRANSFORM ---
 struct VertexOutput {
     @builtin(position) position : vec4<f32>,
     @location(0) color : vec4<f32>,
@@ -126,33 +122,48 @@ fn vs_main(@builtin(vertex_index) vertex_index : u32) -> VertexOutput {
     var out: VertexOutput;
     let p = particles[vertex_index];
 
-    // Simple 3D perspective projection onto 2D viewport
-    let zoom: f32 = 0.015;
-    let camera_z: f32 = 50.0;
-    
-    let world_pos = p.position * zoom;
-    let depth = world_pos.z + camera_z;
+    // Touch Camera Rotation Matrices (3D Orbit)
+    let cx = cos(params.rot_x);
+    let sx = sin(params.rot_x);
+    let cy = cos(params.rot_y);
+    let sy = sin(params.rot_y);
 
-    // Perspective divide (farthest particles appear smaller/closer to center)
-    let perspective_scale = 1.5 / max(depth, 0.1);
+    // Rotate Y
+    var pos = vec3<f32>(
+        p.position.x * cy + p.position.z * sy,
+        p.position.y,
+        -p.position.x * sy + p.position.z * cy
+    );
+
+    // Rotate X
+    pos = vec3<f32>(
+        pos.x,
+        pos.y * cx - pos.z * sx,
+        pos.y * sx + pos.z * cx
+    );
+
+    // Perspective Projection + Pinch-to-Zoom Factor
+    let camera_dist = 100.0 / max(params.zoom_level, 0.01);
+    let depth = pos.z + camera_dist;
+    let proj = 1.8 / max(depth, 0.1);
 
     out.position = vec4<f32>(
-        world_pos.x * perspective_scale,
-        world_pos.y * perspective_scale,
-        clamp(world_pos.z * 0.001, 0.0, 1.0),
+        (pos.x * proj) / params.aspect_ratio,
+        pos.y * proj,
+        clamp(pos.z * 0.001, 0.0, 1.0),
         1.0
     );
 
-    // Dynamic color based on particle composition & entropy
+    // Bright glowing colors based on object composition
     if (p.composition == 0u) {
-        // Dark Matter Node: Subtle violet glow
-        out.color = vec4<f32>(0.5, 0.2, 0.9, 0.35);
+        // Dark Matter Node: Deep violet glow
+        out.color = vec4<f32>(0.65, 0.3, 1.0, 0.45);
     } else if (p.composition == 1u) {
-        // Hydrogen Gas: Cyan star core
-        out.color = vec4<f32>(0.2, 0.85, 1.0, 0.85);
+        // Hydrogen Star / Gas: Bright electric cyan
+        out.color = vec4<f32>(0.3, 0.9, 1.0, 0.95);
     } else {
-        // Stellar Metal: Warm gold flare
-        out.color = vec4<f32>(1.0, 0.65, 0.2, 0.95);
+        // Stellar Core: Golden flare
+        out.color = vec4<f32>(1.0, 0.75, 0.3, 1.0);
     }
 
     return out;
