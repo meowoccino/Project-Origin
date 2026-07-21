@@ -6,20 +6,19 @@ let computePipeline, renderPipeline;
 let particleBuffer, paramsBuffer, bindGroup;
 
 const MAX_PARTICLES = 500000;
-let activeParticleCount = 2000;
+let activeParticleCount = 4000;
 let cosmicAgeMyr = 0.0;
 
 export const cameraState = {
     zoom: 1.0,
-    rotX: 0.3,
-    rotY: 0.5,
+    rotX: 0.4,
+    rotY: 0.6,
 };
 
 export async function initWebGPU() {
     const container = document.getElementById('canvas-container');
     if (!container) return;
 
-    // Remove any leftover canvas elements to prevent duplicate layers
     container.innerHTML = '';
 
     const canvas = document.createElement('canvas');
@@ -77,6 +76,7 @@ export async function initWebGPU() {
             ],
         });
 
+        // Instanced quad render pipeline for glowing star disks
         renderPipeline = device.createRenderPipeline({
             layout: 'auto',
             vertex: { module: shaderModule, entryPoint: 'vs_main' },
@@ -91,7 +91,7 @@ export async function initWebGPU() {
                     }
                 }],
             },
-            primitive: { topology: 'point-list' },
+            primitive: { topology: 'triangle-list' },
         });
 
         const initPipeline = device.createComputePipeline({
@@ -183,7 +183,7 @@ function renderLoop() {
 
     activeParticleCount = Math.min(
         MAX_PARTICLES,
-        Math.floor(2000 + cosmicAgeMyr * 15000)
+        Math.floor(4000 + cosmicAgeMyr * 20000)
     );
 
     const aspect = window.innerWidth / window.innerHeight;
@@ -215,7 +215,9 @@ function renderLoop() {
     const renderPass = commandEncoder.beginRenderPass(renderPassDescriptor);
     renderPass.setPipeline(renderPipeline);
     renderPass.setBindGroup(0, bindGroup);
-    renderPass.draw(activeParticleCount);
+    
+    // Draw 6 vertices per quad for every active particle instance
+    renderPass.draw(6, activeParticleCount);
     renderPass.end();
 
     device.queue.submit([commandEncoder.finish()]);
