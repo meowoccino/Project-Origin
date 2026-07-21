@@ -43,6 +43,7 @@ export async function initWebGPU() {
     canvas.style.left = '0';
     container.appendChild(canvas);
 
+    // 1. Try WebGPU Engine
     if (navigator.gpu) {
         try {
             const adapter = await navigator.gpu.requestAdapter();
@@ -152,6 +153,7 @@ export async function initWebGPU() {
         }
     }
 
+    // 2. Fallback: High-Performance 2D Canvas Engine
     initFallback2DEngine(canvas);
 }
 
@@ -159,7 +161,7 @@ export async function initWebGPU() {
 let isMappingBuffer = false;
 
 window.selectParticleAt = async function(clientX, clientY) {
-    if (isMappingBuffer) return; // Prevent concurrent buffer reads
+    if (isMappingBuffer) return;
 
     if (navigator.gpu && device && readBuffer) {
         isMappingBuffer = true;
@@ -295,7 +297,7 @@ function updateInspectorUI(id, data) {
     const distanceLy = (data.dist * 1342.3).toLocaleString('en-US', {maximumFractionDigits: 0});
     const massM = (data.mass / 12).toFixed(2);
     
-    // Bottom floating preview card
+    // Update bottom floating preview card
     const previewTitle = document.getElementById('obj-name');
     const previewSub = document.getElementById('obj-sub');
     const thumbGlow = document.querySelector('.thumb-glow');
@@ -308,7 +310,7 @@ function updateInspectorUI(id, data) {
         thumbGlow.style.backgroundColor = hexColor;
     }
 
-    // Deep inspector modal
+    // Update deep inspector modal
     const modalTitle = document.querySelector('.modal-title-group h2');
     const modalSub = document.querySelector('.modal-title-group .subtitle');
     const heroGlow = document.querySelector('.hero-star-glow');
@@ -321,16 +323,22 @@ function updateInspectorUI(id, data) {
         heroGlow.style.boxShadow = `0 0 50px ${hexColor}`;
     }
 
-    // Modal data grid details
+    // Update modal data grid details
     const dataValues = document.querySelectorAll('.data-value');
     if (dataValues.length >= 6) {
         const hashStr = id.toString().padStart(4, '0');
-        dataValues[0].textContent = `Helion-${hashStr.substring(0, 3)}`; // Random AI Name
+        dataValues[0].textContent = `Helion-${hashStr.substring(0, 3)}`;
         dataValues[1].textContent = typeName;
         dataValues[2].textContent = `${massM} M☉`;
         dataValues[3].textContent = `${(data.mass / 18).toFixed(2)} R☉`;
         dataValues[4].textContent = `${Math.floor(data.mass * 480)} K`;
         dataValues[5].textContent = `${distanceLy} ly`;
+    }
+
+    // Show the hidden floating inspector card!
+    const inspectorCard = document.getElementById('inspector-preview');
+    if (inspectorCard) {
+        inspectorCard.classList.add('active');
     }
 }
 
@@ -468,7 +476,7 @@ function updateUIClock() {
         if (cosmicAgeMyr >= 1000) {
             hudAgeElement.textContent = `${(cosmicAgeMyr / 1000).toFixed(3)} Billion Years`;
         } else {
-            hudAgeElement.textContent = `${cosmicAgeMyr.toFixed(5)} Myr`;
+            hudAgeElement.textContent = `${cosmicAgeMyr.toFixed(4)} Million Years`;
         }
     }
 }
