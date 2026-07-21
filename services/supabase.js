@@ -1,7 +1,7 @@
 // Import Supabase JS Client from CDN
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-// Your active Supabase credentials
+// Active Supabase credentials
 const SUPABASE_URL = 'https://nnntebgkhgzfztwfdphw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_O5qr-6UD-6wTzi51j3tYtw_00N9Q4ja';
 
@@ -31,7 +31,7 @@ export async function fetchAIJournal(limit = 10) {
     return data;
 }
 
-// Subscribe to real-time updates from Oracle server
+// Subscribe to real-time updates from cloud server
 export function subscribeToCosmicUpdates(onStateUpdate, onNewThought) {
     supabase
         .channel('public:cosmic_state')
@@ -47,4 +47,3 @@ export function subscribeToCosmicUpdates(onStateUpdate, onNewThought) {
         })
         .subscribe();
 }
-
