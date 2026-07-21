@@ -1,7 +1,9 @@
 import { cameraState } from '../engine/main.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. TOUCH CONTROLS
+    const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
+
+    // --- 1. TOUCH & GESTURE CONTROLS ---
     const canvasContainer = document.getElementById('canvas-container');
     let isDragging = false, lastTouchX = 0, lastTouchY = 0, initialPinchDistance = null, initialZoom = 1.0, touchStartTime = 0, startX = 0, startY = 0;
 
@@ -41,12 +43,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
     }
 
-    // 2. NAVBAR NAVIGATION
+    // --- 2. NAVIGATION & DRAWER ---
+    const sideDrawer = document.getElementById('side-drawer');
+    const btnOpenMenu = document.getElementById('btn-open-menu');
+    const btnCloseDrawer = document.getElementById('btn-close-drawer');
+
+    btnOpenMenu?.addEventListener('click', () => sideDrawer?.classList.add('open'));
+    btnCloseDrawer?.addEventListener('click', () => sideDrawer?.classList.remove('open'));
+
     const btnExplore = document.getElementById('btn-explore'), btnEvents = document.getElementById('btn-events'), btnAi = document.getElementById('btn-ai'), btnTimeline = document.getElementById('btn-timeline'), btnCatalog = document.getElementById('btn-catalog');
     const viewEvents = document.getElementById('view-events'), viewAi = document.getElementById('view-ai'), viewTimeline = document.getElementById('view-timeline'), viewCatalog = document.getElementById('view-catalog'), inspectModal = document.getElementById('modal-object-detail');
     const allBtns = [btnExplore, btnEvents, btnAi, btnTimeline, btnCatalog], allViews = [viewEvents, viewAi, viewTimeline, viewCatalog, inspectModal];
 
-    function resetTabs() { allBtns.forEach(b => b?.classList.remove('active')); allViews.forEach(v => v?.classList.remove('active')); }
+    function resetTabs() { 
+        allBtns.forEach(b => b?.classList.remove('active')); 
+        allViews.forEach(v => v?.classList.remove('active')); 
+        sideDrawer?.classList.remove('open');
+    }
+
     function switchTab(btn, view) {
         resetTabs(); btn?.classList.add('active'); if (view) view.classList.add('active');
         const inspectorPreview = document.getElementById('inspector-preview');
@@ -65,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnExpandInspect?.addEventListener('click', (e) => { e.stopPropagation(); openInspectModal(); });
     btnCloseInspect?.addEventListener('click', () => { inspectModal?.classList.remove('active'); btnExplore?.classList.add('active'); });
 
-    // 3. COSMIC TIMELINE ENGINE
+    // --- 3. COSMIC TIMELINE EPOCHS ---
     const TIMELINE_EPOCHS = [
         { title: "🌌 Primordial Inflation", start: 0, end: 100000, desc: "Exponential space expansion driven by quantum vacuum density fluctuations." },
         { title: "⭐ Cosmic Dark Ages", start: 100000, end: 100000000, desc: "Neutral gas cools and collapses into early dark matter halos." },
@@ -96,23 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     }
 
-    updateTimelineUI(0);
-
-    // 4. REAL-TIME TELEMETRY SYNC WITH CONTINUOUS TICKER
-    const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
-    let currentDisplayAge = 0.005; // Default starting age: 5,000 Years
-
-    function setHudAge(rawAge) {
-        const numericAge = Number(rawAge);
-        if (!isNaN(numericAge) && numericAge >= currentDisplayAge) {
-            currentDisplayAge = numericAge;
-            const totalYears = Math.floor(currentDisplayAge * 1000000);
-            const hudAge = document.getElementById('hud-age');
-            if (hudAge) hudAge.innerText = `${totalYears.toLocaleString()} Years`;
-            updateTimelineUI(totalYears);
-        }
-    }
-
+    // --- 4. REAL LIVE TELEMETRY POLLERS (NO FAKE DATA) ---
     async function pollUniverseState() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`);
@@ -120,22 +118,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (Array.isArray(data) && data.length > 0) {
                     const state = data[0];
-                    if (state.age !== undefined) setHudAge(state.age);
+                    const rawAge = state.age || 0;
+                    const totalYears = Math.floor(rawAge * 1000000);
+                    
+                    const formattedAge = `${totalYears.toLocaleString()} Years`;
+                    const hudAge = document.getElementById('hud-age');
+                    const drawerAge = document.getElementById('drawer-hud-age');
+                    if (hudAge) hudAge.innerText = formattedAge;
+                    if (drawerAge) drawerAge.innerText = formattedAge;
+
+                    updateTimelineUI(totalYears);
 
                     const goalElem = document.getElementById('ai-goal-text');
                     if (goalElem && state.goal) goalElem.innerText = state.goal;
 
                     const reasonElem = document.getElementById('ai-reasoning-text');
                     if (reasonElem && state.reasoning) reasonElem.innerText = state.reasoning;
-
-                    const redshiftElem = document.getElementById('metric-redshift');
-                    if (redshiftElem && state.redshift !== undefined) redshiftElem.innerText = `z = ${Number(state.redshift).toFixed(1)}`;
-
-                    const entropyElem = document.getElementById('metric-entropy');
-                    if (entropyElem && state.entropy !== undefined) entropyElem.innerText = `S = ${Number(state.entropy).toFixed(4)}`;
                 }
             }
-        } catch (err) {}
+        } catch (err) {
+            console.warn("Telemetry fetch error:", err);
+        }
     }
 
     async function pollEvents() {
@@ -144,21 +147,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.ok) {
                 const events = await res.json();
                 const container = document.getElementById('events-container');
-                if (container && Array.isArray(events) && events.length > 0) {
-                    container.innerHTML = events.map(e => {
-                        const eventYears = e.age ? Math.floor(e.age * 1000000).toLocaleString() + ' Years' : 'Live';
-                        return `
-                            <div class="event-card-rich" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #7000ff;">
-                              <div class="event-content">
-                                <div class="event-title-row" style="display: flex; justify-content: space-between; align-items: center;">
-                                  <span class="event-title" style="font-weight: bold; color: #fff; font-size: 14px;">${e.title || 'Cosmic Event'}</span>
-                                  <span class="event-time" style="font-size: 11px; color: #00e5ff; font-weight: bold;">${eventYears}</span>
+                if (container) {
+                    if (Array.isArray(events) && events.length > 0) {
+                        container.innerHTML = events.map(e => {
+                            const eventYears = e.age ? Math.floor(e.age * 1000000).toLocaleString() + ' Years' : 'Live';
+                            return `
+                                <div class="glass-panel" style="margin-bottom: 10px; padding: 12px;">
+                                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: bold; color: #fff; font-size: 14px;">● ${e.title || 'Cosmic Event'}</span>
+                                    <span style="font-size: 11px; color: #00e5ff; font-weight: bold;">${eventYears}</span>
+                                  </div>
+                                  <div style="color: #b0b0d0; font-size: 12px; margin-top: 6px;">${e.description || ''}</div>
                                 </div>
-                                <div class="event-desc" style="color: #c0c0e0; font-size: 12px; margin-top: 5px; line-height: 1.4;">${e.description || ''}</div>
-                              </div>
-                            </div>
-                        `;
-                    }).join('');
+                            `;
+                        }).join('');
+                    } else {
+                        container.innerHTML = `<div style="color: #8080a0; font-size: 13px; text-align: center; padding: 20px;">No events logged in database yet.</div>`;
+                    }
                 }
             }
         } catch (err) {}
@@ -171,10 +176,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (Array.isArray(data) && data.length > 0) {
                     const stats = data[0];
-                    const cStars = document.getElementById('count-stars');
-                    const cBh = document.getElementById('count-bh');
-                    const cNeutron = document.getElementById('count-neutron');
-                    const cPlanets = document.getElementById('count-planets');
+                    const cStars = document.getElementById('cat-stars');
+                    const cBh = document.getElementById('cat-bh');
+                    const cNeutron = document.getElementById('cat-neutron');
+                    const cPlanets = document.getElementById('cat-planets');
 
                     if (cStars && stats.stars !== undefined) cStars.innerText = Number(stats.stars).toLocaleString();
                     if (cBh && stats.black_holes !== undefined) cBh.innerText = Number(stats.black_holes).toLocaleString();
@@ -185,13 +190,63 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {}
     }
 
-    // Smooth continuous local age progression (5,000 Years -> 6,000 Years -> etc.)
-    setInterval(() => {
-        currentDisplayAge += 0.001; // Advance by 1,000 Years per second
-        setHudAge(currentDisplayAge);
-    }, 1000);
+    // --- 5. ANIMATED CONSTELLATION SPHERE ---
+    const aiCanvas = document.getElementById('ai-constellation-canvas');
+    if (aiCanvas) {
+        const actx = aiCanvas.getContext('2d');
+        let sphereRot = 0;
 
-    function pollAll() { pollUniverseState(); pollEvents(); pollCatalog(); }
-    setInterval(pollAll, 3000);
+        function animateAISphere() {
+            requestAnimationFrame(animateAISphere);
+            actx.clearRect(0, 0, 220, 220);
+
+            const cx = 110, cy = 110, r = 75;
+            sphereRot += 0.01;
+
+            const nodes = [];
+            for (let i = 0; i < 28; i++) {
+                const phi = Math.acos(-1 + (2 * i) / 28);
+                const theta = Math.sqrt(28 * Math.PI) * phi + sphereRot;
+
+                const x = cx + r * Math.sin(phi) * Math.cos(theta);
+                const y = cy + r * Math.sin(phi) * Math.sin(theta);
+                const z = r * Math.cos(phi);
+
+                nodes.push({ x, y, z });
+            }
+
+            actx.strokeStyle = 'rgba(112, 0, 255, 0.35)';
+            actx.lineWidth = 1;
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const dist = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
+                    if (dist < 48) {
+                        actx.beginPath();
+                        actx.moveTo(nodes[i].x, nodes[i].y);
+                        actx.lineTo(nodes[j].x, nodes[j].y);
+                        actx.stroke();
+                    }
+                }
+            }
+
+            for (let i = 0; i < nodes.length; i++) {
+                actx.fillStyle = nodes[i].z > 0 ? '#00e5ff' : '#7000ff';
+                actx.beginPath();
+                actx.arc(nodes[i].x, nodes[i].y, nodes[i].z > 0 ? 2.5 : 1.5, 0, Math.PI * 2);
+                actx.fill();
+            }
+        }
+
+        animateAISphere();
+    }
+
+    // --- 6. START REAL-TIME TELEMETRY POLL ---
+    function pollAll() {
+        pollUniverseState();
+        pollEvents();
+        pollCatalog();
+    }
+
     pollAll();
+    setInterval(pollAll, 3000); // Fetch live database state every 3 seconds
 });
