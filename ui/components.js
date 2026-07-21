@@ -10,6 +10,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let initialPinchDistance = null;
     let initialZoom = 1.0;
 
+    // Tap detection tracking
+    let touchStartTime = 0;
+    let startX = 0;
+    let startY = 0;
+
     function getTouchDistance(touch1, touch2) {
         const dx = touch1.clientX - touch2.clientX;
         const dy = touch1.clientY - touch2.clientY;
@@ -22,6 +27,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 isDragging = true;
                 lastTouchX = e.touches[0].clientX;
                 lastTouchY = e.touches[0].clientY;
+                
+                // Track for potential tap selection
+                touchStartTime = Date.now();
+                startX = lastTouchX;
+                startY = lastTouchY;
             } else if (e.touches.length === 2) {
                 isDragging = false;
                 initialPinchDistance = getTouchDistance(e.touches[0], e.touches[1]);
@@ -48,6 +58,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
 
         canvasContainer.addEventListener('touchend', (e) => {
+            if (e.changedTouches.length === 1) {
+                const touchDuration = Date.now() - touchStartTime;
+                const dist = Math.hypot(e.changedTouches[0].clientX - startX, e.changedTouches[0].clientY - startY);
+                
+                // If it was a fast, stationary tap (under 300ms, moved less than 15px) -> Raycast!
+                if (touchDuration < 300 && dist < 15) {
+                    if (window.selectParticleAt) {
+                        window.selectParticleAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+                    }
+                }
+            }
+
             if (e.touches.length < 2) initialPinchDistance = null;
             if (e.touches.length === 0) isDragging = false;
         }, { passive: true });
