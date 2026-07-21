@@ -7,7 +7,7 @@ struct Particle {
     net_force : vec3<f32>,
     entropy_decay : f32,
     scale_radius : f32,
-    composition : u32,      // 0 = Dark Matter, 1 = Hydrogen Gas, 2 = Stellar Metal
+    composition : u32,      // 0 = Dark Matter, 1 = Hydrogen Star, 2 = Core
     pad1 : f32,
     pad2 : f32,
 };
@@ -39,32 +39,37 @@ fn init_big_bang(@builtin(global_invocation_id) global_id : vec3<u32>) {
     if (index >= params.particle_count) { return; }
 
     let seed = f32(index);
-    let random_dir = normalize(hash31(seed));
-    let noise_factor = length(hash31(seed + 100.0));
+    let dir = normalize(hash31(seed));
+    let noise = length(hash31(seed + 100.0));
 
-    let primordial_radius = 12.0 * noise_factor + 0.5;
-    particles[index].position = random_dir * primordial_radius;
+    // Spherical galactic distribution
+    let radius = 25.0 * pow(noise, 0.5) + 0.5;
+    particles[index].position = dir * radius;
 
-    let expansion_speed = 15.0 + (noise_factor * 10.0);
-    particles[index].velocity = random_dir * expansion_speed;
+    // Orbital tangential velocity around core
+    let speed = 8.0 + (noise * 12.0);
+    let up = vec3<f32>(0.0, 1.0, 0.0);
+    particles[index].velocity = cross(dir, up) * speed;
 
-    if (noise_factor > 0.15) {
-        particles[index].mass = 50.0 * noise_factor;
-        particles[index].charge = 0.0;
-        particles[index].composition = 0u;
-        particles[index].scale_radius = 0.1;
+    if (noise > 0.85) {
+        particles[index].mass = 120.0;
+        particles[index].composition = 2u; // Bright Stellar Core
+        particles[index].scale_radius = 2.5;
+    } else if (noise > 0.3) {
+        particles[index].mass = 15.0;
+        particles[index].composition = 1u; // Hydrogen Star
+        particles[index].scale_radius = 1.2;
     } else {
-        particles[index].mass = 5.0 * noise_factor;
-        particles[index].charge = hash31(seed + 200.0).x * 0.5;
-        particles[index].composition = 1u;
-        particles[index].scale_radius = 0.5;
+        particles[index].mass = 45.0;
+        particles[index].composition = 0u; // Dark Matter / Filament
+        particles[index].scale_radius = 0.8;
     }
 
     particles[index].net_force = vec3<f32>(0.0);
     particles[index].entropy_decay = 0.01;
 }
 
-// --- 2. COMPUTE: REALTIME PHYSICS LOOP ---
+// --- 2. COMPUTE: REALTIME PHYSICS ---
 @compute @workgroup_size(256)
 fn update_physics(@builtin(global_invocation_id) global_id : vec3<u32>) {
     let index = global_id.x;
@@ -72,52 +77,47 @@ fn update_physics(@builtin(global_invocation_id) global_id : vec3<u32>) {
 
     var p = particles[index];
     let dt = params.delta_time;
-    let G: f32 = 0.15;
-    let epsilon_sq: f32 = 2.0;
+    let G: f32 = 0.25;
 
-    var accumulated_force = vec3<f32>(0.0);
+    // Pull toward central cosmic origin
+    let center_dist = length(p.position);
+    let center_force = -normalize(p.position + vec3<f32>(0.001)) * (G * 500.0 / (center_dist * center_dist + 5.0));
 
-    let sample_stride = 128u; 
-    let max_samples = min(params.particle_count, 1024u);
-
-    for (var i = 0u; i < max_samples; i += sample_stride) {
-        let neighbor_idx = (index + i + 1u) % params.particle_count;
-        let other = particles[neighbor_idx];
-
-        let r_vec = other.position - p.position;
-        let dist_sq = dot(r_vec, r_vec);
-
-        let force_mag = (G * p.mass * other.mass) / (dist_sq + epsilon_sq);
-        let force_dir = normalize(r_vec + vec3<f32>(0.0001));
-
-        accumulated_force += force_dir * force_mag;
-    }
-
-    p.net_force += accumulated_force;
-
-    let acceleration = p.net_force / max(p.mass, 0.001);
-    p.velocity += acceleration * dt;
-
-    let hubble_vector = p.position * (params.expansion_rate_h * 0.0001 * dt);
-    p.position += (p.velocity * dt) + hubble_vector;
-
-    p.entropy_decay = min(p.entropy_decay + (0.0001 * dt), 1.0);
-    p.net_force = vec3<f32>(0.0);
+    p.velocity += (center_force / max(p.mass, 0.1)) * dt;
+    p.position += p.velocity * dt;
 
     particles[index] = p;
 }
 
-// --- 3. RENDER: VERTEX SHADER WITH TOUCH CAMERA TRANSFORM ---
+// --- 3. INSTANCED QUAD VERTEX SHADER (Large Glowing Stars) ---
 struct VertexOutput {
     @builtin(position) position : vec4<f32>,
     @location(0) color : vec4<f32>,
+    @location(1) uv : vec2<f32>,
 };
 
 @vertex
-fn vs_main(@builtin(vertex_index) vertex_index : u32) -> VertexOutput {
+fn vs_main(
+    @builtin(vertex_index) v_idx : u32,
+    @builtin(instance_index) p_idx : u32
+) -> VertexOutput {
     var out: VertexOutput;
-    let p = particles[vertex_index];
+    let p = particles[p_idx];
 
+    // Quad vertex offsets (-1 to +1)
+    var quad_offsets = array<vec2<f32>, 6>(
+        vec2<f32>(-1.0, -1.0),
+        vec2<f32>( 1.0, -1.0),
+        vec2<f32>(-1.0,  1.0),
+        vec2<f32>(-1.0,  1.0),
+        vec2<f32>( 1.0, -1.0),
+        vec2<f32>( 1.0,  1.0)
+    );
+
+    let offset = quad_offsets[v_idx];
+    out.uv = offset;
+
+    // 3D Orbit Camera Matrix
     let cx = cos(params.rot_x);
     let sx = sin(params.rot_x);
     let cy = cos(params.rot_y);
@@ -135,31 +135,39 @@ fn vs_main(@builtin(vertex_index) vertex_index : u32) -> VertexOutput {
         pos.y * sx + pos.z * cx
     );
 
-    let camera_dist = 100.0 / max(params.zoom_level, 0.01);
+    let camera_dist = 60.0 / max(params.zoom_level, 0.1);
     let depth = pos.z + camera_dist;
-    let proj = 1.8 / max(depth, 0.1);
+    let proj = 1.6 / max(depth, 0.1);
 
-    out.position = vec4<f32>(
-        (pos.x * proj) / params.aspect_ratio,
-        pos.y * proj,
-        clamp(pos.z * 0.001, 0.0, 1.0),
-        1.0
+    // Screen projection + billboard quad size expansion
+    let star_size = p.scale_radius * 0.035 * params.zoom_level;
+    let proj_pos = vec2<f32>(
+        (pos.x * proj) / params.aspect_ratio + offset.x * star_size,
+        pos.y * proj + offset.y * star_size * params.aspect_ratio
     );
 
-    if (p.composition == 0u) {
-        out.color = vec4<f32>(0.65, 0.3, 1.0, 0.45);
+    out.position = vec4<f32>(proj_pos, clamp(pos.z * 0.001, 0.0, 1.0), 1.0);
+
+    // Deep space colors based on object composition
+    if (p.composition == 2u) {
+        out.color = vec4<f32>(1.0, 0.8, 0.3, 1.0); // Golden Core
     } else if (p.composition == 1u) {
-        out.color = vec4<f32>(0.3, 0.9, 1.0, 0.95);
+        out.color = vec4<f32>(0.3, 0.85, 1.0, 0.9); // Electric Cyan Star
     } else {
-        out.color = vec4<f32>(1.0, 0.75, 0.3, 1.0);
+        out.color = vec4<f32>(0.6, 0.25, 1.0, 0.5); // Violet Dark Matter
     }
 
     return out;
 }
 
-// --- 4. RENDER: FRAGMENT SHADER ---
+// --- 4. FRAGMENT SHADER (Radial Star Glow Flare) ---
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return in.color;
+    let dist = length(in.uv);
+    if (dist > 1.0) { discard; }
+
+    // Soft radial glow drop-off
+    let alpha = pow(1.0 - dist, 2.0);
+    return vec4<f32>(in.color.rgb, in.color.a * alpha);
 }
 `;
