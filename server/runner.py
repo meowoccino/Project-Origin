@@ -1,4 +1,3 @@
-cd ~/Project-Origin && mkdir -p server && cat << 'EOF' > server/runner.py
 import os
 import time
 import math
@@ -15,6 +14,7 @@ HEADERS = {
     "Prefer": "return=representation"
 }
 
+# Persistent In-Memory Universe Age Counter (in Million Years)
 current_age = 0.0
 
 def sync_to_supabase(age, goal, reasoning, redshift, entropy):
@@ -78,8 +78,10 @@ def main():
 
     while True:
         try:
+            # Advance Age Continuously: 4 Seconds = 7,100 Cosmic Years
             current_age += 0.0071
             
+            # Cosmological Friedmann equations for scale factor, redshift, and entropy
             scale_factor = math.pow(math.sinh(1.5 * math.sqrt(0.685) * ((current_age / 1000.0) / 13.8)), 2.0 / 3.0) if current_age > 0 else 0.0001
             redshift = max(0.0, (1.0 / max(0.0001, scale_factor)) - 1.0)
             entropy = 1.0 + math.log10(1.0 + current_age * 1000.0)
@@ -102,5 +104,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-EOF
-pkill -f runner.py ; nohup python3 -u server/runner.py > runner.log 2>&1 &
