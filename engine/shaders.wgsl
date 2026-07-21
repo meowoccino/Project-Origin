@@ -1,67 +1,111 @@
+// ============================================================================
+// PROJECT ORIGIN: PHYSICAL UNIVERSE COMPUTE SHADER
+// Features: 8 Physical State Attributes + Big Bang Expansion Dynamics
+// ============================================================================
 
-// Particle Data Structure (16-byte aligned for WebGPU)
+// --- THE 8 PHYSICAL STATE ATTRIBUTES (64-Byte GPU Alignment) ---
 struct Particle {
+    // 1. Position (x, y, z) & 3. Mass
     position : vec3<f32>,
-    mass     : f32,
+    mass : f32,
+
+    // 2. Velocity (vx, vy, vz) & 4. Charge
     velocity : vec3<f32>,
-    padding  : f32, // Maintains 16-byte alignment
+    charge : f32,
+
+    // 8. Net Force Vector & 7. Entropy / Decay
+    net_force : vec3<f32>,
+    entropy_decay : f32,
+
+    // 5. Scale / Radius & 6. Composition & Alignment Padding
+    scale_radius : f32,
+    composition : u32,      // 0 = Dark Matter, 1 = Hydrogen Gas, 2 = Stellar Metal
+    pad1 : f32,
+    pad2 : f32,
 };
 
-struct SimulationParams {
-    delta_time     : f32,
-    gravity_const  : f32,
-    expansion_rate : f32, // Hubble expansion factor H(t)
-    speed_of_light : f32, // Speed of causality c
+// Global Cosmic Parameters (Updated every frame from JS)
+struct CosmicParams {
+    cosmic_age_myr : f32,
+    expansion_rate_h : f32, // Hubble metric expansion
+    delta_time : f32,       // Step size dt
+    particle_count : u32,
 };
 
 @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
-@group(0) @binding(1) var<uniform> params : SimulationParams;
+@group(0) @binding(1) var<uniform> params : CosmicParams;
 
-@compute @workgroup_size(64)
-fn main(@builtin(global_invocation_id) global_id : vec3<u32>) {
+// Pseudo-Random Generator for Primordial Quantum Fluctuations
+fn hash31(p: f32) -> vec3<f32> {
+    var p3 = fract(vec3<f32>(p * 0.1031, p * 0.1030, p * 0.0973));
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.xxy + p3.yzz) * p3.zyx) * 2.0 - 1.0;
+}
+
+// --- 1. BIG BANG INITIALIZATION SHADER ---
+@compute @workgroup_size(256)
+fn init_big_bang(@builtin(global_invocation_id) global_id : vec3<u32>) {
     let index = global_id.x;
-    if (index >= arrayLength(&particles)) {
-        return;
+    if (index >= params.particle_count) { return; }
+
+    let seed = f32(index);
+    let random_dir = normalize(hash31(seed));
+    let noise_factor = length(hash31(seed + 100.0));
+
+    // A. Singularity Core Placement (Near 0,0,0 with high primordial density)
+    let primordial_radius = 0.05 * noise_factor;
+    particles[index].position = random_dir * primordial_radius;
+
+    // B. High-Velocity Inflation Wavefront
+    let expansion_speed = 80.0 + (noise_factor * 40.0);
+    particles[index].velocity = random_dir * expansion_speed;
+
+    // C. Attribute Assignation: Dark Matter vs Baryonic Matter Ratio (85/15)
+    if (noise_factor > 0.15) {
+        // Dark Matter Node (Provides invisible gravitational structure)
+        particles[index].mass = 100.0 * noise_factor;
+        particles[index].charge = 0.0;
+        particles[index].composition = 0u; // Dark Matter
+        particles[index].scale_radius = 0.1;
+    } else {
+        // Baryonic Matter (Gas / Star potential)
+        particles[index].mass = 10.0 * noise_factor;
+        particles[index].charge = hash31(seed + 200.0).x * 0.5;
+        particles[index].composition = 1u; // Hydrogen Gas
+        particles[index].scale_radius = 0.5;
     }
 
-    var pos = particles[index].position;
-    var vel = particles[index].velocity;
-    var accel = vec3<f32>(0.0, 0.0, 0.0);
+    particles[index].net_force = vec3<f32>(0.0);
+    particles[index].entropy_decay = 0.01; // Fresh primordial state
+}
 
-    // 1. Calculate N-body Gravity across neighboring particles
-    // (Sampled grid step for 500k performance optimization)
-    let total_nodes = arrayLength(&particles);
-    let step_size = u32(max(1.0, f32(total_nodes) / 256.0));
+// --- 2. REALTIME PHYSICS INTEGRATION LOOP ---
+@compute @workgroup_size(256)
+fn update_physics(@builtin(global_invocation_id) global_id : vec3<u32>) {
+    let index = global_id.x;
+    if (index >= params.particle_count) { return; }
 
-    for (var i : u32 = 0u; i < total_nodes; i += step_size) {
-        if (i == index) {
-            continue;
-        }
+    var p = particles[index];
+    let dt = params.delta_time;
 
-        let other_pos = particles[i].position;
-        let other_mass = particles[i].mass;
+    // A. Acceleration Calculation from Accumulated AI & Local Forces (a = F / m)
+    let acceleration = p.net_force / max(p.mass, 0.001);
 
-        let delta = other_pos - pos;
-        let dist_sq = dot(delta, delta) + 0.1; // Softening parameter to prevent division by zero
-        let dist = sqrt(dist_sq);
+    // B. Update Velocity (v = v0 + a * dt)
+    p.velocity += acceleration * dt;
 
-        // Apply realistic inverse-square gravity
-        let force = (params.gravity_const * other_mass) / dist_sq;
-        accel += normalize(delta) * force;
-    }
+    // C. Cosmic Metric Expansion (Space itself stretching over time)
+    let hubble_vector = p.position * (params.expansion_rate_h * 0.0001 * dt);
+    
+    // D. Update Position (x = x0 + v * dt + expansion)
+    p.position += (p.velocity * dt) + hubble_vector;
 
-    // 2. Apply Speed of Causality Limit (Velocity capped at speed of light 'c')
-    vel += accel * params.delta_time;
-    let current_speed = length(vel);
-    if (current_speed > params.speed_of_light) {
-        vel = normalize(vel) * params.speed_of_light;
-    }
+    // E. Natural Entropy Decay (Stars aging / volatile dissipation)
+    p.entropy_decay = min(p.entropy_decay + (0.0001 * dt), 1.0);
 
-    // 3. Apply Cosmic Spatial Expansion: v_expansion = H(t) * position
-    let expansion_vector = pos * (params.expansion_rate * 0.0001);
-    pos += (vel + expansion_vector) * params.delta_time;
+    // F. Reset Force Vector for Next Frame Calculation
+    p.net_force = vec3<f32>(0.0);
 
-    // Save updated particle back to GPU memory
-    particles[index].position = pos;
-    particles[index].velocity = vel;
+    // Write Back to GPU Storage Buffer
+    particles[index] = p;
 }
