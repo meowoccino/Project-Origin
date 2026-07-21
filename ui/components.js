@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let initialPinchDistance = null;
     let initialZoom = 1.0;
 
-    // Tap detection tracking
     let touchStartTime = 0;
     let startX = 0;
     let startY = 0;
@@ -28,7 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 lastTouchX = e.touches[0].clientX;
                 lastTouchY = e.touches[0].clientY;
                 
-                // Track for potential tap selection
                 touchStartTime = Date.now();
                 startX = lastTouchX;
                 startY = lastTouchY;
@@ -62,7 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const touchDuration = Date.now() - touchStartTime;
                 const dist = Math.hypot(e.changedTouches[0].clientX - startX, e.changedTouches[0].clientY - startY);
                 
-                // If it was a fast, stationary tap (under 300ms, moved less than 15px) -> Raycast!
                 if (touchDuration < 300 && dist < 15) {
                     if (window.selectParticleAt) {
                         window.selectParticleAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
@@ -75,31 +72,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
     }
 
-    // --- 2. SIDE DRAWER MENU NAVIGATION ---
-    const sideDrawer = document.getElementById('side-drawer');
-    const btnOpenDrawer = document.getElementById('btn-open-drawer');
-    const btnCloseDrawer = document.getElementById('btn-close-drawer');
-    const btnEventsMenu = document.getElementById('btn-events-menu');
-
-    function openDrawer() { sideDrawer?.classList.add('active'); }
-    function closeDrawer() { sideDrawer?.classList.remove('active'); }
-
-    btnOpenDrawer?.addEventListener('click', openDrawer);
-    btnEventsMenu?.addEventListener('click', openDrawer);
-    btnCloseDrawer?.addEventListener('click', closeDrawer);
-
-    // --- 3. BOTTOM NAVBAR & SCREEN MODALS ---
+    // --- 2. BOTTOM NAVBAR & SCREEN MODALS ---
     const btnExplore = document.getElementById('btn-explore');
     const btnEvents = document.getElementById('btn-events');
     const btnAi = document.getElementById('btn-ai');
     const btnTimeline = document.getElementById('btn-timeline');
     const btnCatalog = document.getElementById('btn-catalog');
-
-    const drawerExplore = document.getElementById('drawer-explore');
-    const drawerEvents = document.getElementById('drawer-events');
-    const drawerAi = document.getElementById('drawer-ai');
-    const drawerTimeline = document.getElementById('drawer-timeline');
-    const drawerCatalog = document.getElementById('drawer-catalog');
 
     const viewEvents = document.getElementById('view-events');
     const viewAi = document.getElementById('view-ai');
@@ -113,13 +91,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetTabs() {
         allBtns.forEach(btn => btn?.classList.remove('active'));
         allViews.forEach(view => view?.classList.remove('active'));
-        closeDrawer();
     }
 
     function switchTab(targetBtn, targetView) {
         resetTabs();
         targetBtn?.classList.add('active');
-        targetView?.classList.add('active');
+        if (targetView) targetView.classList.add('active');
+        
+        // Hide floating inspector preview when navigating away from Explore
+        const inspectorPreview = document.getElementById('inspector-preview');
+        if (targetBtn !== btnExplore && inspectorPreview) {
+            inspectorPreview.classList.remove('active');
+        }
     }
 
     btnExplore?.addEventListener('click', () => switchTab(btnExplore, null));
@@ -128,13 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnTimeline?.addEventListener('click', () => switchTab(btnTimeline, viewTimeline));
     btnCatalog?.addEventListener('click', () => switchTab(btnCatalog, viewCatalog));
 
-    drawerExplore?.addEventListener('click', () => switchTab(btnExplore, null));
-    drawerEvents?.addEventListener('click', () => switchTab(btnEvents, viewEvents));
-    drawerAi?.addEventListener('click', () => switchTab(btnAi, viewAi));
-    drawerTimeline?.addEventListener('click', () => switchTab(btnTimeline, viewTimeline));
-    drawerCatalog?.addEventListener('click', () => switchTab(btnCatalog, viewCatalog));
-
-    // --- 4. OBJECT INSPECTION MODAL ---
+    // --- 3. OBJECT INSPECTION MODAL ---
     const inspectorPreview = document.getElementById('inspector-preview');
     const btnExpandInspect = document.getElementById('btn-expand-inspect');
     const btnCloseInspect = document.getElementById('btn-close-inspect');
@@ -154,8 +131,4 @@ document.addEventListener('DOMContentLoaded', () => {
         inspectModal?.classList.remove('active');
         btnExplore?.classList.add('active');
     });
-
-    document.getElementById('btn-ai-back')?.addEventListener('click', () => switchTab(btnExplore, null));
-    document.getElementById('btn-timeline-back')?.addEventListener('click', () => switchTab(btnExplore, null));
-    document.getElementById('btn-catalog-back')?.addEventListener('click', () => switchTab(btnExplore, null));
 });
