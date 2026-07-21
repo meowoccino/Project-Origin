@@ -1,8 +1,10 @@
-// Root Entry Point - Connects UI and Engine
+// Root Entry Point - Connects UI and WebGPU Engine
 import './ui/components.js';
 import { initWebGPU } from './engine/main.js';
 
-// Boot up WebGPU engine when DOM is ready
-window.addEventListener('DOMContentLoaded', () => {
+// Safe execution trigger
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => initWebGPU());
+} else {
     initWebGPU();
-});
+}
