@@ -1,7 +1,7 @@
 import { cameraState } from '../engine/main.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. TOUCH & GESTURE NAVIGATION
+    // 1. TOUCH CONTROLS
     const canvasContainer = document.getElementById('canvas-container');
     let isDragging = false, lastTouchX = 0, lastTouchY = 0, initialPinchDistance = null, initialZoom = 1.0, touchStartTime = 0, startX = 0, startY = 0;
 
@@ -96,12 +96,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     }
 
-    // Render timeline immediately on page load
     updateTimelineUI(0);
 
-    // 4. SUPABASE TELEMETRY SYNC
+    // 4. REAL-TIME TELEMETRY SYNC WITH CONTINUOUS TICKER
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
-    let currentDisplayAge = 0;
+    let currentDisplayAge = 0.005; // Default starting age: 5,000 Years
 
     function setHudAge(rawAge) {
         const numericAge = Number(rawAge);
@@ -122,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (Array.isArray(data) && data.length > 0) {
                     const state = data[0];
                     if (state.age !== undefined) setHudAge(state.age);
-                    
+
                     const goalElem = document.getElementById('ai-goal-text');
                     if (goalElem && state.goal) goalElem.innerText = state.goal;
 
@@ -186,9 +185,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {}
     }
 
-    // Local simulation ticker fallback to advance age smoothly
+    // Smooth continuous local age progression (5,000 Years -> 6,000 Years -> etc.)
     setInterval(() => {
-        setHudAge(currentDisplayAge + 0.0001);
+        currentDisplayAge += 0.001; // Advance by 1,000 Years per second
+        setHudAge(currentDisplayAge);
     }, 1000);
 
     function pollAll() { pollUniverseState(); pollEvents(); pollCatalog(); }
