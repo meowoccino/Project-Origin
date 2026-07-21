@@ -1,107 +1,56 @@
 import { cameraState } from '../engine/main.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 1. TOUCH & GESTURE CAMERA CONTROLS ---
+    // 1. TOUCH & GESTURE NAVIGATION
     const canvasContainer = document.getElementById('canvas-container');
+    let isDragging = false, lastTouchX = 0, lastTouchY = 0, initialPinchDistance = null, initialZoom = 1.0, touchStartTime = 0, startX = 0, startY = 0;
 
-    let isDragging = false;
-    let lastTouchX = 0;
-    let lastTouchY = 0;
-    let initialPinchDistance = null;
-    let initialZoom = 1.0;
-
-    let touchStartTime = 0;
-    let startX = 0;
-    let startY = 0;
-
-    function getTouchDistance(touch1, touch2) {
-        const dx = touch1.clientX - touch2.clientX;
-        const dy = touch1.clientY - touch2.clientY;
+    function getTouchDistance(t1, t2) {
+        const dx = t1.clientX - t2.clientX, dy = t1.clientY - t2.clientY;
         return Math.sqrt(dx * dx + dy * dy);
     }
 
     if (canvasContainer) {
         canvasContainer.addEventListener('touchstart', (e) => {
             if (e.touches.length === 1) {
-                isDragging = true;
-                lastTouchX = e.touches[0].clientX;
-                lastTouchY = e.touches[0].clientY;
-                
-                touchStartTime = Date.now();
-                startX = lastTouchX;
-                startY = lastTouchY;
+                isDragging = true; lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY;
+                touchStartTime = Date.now(); startX = lastTouchX; startY = lastTouchY;
             } else if (e.touches.length === 2) {
-                isDragging = false;
-                initialPinchDistance = getTouchDistance(e.touches[0], e.touches[1]);
-                initialZoom = cameraState.zoom;
+                isDragging = false; initialPinchDistance = getTouchDistance(e.touches[0], e.touches[1]); initialZoom = cameraState.zoom;
             }
         }, { passive: true });
 
         canvasContainer.addEventListener('touchmove', (e) => {
             if (e.touches.length === 1 && isDragging) {
-                const deltaX = e.touches[0].clientX - lastTouchX;
-                const deltaY = e.touches[0].clientY - lastTouchY;
-
-                cameraState.rotY += deltaX * 0.005;
-                cameraState.rotX += deltaY * 0.005;
-                cameraState.rotX = Math.max(-1.4, Math.min(1.4, cameraState.rotX));
-
-                lastTouchX = e.touches[0].clientX;
-                lastTouchY = e.touches[0].clientY;
+                cameraState.rotY += (e.touches[0].clientX - lastTouchX) * 0.005;
+                cameraState.rotX = Math.max(-1.4, Math.min(1.4, cameraState.rotX + (e.touches[0].clientY - lastTouchY) * 0.005));
+                lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY;
             } else if (e.touches.length === 2 && initialPinchDistance) {
-                const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
-                const scale = currentDistance / initialPinchDistance;
-                cameraState.zoom = Math.max(0.1, Math.min(15.0, initialZoom * scale));
+                cameraState.zoom = Math.max(0.1, Math.min(15.0, initialZoom * (getTouchDistance(e.touches[0], e.touches[1]) / initialPinchDistance)));
             }
         }, { passive: true });
 
         canvasContainer.addEventListener('touchend', (e) => {
-            if (e.changedTouches.length === 1) {
-                const touchDuration = Date.now() - touchStartTime;
-                const dist = Math.hypot(e.changedTouches[0].clientX - startX, e.changedTouches[0].clientY - startY);
-                
-                if (touchDuration < 300 && dist < 15) {
-                    if (window.selectParticleAt) {
-                        window.selectParticleAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-                    }
+            if (e.changedTouches.length === 1 && (Date.now() - touchStartTime < 300)) {
+                if (Math.hypot(e.changedTouches[0].clientX - startX, e.changedTouches[0].clientY - startY) < 15) {
+                    if (window.selectParticleAt) window.selectParticleAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
                 }
             }
-
             if (e.touches.length < 2) initialPinchDistance = null;
             if (e.touches.length === 0) isDragging = false;
         }, { passive: true });
     }
 
-    // --- 2. BOTTOM NAVBAR & SCREEN MODALS ---
-    const btnExplore = document.getElementById('btn-explore');
-    const btnEvents = document.getElementById('btn-events');
-    const btnAi = document.getElementById('btn-ai');
-    const btnTimeline = document.getElementById('btn-timeline');
-    const btnCatalog = document.getElementById('btn-catalog');
+    // 2. NAVBAR NAVIGATION
+    const btnExplore = document.getElementById('btn-explore'), btnEvents = document.getElementById('btn-events'), btnAi = document.getElementById('btn-ai'), btnTimeline = document.getElementById('btn-timeline'), btnCatalog = document.getElementById('btn-catalog');
+    const viewEvents = document.getElementById('view-events'), viewAi = document.getElementById('view-ai'), viewTimeline = document.getElementById('view-timeline'), viewCatalog = document.getElementById('view-catalog'), inspectModal = document.getElementById('modal-object-detail');
+    const allBtns = [btnExplore, btnEvents, btnAi, btnTimeline, btnCatalog], allViews = [viewEvents, viewAi, viewTimeline, viewCatalog, inspectModal];
 
-    const viewEvents = document.getElementById('view-events');
-    const viewAi = document.getElementById('view-ai');
-    const viewTimeline = document.getElementById('view-timeline');
-    const viewCatalog = document.getElementById('view-catalog');
-    const inspectModal = document.getElementById('modal-object-detail');
-
-    const allBtns = [btnExplore, btnEvents, btnAi, btnTimeline, btnCatalog];
-    const allViews = [viewEvents, viewAi, viewTimeline, viewCatalog, inspectModal];
-
-    function resetTabs() {
-        allBtns.forEach(btn => btn?.classList.remove('active'));
-        allViews.forEach(view => view?.classList.remove('active'));
-    }
-
-    function switchTab(targetBtn, targetView) {
-        resetTabs();
-        targetBtn?.classList.add('active');
-        if (targetView) targetView.classList.add('active');
-        
+    function resetTabs() { allBtns.forEach(b => b?.classList.remove('active')); allViews.forEach(v => v?.classList.remove('active')); }
+    function switchTab(btn, view) {
+        resetTabs(); btn?.classList.add('active'); if (view) view.classList.add('active');
         const inspectorPreview = document.getElementById('inspector-preview');
-        if (targetBtn !== btnExplore && inspectorPreview) {
-            inspectorPreview.classList.remove('active');
-        }
+        if (btn !== btnExplore && inspectorPreview) inspectorPreview.classList.remove('active');
     }
 
     btnExplore?.addEventListener('click', () => switchTab(btnExplore, null));
@@ -110,37 +59,21 @@ document.addEventListener('DOMContentLoaded', () => {
     btnTimeline?.addEventListener('click', () => switchTab(btnTimeline, viewTimeline));
     btnCatalog?.addEventListener('click', () => switchTab(btnCatalog, viewCatalog));
 
-    // --- 3. OBJECT INSPECTION MODAL ---
-    const inspectorPreview = document.getElementById('inspector-preview');
-    const btnExpandInspect = document.getElementById('btn-expand-inspect');
-    const btnCloseInspect = document.getElementById('btn-close-inspect');
-
-    function openInspectModal() {
-        resetTabs();
-        inspectModal?.classList.add('active');
-    }
-
+    const inspectorPreview = document.getElementById('inspector-preview'), btnExpandInspect = document.getElementById('btn-expand-inspect'), btnCloseInspect = document.getElementById('btn-close-inspect');
+    function openInspectModal() { resetTabs(); inspectModal?.classList.add('active'); }
     inspectorPreview?.addEventListener('click', openInspectModal);
-    btnExpandInspect?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openInspectModal();
-    });
+    btnExpandInspect?.addEventListener('click', (e) => { e.stopPropagation(); openInspectModal(); });
+    btnCloseInspect?.addEventListener('click', () => { inspectModal?.classList.remove('active'); btnExplore?.classList.add('active'); });
 
-    btnCloseInspect?.addEventListener('click', () => {
-        inspectModal?.classList.remove('active');
-        btnExplore?.classList.add('active');
-    });
-
-    // --- 4. LIVE SUPABASE SYNC ---
+    // 3. REAL-TIME SUPABASE TELEMETRY SYNC
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
     let currentDisplayAge = 0;
 
-    // COSMIC TIMELINE MILESTONES (In Years)
     const TIMELINE_EPOCHS = [
-        { title: "🌌 Primordial Inflation", start: 0, end: 100000, desc: "Rapid metric expansion and quantum density fluctuations." },
-        { title: "⭐ Cosmic Dark Ages", start: 100000, end: 100000000, desc: "Cooling neutral gas collapsing into dark matter haloes." },
-        { title: "✨ First Stars & Reionization", start: 100000000, end: 1000000000, desc: "Population III supermassive stars ignite, ionizing primordial hydrogen." },
-        { title: "🪐 Galactic Disk Formation", start: 1000000000, end: 10000000000, desc: "Spinning protogalaxies settle into flat disks with heavy metallicity." }
+        { title: "🌌 Primordial Inflation", start: 0, end: 100000, desc: "Exponential expansion dominated by vacuum energy fluctuations." },
+        { title: "⭐ Cosmic Dark Ages", start: 100000, end: 100000000, desc: "Cooling neutral gas collapses into dark matter halos." },
+        { title: "✨ First Stars & Reionization", start: 100000000, end: 1000000000, desc: "Population III supermassive stars ignite, reionizing neutral hydrogen." },
+        { title: "🪐 Disk Structure Accretion", start: 1000000000, end: 10000000000, desc: "Galactic disk formation and stellar metallicity enrichment." }
     ];
 
     function updateTimelineUI(totalYears) {
@@ -150,17 +83,16 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = TIMELINE_EPOCHS.map(epoch => {
             const isPassed = totalYears >= epoch.start;
             const isActive = totalYears >= epoch.start && totalYears < epoch.end;
-            
             const markerColor = isActive ? '#7000ff' : (isPassed ? '#00e5ff' : 'rgba(255,255,255,0.2)');
             const statusBadge = isActive ? '<span style="color:#00e5ff; font-weight:bold; font-size:11px;"> [CURRENT EPOCH]</span>' : '';
 
             return `
-                <div class="timeline-node" style="opacity: ${isPassed ? '1' : '0.4'}; margin-bottom: 20px;">
-                  <div class="node-marker" style="background: ${markerColor}; box-shadow: ${isActive ? '0 0 12px #7000ff' : 'none'};"></div>
-                  <div class="node-content">
-                    <div class="node-title">${epoch.title}${statusBadge}</div>
-                    <div class="node-time" style="color: #a0a0c0; font-size: 12px;">${epoch.start.toLocaleString()} - ${epoch.end.toLocaleString()} Years</div>
-                    <div class="node-desc" style="margin-top: 4px; font-size: 13px;">${epoch.desc}</div>
+                <div class="timeline-node" style="opacity: ${isPassed ? '1' : '0.35'}; margin-bottom: 20px;">
+                  <div class="node-marker" style="background: ${markerColor}; box-shadow: ${isActive ? '0 0 10px #7000ff' : 'none'}; width: 12px; height: 12px; border-radius: 50%; float: left; margin-right: 12px; margin-top: 3px;"></div>
+                  <div class="node-content" style="overflow: hidden;">
+                    <div class="node-title" style="color: #fff; font-weight: bold; font-size: 14px;">${epoch.title}${statusBadge}</div>
+                    <div class="node-time" style="color: #a0a0c0; font-size: 11px; margin-top: 2px;">${epoch.start.toLocaleString()} - ${epoch.end.toLocaleString()} Years</div>
+                    <div class="node-desc" style="color: #d0d0e0; font-size: 12px; margin-top: 4px; line-height: 1.4;">${epoch.desc}</div>
                   </div>
                 </div>
             `;
@@ -172,19 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isNaN(numericAge) && numericAge > currentDisplayAge) {
             currentDisplayAge = numericAge;
             const totalYears = Math.floor(currentDisplayAge * 1000000);
-
             const hudAge = document.getElementById('hud-age');
-            if (hudAge) {
-                hudAge.innerText = `${totalYears.toLocaleString()} Years`;
-            }
-
-            // Dynamically update timeline based on age
+            if (hudAge) hudAge.innerText = `${totalYears.toLocaleString()} Years`;
             updateTimelineUI(totalYears);
         }
     }
-    window.setHudAge = setHudAge;
 
-    // A. Sync Universe Age & AI Goal
     async function pollUniverseState() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`);
@@ -193,21 +118,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (Array.isArray(data) && data.length > 0) {
                     const state = data[0];
                     if (state.age !== undefined) setHudAge(state.age);
+                    
+                    const goalElem = document.getElementById('ai-goal-text');
+                    if (goalElem && state.goal) goalElem.innerText = state.goal;
 
-                    if (state.goal) {
-                        const goalElem = document.querySelector('#view-ai .panel-value-large');
-                        if (goalElem) goalElem.innerText = state.goal;
-                    }
-                    if (state.reasoning) {
-                        const reasonElem = document.querySelector('#view-ai .panel-desc');
-                        if (reasonElem) reasonElem.innerText = state.reasoning;
-                    }
+                    const reasonElem = document.getElementById('ai-reasoning-text');
+                    if (reasonElem && state.reasoning) reasonElem.innerText = state.reasoning;
+
+                    const redshiftElem = document.getElementById('metric-redshift');
+                    if (redshiftElem && state.redshift !== undefined) redshiftElem.innerText = `z = ${Number(state.redshift).toFixed(1)}`;
+
+                    const entropyElem = document.getElementById('metric-entropy');
+                    if (entropyElem && state.entropy !== undefined) entropyElem.innerText = `S = ${Number(state.entropy).toFixed(4)}`;
                 }
             }
         } catch (err) {}
     }
 
-    // B. Sync Live Events Stream
     async function pollEvents() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=10`);
@@ -218,15 +145,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     container.innerHTML = events.map(e => {
                         const eventYears = e.age ? Math.floor(e.age * 1000000).toLocaleString() + ' Years' : 'Live';
                         return `
-                            <div class="event-card-rich">
-                              <div class="event-thumb ${e.type || 'blackhole'}"></div>
+                            <div class="event-card-rich" style="background: rgba(255,255,255,0.04); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #7000ff;">
                               <div class="event-content">
-                                <div class="event-title-row">
-                                  <span class="dot-icon purple">●</span>
-                                  <span class="event-title">${e.title || 'Cosmic Event'}</span>
+                                <div class="event-title-row" style="display: flex; justify-content: space-between; align-items: center;">
+                                  <span class="event-title" style="font-weight: bold; color: #fff; font-size: 14px;">${e.title || 'Cosmic Event'}</span>
+                                  <span class="event-time" style="font-size: 11px; color: #00e5ff; font-weight: bold;">${eventYears}</span>
                                 </div>
-                                <div class="event-desc">${e.description || e.message || ''}</div>
-                                <div class="event-time">${eventYears}</div>
+                                <div class="event-desc" style="color: #c0c0e0; font-size: 12px; margin-top: 5px; line-height: 1.4;">${e.description || ''}</div>
                               </div>
                             </div>
                         `;
@@ -236,7 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {}
     }
 
-    // C. Sync Catalog Object Counts
     async function pollCatalog() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/catalog_stats?select=*&limit=1`);
@@ -244,58 +168,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (Array.isArray(data) && data.length > 0) {
                     const stats = data[0];
-                    const items = document.querySelectorAll('.catalog-item .catalog-count');
-                    if (items.length >= 4) {
-                        if (stats.stars !== undefined) items[0].innerText = Number(stats.stars).toLocaleString();
-                        if (stats.black_holes !== undefined) items[1].innerText = Number(stats.black_holes).toLocaleString();
-                        if (stats.neutron_stars !== undefined) items[2].innerText = Number(stats.neutron_stars).toLocaleString();
-                        if (stats.planets !== undefined) items[3].innerText = Number(stats.planets).toLocaleString();
-                    }
+                    const cStars = document.getElementById('count-stars');
+                    const cBh = document.getElementById('count-bh');
+                    const cNeutron = document.getElementById('count-neutron');
+                    const cPlanets = document.getElementById('count-planets');
+
+                    if (cStars && stats.stars !== undefined) cStars.innerText = Number(stats.stars).toLocaleString();
+                    if (cBh && stats.black_holes !== undefined) cBh.innerText = Number(stats.black_holes).toLocaleString();
+                    if (cNeutron && stats.neutron_stars !== undefined) cNeutron.innerText = Number(stats.neutron_stars).toLocaleString();
+                    if (cPlanets && stats.planets !== undefined) cPlanets.innerText = Number(stats.planets).toLocaleString();
                 }
             }
         } catch (err) {}
     }
 
-    // D. Send User "God Directive" to Supabase
-    const inputDirective = document.getElementById('input-directive');
-    const btnSendDirective = document.getElementById('btn-send-directive');
-
-    async function sendDirective() {
-        const text = inputDirective?.value?.trim();
-        if (!text) return;
-
-        btnSendDirective.disabled = true;
-        btnSendDirective.innerText = "Sending...";
-
-        try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/user_commands`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ command: text, status: 'pending' })
-            });
-
-            if (res.ok) {
-                inputDirective.value = '';
-                btnSendDirective.innerText = "Sent!";
-                setTimeout(() => { btnSendDirective.innerText = "Send"; btnSendDirective.disabled = false; }, 2000);
-            } else {
-                btnSendDirective.innerText = "Error";
-                btnSendDirective.disabled = false;
-            }
-        } catch (err) {
-            btnSendDirective.innerText = "Error";
-            btnSendDirective.disabled = false;
-        }
-    }
-
-    btnSendDirective?.addEventListener('click', sendDirective);
-
-    function pollAll() {
-        pollUniverseState();
-        pollEvents();
-        pollCatalog();
-    }
-
+    function pollAll() { pollUniverseState(); pollEvents(); pollCatalog(); }
     setInterval(pollAll, 3000);
     pollAll();
 });
