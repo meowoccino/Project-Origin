@@ -7,7 +7,7 @@ struct Particle {
     net_force : vec3<f32>,
     entropy_decay : f32,
     scale_radius : f32,
-    composition : u32,      // 0 = Dark Matter, 1 = Hydrogen Star, 2 = Core
+    composition : u32,
     pad1 : f32,
     pad2 : f32,
 };
@@ -26,50 +26,48 @@ struct CosmicParams {
 @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
 @group(0) @binding(1) var<uniform> params : CosmicParams;
 
+// STRICT WGSL MATH: Explicit vectors required for Android WebGPU
 fn hash31(p: f32) -> vec3<f32> {
     var p3 = fract(vec3<f32>(p * 0.1031, p * 0.1030, p * 0.0973));
-    p3 += dot(p3, p3.yzx + 33.33);
+    let d = dot(p3, p3.yzx + vec3<f32>(33.33, 33.33, 33.33));
+    p3 = p3 + vec3<f32>(d, d, d);
     return fract((p3.xxy + p3.yzz) * p3.zyx) * 2.0 - 1.0;
 }
 
-// --- 1. COMPUTE: BIG BANG INITIALIZATION ---
 @compute @workgroup_size(256)
 fn init_big_bang(@builtin(global_invocation_id) global_id : vec3<u32>) {
     let index = global_id.x;
     if (index >= params.particle_count) { return; }
 
     let seed = f32(index);
-    let dir = normalize(hash31(seed));
+    let dir = normalize(hash31(seed) + vec3<f32>(0.001, 0.001, 0.001));
     let noise = length(hash31(seed + 100.0));
 
-    // Spherical galactic distribution
     let radius = 25.0 * pow(noise, 0.5) + 0.5;
     particles[index].position = dir * radius;
 
-    // Orbital tangential velocity around core
     let speed = 8.0 + (noise * 12.0);
     let up = vec3<f32>(0.0, 1.0, 0.0);
     particles[index].velocity = cross(dir, up) * speed;
 
     if (noise > 0.85) {
         particles[index].mass = 120.0;
-        particles[index].composition = 2u; // Bright Stellar Core
+        particles[index].composition = 2u;
         particles[index].scale_radius = 2.5;
     } else if (noise > 0.3) {
         particles[index].mass = 15.0;
-        particles[index].composition = 1u; // Hydrogen Star
+        particles[index].composition = 1u;
         particles[index].scale_radius = 1.2;
     } else {
         particles[index].mass = 45.0;
-        particles[index].composition = 0u; // Dark Matter / Filament
+        particles[index].composition = 0u;
         particles[index].scale_radius = 0.8;
     }
 
-    particles[index].net_force = vec3<f32>(0.0);
+    particles[index].net_force = vec3<f32>(0.0, 0.0, 0.0);
     particles[index].entropy_decay = 0.01;
 }
 
-// --- 2. COMPUTE: REALTIME PHYSICS ---
 @compute @workgroup_size(256)
 fn update_physics(@builtin(global_invocation_id) global_id : vec3<u32>) {
     let index = global_id.x;
@@ -79,17 +77,16 @@ fn update_physics(@builtin(global_invocation_id) global_id : vec3<u32>) {
     let dt = params.delta_time;
     let G: f32 = 0.25;
 
-    // Pull toward central cosmic origin
     let center_dist = length(p.position);
-    let center_force = -normalize(p.position + vec3<f32>(0.001)) * (G * 500.0 / (center_dist * center_dist + 5.0));
+    let force_mag = (G * 500.0) / (center_dist * center_dist + 5.0);
+    let center_force = -normalize(p.position + vec3<f32>(0.001, 0.001, 0.001)) * force_mag;
 
-    p.velocity += (center_force / max(p.mass, 0.1)) * dt;
-    p.position += p.velocity * dt;
+    p.velocity = p.velocity + (center_force / max(p.mass, 0.1)) * dt;
+    p.position = p.position + (p.velocity * dt);
 
     particles[index] = p;
 }
 
-// --- 3. INSTANCED QUAD VERTEX SHADER (Large Glowing Stars) ---
 struct VertexOutput {
     @builtin(position) position : vec4<f32>,
     @location(0) color : vec4<f32>,
@@ -104,7 +101,6 @@ fn vs_main(
     var out: VertexOutput;
     let p = particles[p_idx];
 
-    // Quad vertex offsets (-1 to +1)
     var quad_offsets = array<vec2<f32>, 6>(
         vec2<f32>(-1.0, -1.0),
         vec2<f32>( 1.0, -1.0),
@@ -117,7 +113,6 @@ fn vs_main(
     let offset = quad_offsets[v_idx];
     out.uv = offset;
 
-    // 3D Orbit Camera Matrix
     let cx = cos(params.rot_x);
     let sx = sin(params.rot_x);
     let cy = cos(params.rot_y);
@@ -139,8 +134,8 @@ fn vs_main(
     let depth = pos.z + camera_dist;
     let proj = 1.6 / max(depth, 0.1);
 
-    // Screen projection + billboard quad size expansion
-    let star_size = p.scale_radius * 0.035 * params.zoom_level;
+    // Star sizes significantly increased for mobile visibility
+    let star_size = p.scale_radius * 0.06 * params.zoom_level;
     let proj_pos = vec2<f32>(
         (pos.x * proj) / params.aspect_ratio + offset.x * star_size,
         pos.y * proj + offset.y * star_size * params.aspect_ratio
@@ -148,26 +143,23 @@ fn vs_main(
 
     out.position = vec4<f32>(proj_pos, clamp(pos.z * 0.001, 0.0, 1.0), 1.0);
 
-    // Deep space colors based on object composition
     if (p.composition == 2u) {
-        out.color = vec4<f32>(1.0, 0.8, 0.3, 1.0); // Golden Core
+        out.color = vec4<f32>(1.0, 0.8, 0.3, 1.0); // Gold
     } else if (p.composition == 1u) {
-        out.color = vec4<f32>(0.3, 0.85, 1.0, 0.9); // Electric Cyan Star
+        out.color = vec4<f32>(0.3, 0.85, 1.0, 0.9); // Cyan
     } else {
-        out.color = vec4<f32>(0.6, 0.25, 1.0, 0.5); // Violet Dark Matter
+        out.color = vec4<f32>(0.6, 0.25, 1.0, 0.5); // Purple
     }
 
     return out;
 }
 
-// --- 4. FRAGMENT SHADER (Radial Star Glow Flare) ---
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let dist = length(in.uv);
     if (dist > 1.0) { discard; }
 
-    // Soft radial glow drop-off
-    let alpha = pow(1.0 - dist, 2.0);
+    let alpha = (1.0 - dist) * (1.0 - dist);
     return vec4<f32>(in.color.rgb, in.color.a * alpha);
 }
 `;
