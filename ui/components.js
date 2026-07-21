@@ -64,18 +64,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
     }
 
-    // --- 2. BOTTOM NAVBAR TAB NAVIGATION ---
+    // --- 2. BOTTOM NAVBAR TAB NAVIGATION (5 TABS) ---
     const btnExplore = document.getElementById('btn-explore');
     const btnEvents = document.getElementById('btn-events');
     const btnAi = document.getElementById('btn-ai');
     const btnTimeline = document.getElementById('btn-timeline');
-    const btnProfile = document.getElementById('btn-profile');
+    const btnCatalog = document.getElementById('btn-catalog');
 
     const viewEvents = document.getElementById('view-events');
     const viewAi = document.getElementById('view-ai');
+    const viewTimeline = document.getElementById('view-timeline');
+    const viewCatalog = document.getElementById('view-catalog');
 
-    const allBtns = [btnExplore, btnEvents, btnAi, btnTimeline, btnProfile];
-    const allViews = [viewEvents, viewAi];
+    const allBtns = [btnExplore, btnEvents, btnAi, btnTimeline, btnCatalog];
+    const allViews = [viewEvents, viewAi, viewTimeline, viewCatalog];
 
     function resetTabs() {
         allBtns.forEach(btn => btn?.classList.remove('active'));
@@ -102,10 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
     btnTimeline?.addEventListener('click', () => {
         resetTabs();
         btnTimeline?.classList.add('active');
+        viewTimeline?.classList.add('active');
     });
 
-    btnProfile?.addEventListener('click', () => {
+    btnCatalog?.addEventListener('click', () => {
         resetTabs();
-        btnProfile?.classList.add('active');
+        btnCatalog?.classList.add('active');
+        viewCatalog?.classList.add('active');
     });
 });
