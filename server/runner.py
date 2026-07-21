@@ -1,141 +1,123 @@
 import os
 import time
-import json
-import random
 import requests
 from supabase import create_client, Client
 
-# --- 1. DATABASE SETUP (SUPABASE) ---
-SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co"
-SUPABASE_KEY = "sb_publishable_O5qr-6UD-6wTzi51j3tYtw_00N9Q4ja"
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Environment Configuration (Supports both default and custom 'ORIGIN_' secret names)
+SUPABASE_URL = os.getenv("ORIGIN_SUPABASE_URL") or os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("ORIGIN_SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
-# --- 2. GROQ FREE API SETUP ---
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "YOUR_FREE_GROQ_API_KEY_HERE")
+GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 
-# --- 3. DYNAMIC 8-ATTRIBUTE TELEMETRY GENERATOR ---
-OBJECT_TYPES = [
-    "MICROMETEORITE_CLUSTER", "ATMOSPHERIC_DEBRIS", "COMET_NUCLEUS", 
-    "ROGUE_PLANET", "STELLAR_FLARE_EMISSION", "BINARY_STAR_SYSTEM",
-    "DARK_MATTER_HALO_NODE", "PROTO_PLANETARY_DISK"
-]
+# Initialize Supabase Client
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print("[ERROR] Missing Supabase credentials. Check your environment variables.")
+    supabase = None
+else:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def generate_telemetry_event(cosmic_age):
-    """Generates dynamic physical telemetry using the 8 core state attributes."""
-    return {
-        "event_id": f"EVT-{random.randint(1000, 9999)}",
-        "cosmic_age_myr": round(cosmic_age, 5),
-        "primary_entity": {
-            "type": random.choice(OBJECT_TYPES),
-            "position_vec3": [round(random.uniform(-500, 500), 2) for _ in range(3)],  # 1. Position
-            "velocity_vec3": [round(random.uniform(-50, 50), 2) for _ in range(3)],   # 2. Velocity
-            "mass_kg": f"10^{random.randint(10, 28)}",                                 # 3. Mass
-            "charge_coulomb": round(random.uniform(-1.0, 1.0), 3),                    # 4. Charge
-            "scale_radius_km": round(random.uniform(0.1, 5000.0), 1),                 # 5. Scale
-            "composition": random.choice(["Baryonic_Metal", "Hydrogen_Gas", "Dark_Matter"]), # 6. Composition
-            "entropy_decay": round(random.uniform(0.01, 0.99), 2),                    # 7. Entropy Decay
-            "net_force_vector": [round(random.uniform(-10, 10), 2) for _ in range(3)] # 8. Net Force
-        },
-        "system_context": {
-            "biosphere_potential": random.choice(["NONE", "LOW", "HIGH_PREBIOTIC"]),
-            "dark_energy_pressure": 0.68
-        }
-    }
+def fetch_cosmic_state():
+    """Fetch the single row cosmic state from Supabase."""
+    if not supabase:
+        return {"cosmic_age_myr": 0.0, "expansion_rate_h": 0.68, "delta_time": 0.016}
+    try:
+        response = supabase.table("cosmic_state").select("*").eq("id", 1).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+    except Exception as e:
+        print(f"[FETCH ERROR] {e}")
+    return {"cosmic_age_myr": 0.0, "expansion_rate_h": 0.68, "delta_time": 0.016}
 
-def ask_groq_ai_agent(event_data):
-    """Feeds 8-attribute telemetry to Groq Llama 3.1 8B."""
-    prompt = f"""
-    You are an autonomous AI observing a physical universe simulation.
-    You DO NOT have magic buttons or instant delete commands. 
-    Any intervention MUST be a physical force vector (impulse dv = F*dt / m) acting on entity velocity.
+def update_cosmic_state(new_age):
+    """Advance the universe age in Supabase."""
+    if not supabase:
+        return
+    try:
+        supabase.table("cosmic_state").update({
+            "cosmic_age_myr": new_age
+        }).eq("id", 1).execute()
+    except Exception as e:
+        print(f"[UPDATE ERROR] {e}")
 
-    CURRENT 8-ATTRIBUTE TELEMETRY EVENT:
-    {json.dumps(event_data, indent=2)}
-
-    Evaluate the physical state. Decide whether to INTERVENE or PASSIVE_OBSERVE.
-    If intervening, formulate a strict vector force action.
-
-    Return ONLY raw JSON with this exact structure:
-    {{
-      "decision": "INTERVENE" or "PASSIVE_OBSERVE",
-      "action_details": {{
-        "impulse_vector": [fx, fy, fz],
-        "applied_force_magnitude": "float string"
-      }},
-      "log": {{
-        "what": "Short observation or physical action description",
-        "how": "Exact physical force mechanism used (or 'None' if passive)",
-        "why": "Reasoning based on mass, entropy, or biosphere potential",
-        "outcome_risk": "Physics timing or collision probability assessment"
-      }}
-    }}
-    """
+def ask_origin_ai(cosmic_age):
+    """Query Groq Llama 3.1 8B for AI Architect reasoning."""
+    if not GROQ_API_KEY:
+        print("[WARNING] GROQ_API_KEY is missing. Skipping AI decision query.")
+        return "PASSIVE_OBSERVE", "Monitoring primordial particle distribution."
 
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
+
+    prompt = f"""You are 'Origin', an autonomous AI Architect overseeing the physical evolution of a simulated universe.
+Current Cosmic Age: {cosmic_age:.5f} Myr.
+
+Analyze current physics state (500,000 particle pool, expansion rate H=0.68, gravitational clustering).
+Provide a short 1-sentence thought on your current goal and state whether you INTERVENE or PASSIVE_OBSERVE.
+
+Format response strictly as JSON:
+{{"action": "PASSIVE_OBSERVE" or "INTERVENE", "thought": "Your concise 1-sentence thought here."}}
+"""
+
     payload = {
         "model": "llama-3.1-8b-instant",
         "messages": [{"role": "user", "content": prompt}],
-        "response_format": {"type": "json_object"},
-        "temperature": 0.3
+        "temperature": 0.7,
+        "response_format": {"type": "json_object"}
     }
 
     try:
-        res = requests.post(GROQ_URL, json=payload, headers=headers, timeout=5)
+        res = requests.post(GROQ_ENDPOINT, json=payload, headers=headers, timeout=5)
         if res.status_code == 200:
-            return json.loads(res.json()["choices"][0]["message"]["content"])
-        else:
-            print(f"Groq API Error: {res.status_code} - {res.text}")
+            data = res.json()
+            content = data["choices"][0]["message"]["content"]
+            import json
+            parsed = json.loads(content)
+            return parsed.get("action", "PASSIVE_OBSERVE"), parsed.get("thought", "Monitoring cosmic expansion.")
     except Exception as e:
-        print(f"Groq connection error: {e}")
-    return None
+        print(f"[GROQ ERROR] API call failed: {e}")
 
-def write_to_supabase(cosmic_age, decision_data):
-    """Pushes decision logs live to Supabase ai_journal table."""
-    log = decision_data["log"]
-    action_type = decision_data["decision"]
-    
-    formatted_log = (
-        f"[{action_type}] WHAT: {log['what']} | "
-        f"HOW: {log['how']} | "
-        f"WHY: {log['why']} | "
-        f"VERDICT: {log['outcome_risk']}"
-    )
-    
-    supabase.table("ai_journal").insert({
-        "cosmic_age_myr": cosmic_age,
-        "thought_log": formatted_log
-    }).execute()
+    return "PASSIVE_OBSERVE", "Observing quantum fluctuations across particle grid."
 
-# --- 4. MAIN CONTINUOUS LOOP ---
-def main():
-    print("Starting 3-Month Continuous Cosmic Simulation Service...")
-    
-    # Get current cosmic age from database
-    res = supabase.table("cosmic_state").select("cosmic_age_myr").eq("id", 1).execute()
-    current_age = res.data[0]["cosmic_age_myr"] if res.data else 0.0
+def log_ai_action(action_type, thought_log):
+    """Log Origin's decision into ai_journal table for live streaming."""
+    if not supabase:
+        return
+    try:
+        supabase.table("ai_journal").insert({
+            "action_type": action_type,
+            "thought_log": thought_log
+        }).execute()
+    except Exception as e:
+        print(f"[LOG ERROR] {e}")
+
+def run_loop():
+    print("⚡ [PROJECT ORIGIN] AI Architect runner initiated...")
+    tick = 0
 
     while True:
-        # Time increment: 1 tick (2 seconds) = +0.00355 Myr (~3,550 years)
-        # Reaches 13.8 Billion Years over 90 Earth days (3 months)
-        current_age += 0.00355
-        
-        # Update database time step
-        supabase.table("cosmic_state").update({"cosmic_age_myr": current_age}).eq("id", 1).execute()
+        try:
+            state = fetch_cosmic_state()
+            current_age = state.get("cosmic_age_myr", 0.0)
 
-        # Evaluate state with Groq AI
-        event = generate_telemetry_event(current_age)
-        decision = ask_groq_ai_agent(event)
+            # Advance cosmic age by 0.00355 Myr each tick
+            new_age = current_age + 0.00355
+            update_cosmic_state(new_age)
 
-        if decision:
-            write_to_supabase(current_age, decision)
-            print(f"[t+{current_age:.5f} Myr] [{decision['decision']}] {decision['log']['what']}")
+            # Every 3 ticks (~6 seconds), query Origin AI for a new thought
+            if tick % 3 == 0:
+                action, thought = ask_origin_ai(new_age)
+                log_ai_action(action, thought)
+                print(f"[{new_age:.5f} Myr] Origin ({action}): {thought}")
 
-        # 2-second sleep strictly respects Groq free rate limit
-        time.sleep(2.0)
+            tick += 1
+            time.sleep(2)  # 2-second heartbeat loop
+
+        except Exception as e:
+            print(f"[LOOP ERROR] {e}")
+            time.sleep(5)
 
 if __name__ == "__main__":
-    main()
+    run_loop()
