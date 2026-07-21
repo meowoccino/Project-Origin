@@ -14,136 +14,94 @@ HEADERS = {
 }
 
 EVENT_TEMPLATES = [
-    {"type": "blackhole", "title": "Black Hole Formed", "desc": "Object-{id} collapsed under gravity into a black hole."},
-    {"type": "stellar", "title": "Supernova Explosion", "desc": "Star Helion-{id} went supernova in Sector {sector}."},
-    {"type": "cosmic", "title": "Filament Alignment", "desc": "Cluster-{id} fused into cosmic web filament."},
-    {"type": "planetary", "title": "Protoplanet Accretion", "desc": "Dust in Sector {sector} formed a new terrestrial world."}
+    {"type": "blackhole", "title": "Stellar Black Hole Collapse", "desc": "Massive star surpassed Chandrasekhar limit and collapsed into a singularity."},
+    {"type": "stellar", "title": "Core-Collapse Supernova", "desc": "Iron nucleosynthesis triggered core shockwave, dispersing heavy elements into the ISM."},
+    {"type": "cosmic", "title": "Baryonic Filament Alignment", "desc": "Intergalactic gas streams collapsed along dark matter filaments."},
+    {"type": "planetary", "title": "Protoplanetary Disk Accretion", "desc": "Dust grains coalesced into planetesimal seeds within a stable circumstellar zone."}
 ]
 
-def get_latest_state():
+def update_simulation_state(new_age, goal, reasoning, redshift, entropy):
     try:
-        res = requests.get(f"{SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1", headers=HEADERS)
-        if res.status_code == 200 and len(res.json()) > 0:
-            return res.json()[0]
-    except Exception as e:
-        print(f"[ORIGIN ERROR] State fetch failed: {e}")
-    return {"id": 1, "age": 0.0, "goal": "Initialize matter", "reasoning": "Starting simulation"}
-
-def check_pending_user_commands():
-    try:
-        res = requests.get(f"{SUPABASE_URL}/rest/v1/user_commands?status=eq.pending&order=id.asc&limit=1", headers=HEADERS)
-        if res.status_code == 200 and len(res.json()) > 0:
-            cmd = res.json()[0]
-            # Mark command as processed
-            requests.patch(
-                f"{SUPABASE_URL}/rest/v1/user_commands?id=eq.{cmd['id']}",
-                json={"status": "processed"},
-                headers=HEADERS
-            )
-            return cmd["command"]
-    except Exception as e:
-        print(f"[ORIGIN ERROR] User commands check failed: {e}")
-    return None
-
-def update_universe_state(new_age, goal, reasoning):
-    try:
-        payload = {"age": new_age, "goal": goal, "reasoning": reasoning}
+        payload = {
+            "age": new_age,
+            "goal": goal,
+            "reasoning": reasoning,
+            "redshift": redshift,
+            "entropy": entropy
+        }
         requests.post(f"{SUPABASE_URL}/rest/v1/universe_state", json=payload, headers=HEADERS)
-        print(f"[ORIGIN AI] State Updated: Age = {int(new_age * 1000000):,} Years")
+        print(f"[ORIGIN PHYSICS] Age: {int(new_age * 1000000):,} Yrs | Redshift: z={redshift:.1f} | Entropy: {entropy:.4f}")
     except Exception as e:
-        print(f"[ORIGIN ERROR] Exception updating state: {e}")
+        print(f"[ERROR] State write failed: {e}")
 
-def create_cosmic_event(age, title=None, description=None, event_type=None):
-    if not title:
-        template = random.choice(EVENT_TEMPLATES)
-        obj_id = random.randint(10000, 99999)
-        sector_id = random.randint(1, 99)
-        title = template["title"]
-        description = template["desc"].format(id=obj_id, sector=sector_id)
-        event_type = template["type"]
-
+def create_event(age):
+    template = random.choice(EVENT_TEMPLATES)
     payload = {
-        "title": title,
-        "description": description,
-        "type": event_type or "cosmic",
+        "title": template["title"],
+        "description": template["desc"],
+        "type": template["type"],
         "age": age
     }
-
     try:
         requests.post(f"{SUPABASE_URL}/rest/v1/events", json=payload, headers=HEADERS)
-        print(f"[ORIGIN EVENT] {title}: {description}")
     except Exception as e:
-        print(f"[ORIGIN ERROR] Event write failed: {e}")
+        print(f"[ERROR] Event write failed: {e}")
 
-def update_catalog_stats(age):
-    base_multiplier = max(1.0, age * 10.0)
-    stars = int(120000 + (base_multiplier * 450) + random.randint(-50, 100))
-    black_holes = int(1000 + (base_multiplier * 8) + random.randint(-2, 5))
-    neutron_stars = int(800 + (base_multiplier * 6) + random.randint(-2, 4))
-    planets = int(15000 + (base_multiplier * 120) + random.randint(-20, 50))
-
+def update_catalog(age):
+    multiplier = max(1.0, age * 12.0)
     payload = {
         "id": 1,
-        "stars": stars,
-        "black_holes": black_holes,
-        "neutron_stars": neutron_stars,
-        "planets": planets
+        "stars": int(150000 + (multiplier * 500) + random.randint(-100, 100)),
+        "black_holes": int(1200 + (multiplier * 10) + random.randint(-2, 5)),
+        "neutron_stars": int(900 + (multiplier * 7) + random.randint(-2, 4)),
+        "planets": int(18000 + (multiplier * 150) + random.randint(-30, 50))
     }
-
     try:
         headers_upsert = HEADERS.copy()
         headers_upsert["Prefer"] = "resolution=merge-duplicates"
         requests.post(f"{SUPABASE_URL}/rest/v1/catalog_stats", json=payload, headers=headers_upsert)
     except Exception as e:
-        print(f"[ORIGIN ERROR] Catalog write failed: {e}")
+        print(f"[ERROR] Catalog write failed: {e}")
 
 def main():
-    print("⚡ [PROJECT ORIGIN] Interactive AI Architect Initiated...")
+    print("⚡ [PROJECT ORIGIN] Astrophysical Physics Engine Active...")
     
-    default_goals = [
-        ("Gravitational clustering unfolding", "Monitoring formation of cosmic filaments."),
-        ("Increasing metallicity in galactic cores", "Accelerating stellar nucleosynthesis."),
-        ("Stabilizing planetary orbits", "Fostering prebiotic molecular stability.")
+    physics_goals = [
+        ("Simulating Dark Matter Filament Accretion", "Gravitational potential wells guiding baryonic matter aggregation."),
+        ("Calculating Stellar Nucleosynthesis Yields", "Modeling heavy metal enrichment across Population II stellar clusters."),
+        ("Evaluating Hydrodynamic Disk Stability", "Resolving angular momentum distribution in protogalactic structures.")
     ]
 
-    cycle_count = 0
+    cycle = 0
 
     while True:
         try:
-            state = get_latest_state()
-            current_age = float(state.get("age", 0.0))
+            # Fetch last age
+            res = requests.get(f"{SUPABASE_URL}/rest/v1/universe_state?select=age&order=id.desc&limit=1", headers=HEADERS)
+            current_age = 0.0
+            if res.status_code == 200 and len(res.json()) > 0:
+                current_age = float(res.json()[0].get("age", 0.0))
+
             new_age = current_age + 0.005
-
-            # Check if a visitor sent a God Directive!
-            user_cmd = check_pending_user_commands()
-
-            if user_cmd:
-                print(f"⚡ [GOD DIRECTIVE RECEIVED]: {user_cmd}")
-                goal = f"Executing User Directive: '{user_cmd}'"
-                reasoning = "High-priority observer intervention overriding autonomous cosmological state."
-                
-                # Immediately publish event acknowledging directive
-                create_cosmic_event(
-                    new_age, 
-                    title="⚡ God Directive Initiated", 
-                    description=f"AI Architect adapted state to fulfill: '{user_cmd}'", 
-                    event_type="stellar"
-                )
-            else:
-                goal, reasoning = default_goals[cycle_count % len(default_goals)]
-
-            update_universe_state(new_age, goal, reasoning)
             
-            if cycle_count % 2 == 0 and not user_cmd:
-                create_cosmic_event(new_age)
+            # Physics calculations
+            redshift = max(0.0, 1100.0 / (1.0 + (new_age * 5.0)))
+            entropy = 1.0 + (new_age * 0.15)
+            
+            goal, reasoning = physics_goals[cycle % len(physics_goals)]
 
-            update_catalog_stats(new_age)
+            update_simulation_state(new_age, goal, reasoning, redshift, entropy)
+            
+            if cycle % 2 == 0:
+                create_event(new_age)
 
-            cycle_count += 1
+            update_catalog(new_age)
+
+            cycle += 1
             time.sleep(4)
 
         except Exception as e:
-            print(f"[RUNNER RECOVERY] {e}")
+            print(f"[RECOVERY] Cycle error: {e}")
             time.sleep(5)
 
 if __name__ == "__main__":
