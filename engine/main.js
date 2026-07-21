@@ -5,18 +5,21 @@ let device, context, format;
 let computePipeline, renderPipeline;
 let particleBuffer, paramsBuffer, bindGroup;
 
-// Reserved VRAM Pool Size
 const MAX_PARTICLES = 500000;
-
-// Dynamic active particle count and live cosmic age
-let activeParticleCount = 1000;
+let activeParticleCount = 2000; // Visible immediately on load
 let cosmicAgeMyr = 0.0;
+
+// Camera State (Manipulated by finger gestures)
+export const cameraState = {
+    zoom: 1.0,
+    rotX: 0.3,
+    rotY: 0.5,
+};
 
 export async function initWebGPU() {
     const container = document.getElementById('canvas-container');
     const canvas = document.createElement('canvas');
     
-    // Scale canvas dynamically to mobile display pixel density
     const dpr = window.devicePixelRatio || 1;
     canvas.width = window.innerWidth * dpr;
     canvas.height = window.innerHeight * dpr;
@@ -25,15 +28,12 @@ export async function initWebGPU() {
     container.appendChild(canvas);
 
     if (!navigator.gpu) {
-        console.error("WebGPU is not supported on this device or browser.");
+        console.error("WebGPU is not supported on this device/browser.");
         return;
     }
 
     const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter) {
-        console.error("Failed to acquire WebGPU adapter.");
-        return;
-    }
+    if (!adapter) return;
 
     device = await adapter.requestDevice();
     context = canvas.getContext('webgpu');
@@ -47,19 +47,17 @@ export async function initWebGPU() {
 
     const shaderModule = device.createShaderModule({ code: shaderCode });
 
-    // 64 Bytes per particle stored in GPU memory (~32 MB VRAM allocation)
     particleBuffer = device.createBuffer({
         size: MAX_PARTICLES * 64,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
 
-    // Uniform Parameters Buffer (cosmic_age_myr, expansion_rate_h, delta_time, activeParticleCount)
+    // 32 Bytes Uniform Buffer (age, H, dt, count, zoom, rotX, rotY, aspect)
     paramsBuffer = device.createBuffer({
-        size: 16,
+        size: 32,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
-    // --- COMPUTE PIPELINE SETUP ---
     computePipeline = device.createComputePipeline({
         layout: 'auto',
         compute: { module: shaderModule, entryPoint: 'update_physics' },
@@ -73,7 +71,6 @@ export async function initWebGPU() {
         ],
     });
 
-    // --- RENDER PIPELINE SETUP ---
     renderPipeline = device.createRenderPipeline({
         layout: 'auto',
         vertex: {
@@ -88,7 +85,7 @@ export async function initWebGPU() {
                 blend: {
                     color: {
                         srcFactor: 'src-alpha',
-                        dstFactor: 'one', // Additive blending for glowing cosmic particles
+                        dstFactor: 'one',
                         operation: 'add',
                     },
                     alpha: {
@@ -100,11 +97,11 @@ export async function initWebGPU() {
             }],
         },
         primitive: {
-            topology: 'point-list', // Render particles as individual point lights
+            topology: 'point-list',
         },
     });
 
-    // Big Bang Initialization Pipeline
+    // Big Bang Init Pass
     const initPipeline = device.createComputePipeline({
         layout: 'auto',
         compute: { module: shaderModule, entryPoint: 'init_big_bang' },
@@ -118,13 +115,14 @@ export async function initWebGPU() {
         ],
     });
 
-    // Write parameters to initialize all seeds across the full pool
-    const initParamsArray = new Float32Array([0.0, 0.68, 0.016]);
-    const initParamsUintArray = new Uint32Array(initParamsArray.buffer);
-    initParamsUintArray[3] = MAX_PARTICLES;
-    device.queue.writeBuffer(paramsBuffer, 0, initParamsArray.buffer);
+    const initParams = new Float32Array([
+        0.0, 0.68, 0.016, 0,
+        cameraState.zoom, cameraState.rotX, cameraState.rotY,
+        window.innerWidth / window.innerHeight
+    ]);
+    new Uint32Array(initParams.buffer)[3] = MAX_PARTICLES;
+    device.queue.writeBuffer(paramsBuffer, 0, initParams.buffer);
 
-    // Execute Big Bang Initialization Pass
     const commandEncoder = device.createCommandEncoder();
     const initPass = commandEncoder.beginComputePass();
     initPass.setPipeline(initPipeline);
@@ -134,17 +132,13 @@ export async function initWebGPU() {
 
     device.queue.submit([commandEncoder.finish()]);
 
-    // Handle Window Resizing
     window.addEventListener('resize', () => {
         const newDpr = window.devicePixelRatio || 1;
         canvas.width = window.innerWidth * newDpr;
         canvas.height = window.innerHeight * newDpr;
     });
 
-    // Connect Supabase Sync
     setupSupabaseSync();
-
-    // Start 60 FPS Engine Render & Compute Loop
     requestAnimationFrame(renderLoop);
 }
 
@@ -184,33 +178,37 @@ function prependEventFeed(logText) {
 }
 
 function renderLoop() {
-    // Dynamically scale active particle count based on cosmic age
+    // If Supabase isn't ticking yet, run a gentle local time progression so universe advances
+    cosmicAgeMyr += 0.0001;
+
     activeParticleCount = Math.min(
         MAX_PARTICLES,
-        Math.floor(1000 + cosmicAgeMyr * 15000)
+        Math.floor(2000 + cosmicAgeMyr * 15000)
     );
 
-    // Update Uniform Parameters
-    const paramsArray = new Float32Array([cosmicAgeMyr, 0.68, 0.016]);
-    const paramsUintArray = new Uint32Array(paramsArray.buffer);
-    paramsUintArray[3] = activeParticleCount;
+    const aspect = window.innerWidth / window.innerHeight;
+    const paramsArray = new Float32Array([
+        cosmicAgeMyr, 0.68, 0.016, 0,
+        cameraState.zoom, cameraState.rotX, cameraState.rotY, aspect
+    ]);
+    new Uint32Array(paramsArray.buffer)[3] = activeParticleCount;
 
     device.queue.writeBuffer(paramsBuffer, 0, paramsArray.buffer);
 
     const commandEncoder = device.createCommandEncoder();
 
-    // --- PASS 1: COMPUTE PHYSICS UPDATE ---
+    // 1. Physics Compute Pass
     const computePass = commandEncoder.beginComputePass();
     computePass.setPipeline(computePipeline);
     computePass.setBindGroup(0, bindGroup);
     computePass.dispatchWorkgroups(Math.ceil(activeParticleCount / 256));
     computePass.end();
 
-    // --- PASS 2: RENDER PARTICLES TO CANVAS ---
+    // 2. Particle Render Pass
     const renderPassDescriptor = {
         colorAttachments: [{
             view: context.getCurrentTexture().createView(),
-            clearValue: { r: 0.03, g: 0.02, b: 0.05, a: 1.0 }, // Dark deep-space background
+            clearValue: { r: 0.03, g: 0.02, b: 0.06, a: 1.0 },
             loadOp: 'clear',
             storeOp: 'store',
         }],
@@ -219,15 +217,19 @@ function renderLoop() {
     const renderPass = commandEncoder.beginRenderPass(renderPassDescriptor);
     renderPass.setPipeline(renderPipeline);
     renderPass.setBindGroup(0, bindGroup);
-    renderPass.draw(activeParticleCount); // Draw all active particles to screen
+    renderPass.draw(activeParticleCount);
     renderPass.end();
 
     device.queue.submit([commandEncoder.finish()]);
 
-    // Update Cosmic Age HUD
     const hudAgeElement = document.getElementById('hud-age');
     if (hudAgeElement) {
-        hudAgeElement.textContent = `${cosmicAgeMyr.toFixed(5)} Myr`;
+        // Format cosmic age nicely (Millions -> Billions format matching your design)
+        if (cosmicAgeMyr >= 1000) {
+            hudAgeElement.textContent = `${(cosmicAgeMyr / 1000).toFixed(3)} Billion Years`;
+        } else {
+            hudAgeElement.textContent = `${cosmicAgeMyr.toFixed(5)} Myr`;
+        }
     }
 
     requestAnimationFrame(renderLoop);
