@@ -1,193 +1,232 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-
 export const cameraState = {
     rotX: 0,
     rotY: 0,
     zoom: 1.0
 };
 
-let scene, camera, renderer, raycaster, touchVector;
-let celestialObjects = [];
-const OBJECT_COUNT = 250;
+let canvas, ctx;
+let galaxyParticles = [];
+const PARTICLE_COUNT = 1100;
+let selectedParticle = null;
 
-const SPECTRAL_TYPES = [
-    { category: 'star', name: 'Blue Supergiant', temp: '32,000 K', mass: '18.4 M☉', color: 0x00bfff, emissive: 0x0088ff },
-    { category: 'star', name: 'Yellow Main Sequence', temp: '5,780 K', mass: '1.0 M☉', color: 0xffaa00, emissive: 0xff6600 },
-    { category: 'star', name: 'Red Dwarf', temp: '3,100 K', mass: '0.3 M☉', color: 'ff3355', emissive: 0xcc0022 },
-    { category: 'blackhole', name: 'Primordial Black Hole', temp: '0.0001 K', mass: '30.0 M☉', color: 0x000000, emissive: 0x7000ff },
-    { category: 'neutron', name: 'Neutron Star', temp: '600,000 K', mass: '1.4 M☉', color: 0x00ffe5, emissive: 0x00bbcc },
-    { category: 'planet', name: 'Terrestrial Protoplanet', temp: '288 K', mass: '0.8 M⊕', color: 0x4d88ff, emissive: 0x112244 }
-];
+function createSpiralGalaxy() {
+    galaxyParticles = [];
+    
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const isCore = Math.random() < 0.2;
+        let r, theta;
+
+        if (isCore) {
+            r = Math.random() * 45;
+            theta = Math.random() * Math.PI * 2;
+        } else {
+            // Logarithmic spiral math
+            r = 35 + Math.random() * 220;
+            const arms = 2;
+            const armOffset = (Math.floor(Math.random() * arms) * (2 * Math.PI / arms));
+            theta = (r * 0.025) + armOffset + (Math.random() * 0.4 - 0.2);
+        }
+
+        const x = r * Math.cos(theta);
+        const y = (Math.random() - 0.5) * (isCore ? 30 : 15);
+        const z = r * Math.sin(theta);
+
+        const colors = ['#ffffff', '#80d4ff', '#ffd280', '#ff80a0', '#a680ff', '#00e5ff'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const size = Math.random() * 2.2 + 0.8;
+
+        galaxyParticles.push({
+            id: `OBJ-${Math.floor(10000 + Math.random() * 90000)}`,
+            name: `Helion-${Math.floor(100 + Math.random() * 900)}`,
+            x, y, z,
+            size,
+            color,
+            distanceLy: Math.floor(r * 120 + 200),
+            screenX: -999,
+            screenY: -999
+        });
+    }
+}
 
 export async function initWebGPU() {
     const container = document.getElementById('canvas-container');
     if (!container) return;
-    initThreeJSScene(container);
-}
 
-function initThreeJSScene(container) {
     container.innerHTML = '';
+    canvas = document.createElement('canvas');
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.display = 'block';
+    container.appendChild(canvas);
 
-    // 1. Scene & Camera Setup
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x020206);
+    ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
-    camera.position.z = 400;
+    function resize() {
+        canvas.width = window.innerWidth * window.devicePixelRatio;
+        canvas.height = window.innerHeight * window.devicePixelRatio;
+    }
+    window.addEventListener('resize', resize);
+    resize();
 
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    container.appendChild(renderer.domElement);
+    createSpiralGalaxy();
 
-    raycaster = new THREE.Raycaster();
-    touchVector = new THREE.Vector2();
+    // Tap selector Raycast logic
+    window.selectParticleAt = function(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const tapX = (clientX - rect.left) * window.devicePixelRatio;
+        const tapY = (clientY - rect.top) * window.devicePixelRatio;
 
-    // 2. 3D Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-    scene.add(ambientLight);
+        let closest = null;
+        let minDist = 45 * window.devicePixelRatio;
 
-    const centerPointLight = new THREE.PointLight(0x7000ff, 2, 800);
-    centerPointLight.position.set(0, 0, 0);
-    scene.add(centerPointLight);
-
-    // 3. Generate 3D Celestial Meshes
-    celestialObjects = [];
-    const sphereGeo = new THREE.SphereGeometry(1, 32, 32);
-
-    for (let i = 0; i < OBJECT_COUNT; i++) {
-        const spec = SPECTRAL_TYPES[Math.floor(Math.random() * SPECTRAL_TYPES.length)];
-        
-        // Spherical distribution
-        const u = Math.random();
-        const v = Math.random();
-        const theta = u * 2.0 * Math.PI;
-        const phi = Math.acos(2.0 * v - 1.0);
-        const r = Math.cbrt(Math.random()) * 260 + 20;
-
-        const x = r * Math.sin(phi) * Math.cos(theta);
-        const y = r * Math.sin(phi) * Math.sin(theta);
-        const z = r * Math.cos(phi);
-
-        let mesh;
-
-        if (spec.category === 'blackhole') {
-            // Black Hole Group: Event Horizon Sphere + 3D Accretion Disk Ring
-            const group = new THREE.Group();
-            
-            const horizonMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-            const horizonMesh = new THREE.Mesh(sphereGeo, horizonMat);
-            horizonMesh.scale.set(6, 6, 6);
-            group.add(horizonMesh);
-
-            const ringGeo = new THREE.RingGeometry(8, 16, 32);
-            const ringMat = new THREE.MeshBasicMaterial({ 
-                color: 0x7000ff, 
-                side: THREE.DoubleSide, 
-                transparent: true, 
-                opacity: 0.85 
-            });
-            const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-            ringMesh.rotation.x = Math.PI / 3;
-            group.add(ringMesh);
-
-            mesh = group;
-        } else {
-            // 3D Sphere with Physical Material Shading
-            const scale = spec.category === 'planet' ? 2.5 : (Math.random() * 3 + 3);
-            const mat = new THREE.MeshStandardMaterial({
-                color: spec.color,
-                emissive: spec.emissive,
-                emissiveIntensity: spec.category === 'planet' ? 0.2 : 0.8,
-                roughness: 0.4,
-                metalness: 0.2
-            });
-            mesh = new THREE.Mesh(sphereGeo, mat);
-            mesh.scale.set(scale, scale, scale);
+        for (let i = 0; i < galaxyParticles.length; i++) {
+            const p = galaxyParticles[i];
+            if (p.screenX < 0) continue;
+            const dist = Math.hypot(tapX - p.screenX, tapY - p.screenY);
+            if (dist < minDist) {
+                minDist = dist;
+                closest = p;
+            }
         }
 
-        mesh.position.set(x, y, z);
-        scene.add(mesh);
+        if (closest) {
+            selectedParticle = closest;
 
-        // Store metadata on mesh for raycasting inspection
-        mesh.userData = {
-            id: `OBJ-${Math.floor(10000 + Math.random() * 90000)}`,
-            name: `${spec.category.toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`,
-            type: spec.name,
-            temp: spec.temp,
-            mass: spec.mass,
-            distanceOrigin: Math.floor(r * 120 + 150)
-        };
+            // Update bottom preview card
+            const objName = document.getElementById('obj-name');
+            const objSub = document.getElementById('obj-sub');
+            const preview = document.getElementById('inspector-preview');
 
-        celestialObjects.push(mesh);
-    }
+            if (objName) objName.innerText = closest.name;
+            if (objSub) objSub.innerText = `Type: Star | Distance: ${closest.distanceLy.toLocaleString()} ly`;
+            if (preview) preview.classList.add('active');
 
-    // 4. Raycasting Touch Selector
-    window.selectParticleAt = function(clientX, clientY) {
-        touchVector.x = (clientX / window.innerWidth) * 2 - 1;
-        touchVector.y = -(clientY / window.innerHeight) * 2 + 1;
+            // Render mini star preview canvas
+            renderThumbStarCanvas(closest.color);
 
-        raycaster.setFromCamera(touchVector, camera);
-        const intersects = raycaster.intersectObjects(celestialObjects, true);
+            // Update Detail Modal
+            const inspectTitle = document.getElementById('inspect-title');
+            const specName = document.getElementById('spec-name');
+            const specDist = document.getElementById('spec-dist');
 
-        if (intersects.length > 0) {
-            let hit = intersects[0].object;
-            while (hit.parent && hit.parent !== scene) {
-                if (hit.userData && hit.userData.name) break;
-                hit = hit.parent;
-            }
+            if (inspectTitle) inspectTitle.innerText = closest.name;
+            if (specName) specName.innerText = closest.name;
+            if (specDist) specDist.innerText = `${closest.distanceLy.toLocaleString()} ly`;
 
-            const data = hit.userData;
-            if (data && data.name) {
-                // Update Preview Card
-                const objName = document.getElementById('obj-name');
-                const objSub = document.getElementById('obj-sub');
-                const preview = document.getElementById('inspector-preview');
-
-                if (objName) objName.innerText = data.name;
-                if (objSub) objSub.innerText = `${data.type} | ${data.distanceOrigin.toLocaleString()} ly from Core`;
-                if (preview) preview.classList.add('active');
-
-                // Update Modal Spec Sheet
-                const modalTitle = document.getElementById('modal-obj-title');
-                const modalSub = document.getElementById('modal-obj-sub');
-                if (modalTitle) modalTitle.innerText = data.name;
-                if (modalSub) modalSub.innerText = data.type;
-
-                const elId = document.getElementById('spec-id');
-                const elClass = document.getElementById('spec-class');
-                const elMass = document.getElementById('spec-mass');
-                const elTemp = document.getElementById('spec-temp');
-                const elDist = document.getElementById('spec-dist');
-
-                if (elId) elId.innerText = data.id;
-                if (elClass) elClass.innerText = data.type;
-                if (elMass) elMass.innerText = data.mass;
-                if (elTemp) elTemp.innerText = data.temp;
-                if (elDist) elDist.innerText = `${data.distanceOrigin.toLocaleString()} ly`;
-            }
+            renderDetailStarCanvas(closest.color);
         }
     };
 
-    // 5. Window Resize Handler
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    render();
+}
 
-    // 6. Animation Render Loop
-    function animate() {
-        requestAnimationFrame(animate);
+let autoRot = 0;
 
-        // Continuous 3D rotation & camera state controls
-        scene.rotation.y += 0.001;
-        scene.rotation.x = cameraState.rotX * 0.5;
-        scene.rotation.y += cameraState.rotY * 0.01;
-        camera.position.z = 400 / cameraState.zoom;
+function render() {
+    requestAnimationFrame(render);
 
-        renderer.render(scene, camera);
+    const width = canvas.width;
+    const height = canvas.height;
+    const cx = width / 2;
+    const cy = height / 2;
+
+    ctx.fillStyle = '#05050b';
+    ctx.fillRect(0, 0, width, height);
+
+    // Galaxy Core Glow Luminescence
+    const coreGrad = ctx.createRadialGradient(cx, cy, 5, cx, cy, 120 * cameraState.zoom);
+    coreGrad.addColorStop(0, 'rgba(255, 235, 200, 0.9)');
+    coreGrad.addColorStop(0.3, 'rgba(112, 0, 255, 0.4)');
+    coreGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 120 * cameraState.zoom, 0, Math.PI * 2);
+    ctx.fill();
+
+    autoRot += 0.0008;
+    const totalRotY = cameraState.rotY + autoRot;
+    const cosY = Math.cos(totalRotY), sinY = Math.sin(totalRotY);
+    const cosX = Math.cos(cameraState.rotX + 0.6), sinX = Math.sin(cameraState.rotX + 0.6);
+
+    const zoomScale = Math.min(width, height) * 0.0035 * cameraState.zoom;
+
+    for (let i = 0; i < galaxyParticles.length; i++) {
+        const p = galaxyParticles[i];
+
+        let x1 = p.x * cosY - p.z * sinY;
+        let z1 = p.x * sinY + p.z * cosY;
+        let y1 = p.y * cosX - z1 * sinX;
+        let z2 = p.y * sinX + z1 * cosX;
+
+        const cameraDist = 380;
+        const perspective = cameraDist / (cameraDist + z2);
+
+        if (perspective > 0) {
+            p.screenX = cx + x1 * zoomScale * perspective;
+            p.screenY = cy + y1 * zoomScale * perspective;
+            const drawSize = p.size * perspective * (window.devicePixelRatio || 1);
+
+            ctx.beginPath();
+            ctx.arc(p.screenX, p.screenY, Math.max(0.6, drawSize), 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = p.size > 2 ? 8 : 0;
+            ctx.fill();
+
+            // Render Selection Target Ring around tapped star
+            if (selectedParticle === p) {
+                ctx.strokeStyle = '#00e5ff';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(p.screenX, p.screenY, drawSize * 4 + 6, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        } else {
+            p.screenX = -999;
+        }
     }
+}
 
-    animate();
+function renderThumbStarCanvas(color) {
+    const thumbCanvas = document.getElementById('thumb-star-canvas');
+    if (!thumbCanvas) return;
+    const tctx = thumbCanvas.getContext('2d');
+    tctx.clearRect(0, 0, 48, 48);
+
+    const grad = tctx.createRadialGradient(24, 24, 2, 24, 24, 20);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.5, color);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+    tctx.fillStyle = grad;
+    tctx.beginPath();
+    tctx.arc(24, 24, 20, 0, Math.PI * 2);
+    tctx.fill();
+}
+
+function renderDetailStarCanvas(color) {
+    const detailCanvas = document.getElementById('detail-star-canvas');
+    if (!detailCanvas) return;
+    const dctx = detailCanvas.getContext('2d');
+    dctx.clearRect(0, 0, 340, 220);
+
+    const cx = 170, cy = 110;
+
+    // Glowing Solar Flares Aura
+    const auraGrad = dctx.createRadialGradient(cx, cy, 30, cx, cy, 90);
+    auraGrad.addColorStop(0, '#ffffff');
+    auraGrad.addColorStop(0.4, color);
+    auraGrad.addColorStop(1, 'rgba(0,0,0,0)');
+
+    dctx.fillStyle = auraGrad;
+    dctx.beginPath();
+    dctx.arc(cx, cy, 90, 0, Math.PI * 2);
+    dctx.fill();
+
+    // Companion Orbiting Planet
+    dctx.fillStyle = '#4d88ff';
+    dctx.beginPath();
+    dctx.arc(cx + 110, cy + 20, 8, 0, Math.PI * 2);
+    dctx.fill();
 }
