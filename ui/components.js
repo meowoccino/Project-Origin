@@ -2,6 +2,13 @@ import { cameraState } from '../engine/main.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_O5qr-6UD-6wTzi51j3tYtw_00N9Q4ja";
+
+    const FETCH_HEADERS = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json"
+    };
 
     // --- 1. TOUCH CONTROLS ---
     const canvasContainer = document.getElementById('canvas-container');
@@ -74,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCatalog?.addEventListener('click', () => switchTab(btnCatalog, viewCatalog));
 
     document.getElementById('dmenu-explore')?.addEventListener('click', () => switchTab(btnExplore, null));
-    document.getElementById('dmenu-events')?.addEventListener('click', () => switchTab(btnExplore, viewEvents));
+    document.getElementById('dmenu-events')?.addEventListener('click', () => switchTab(btnEvents, viewEvents));
     document.getElementById('dmenu-ai')?.addEventListener('click', () => switchTab(btnAi, viewAi));
     document.getElementById('dmenu-timeline')?.addEventListener('click', () => switchTab(btnTimeline, viewTimeline));
     document.getElementById('dmenu-catalog')?.addEventListener('click', () => switchTab(btnCatalog, viewCatalog));
@@ -116,10 +123,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     }
 
-    // --- 4. REAL TELEMETRY SYNC ---
+    // --- 4. REAL TELEMETRY SYNC WITH AUTHORIZATION HEADERS ---
     async function pollUniverseState() {
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`);
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const data = await res.json();
                 if (Array.isArray(data) && data.length > 0) {
@@ -149,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function pollEvents() {
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=10`);
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=10`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const events = await res.json();
                 const container = document.getElementById('events-container');
@@ -177,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function pollCatalog() {
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/catalog_stats?select=*&limit=1`);
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/catalog_stats?select=*&limit=1`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const data = await res.json();
                 if (Array.isArray(data) && data.length > 0) {
