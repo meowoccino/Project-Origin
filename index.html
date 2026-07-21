@@ -5,6 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Project Origin</title>
   <link rel="stylesheet" href="./ui/styles.css">
+  <style>
+    /* Directive Input Control Styles */
+    .directive-box {
+      margin-top: 15px;
+      display: flex;
+      gap: 8px;
+    }
+    .directive-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+    }
+    .directive-input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+    .directive-btn {
+      background: #7000ff;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-weight: bold;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .directive-btn:active {
+      opacity: 0.8;
+    }
+  </style>
 </head>
 <body>
 
@@ -18,7 +52,7 @@
     <div class="top-section">
       <div class="top-hud-card interactive">
         <div class="hud-label">UNIVERSE AGE</div>
-        <div class="universe-age-value" id="hud-age">0.0000 Million Years</div>
+        <div class="universe-age-value" id="hud-age">0 Years</div>
         <div class="hud-speed">
           <span class="speed-label">SPEED</span>
           <span class="speed-val">1 Day = 1M Years</span>
@@ -30,7 +64,7 @@
       </div>
     </div>
 
-    <!-- Bottom Floating Inspector Card (Hidden by default) -->
+    <!-- Bottom Floating Inspector Card -->
     <div class="floating-inspector interactive" id="inspector-preview">
       <div class="inspector-left">
         <div class="object-thumbnail">
@@ -65,10 +99,10 @@
         <div class="event-content">
           <div class="event-title-row">
             <span class="dot-icon purple">●</span>
-            <span class="event-title">Black Hole Formed</span>
+            <span class="event-title">Initializing Stream...</span>
           </div>
-          <div class="event-desc">Object 98,102 has collapsed into a black hole.</div>
-          <div class="event-time">Just now</div>
+          <div class="event-desc">Connecting to cosmic background log...</div>
+          <div class="event-time">Live</div>
         </div>
       </div>
     </div>
@@ -82,18 +116,17 @@
 
     <div class="glass-panel">
       <div class="panel-label">CURRENT GOAL</div>
-      <div class="panel-value-large">Increase chemical complexity in Sector 7, Galaxy NGC-88421.</div>
+      <div class="panel-value-large">Initializing primary cosmological objectives...</div>
       <div class="panel-label" style="margin-top: 14px;">REASONING</div>
-      <div class="panel-desc">Higher metallicity and stable stellar environment increase the probability of complex molecules forming.</div>
+      <div class="panel-desc">Awaiting background sync...</div>
     </div>
 
-    <div class="section-heading">ACTIVE ACTIONS <span>3 ongoing</span></div>
-
-    <div class="action-card">
-      <div class="action-dot cyan"></div>
-      <div class="action-info">
-        <div class="action-title">Redirecting asteroid 77,521 towards Planet 51,229</div>
-        <div class="action-eta">ETA: 2.3 Million Years</div>
+    <!-- GOD DIRECTIVE INPUT PANEL -->
+    <div class="glass-panel" style="margin-top: 15px;">
+      <div class="panel-label">ISSUE GOD DIRECTIVE</div>
+      <div class="directive-box">
+        <input type="text" id="input-directive" class="directive-input" placeholder="e.g. Trigger supernova in Sector 4">
+        <button id="btn-send-directive" class="directive-btn">Send</button>
       </div>
     </div>
   </div>
@@ -105,7 +138,7 @@
         <div class="node-marker"></div>
         <div class="node-content">
           <div class="node-title">🌌 Primordial Inflation</div>
-          <div class="node-time">0.00 - 0.10 Million Years</div>
+          <div class="node-time">0 - 100,000 Years</div>
           <div class="node-desc">Rapid metric expansion and quantum density fluctuations.</div>
         </div>
       </div>
@@ -113,7 +146,7 @@
         <div class="node-marker"></div>
         <div class="node-content">
           <div class="node-title">⭐ Cosmic Dark Ages</div>
-          <div class="node-time">0.10 - 100 Million Years</div>
+          <div class="node-time">100,000 - 100,000,000 Years</div>
           <div class="node-desc">Cooling neutral gas collapsing into dark matter haloes.</div>
         </div>
       </div>
@@ -126,19 +159,19 @@
     <div class="catalog-list">
       <div class="catalog-item">
         <span class="catalog-type"><span class="dot gold">●</span> Stars</span>
-        <span class="catalog-count">125,418</span>
+        <span class="catalog-count">0</span>
       </div>
       <div class="catalog-item">
         <span class="catalog-type"><span class="dot violet">●</span> Black Holes</span>
-        <span class="catalog-count">1,203</span>
+        <span class="catalog-count">0</span>
       </div>
       <div class="catalog-item">
         <span class="catalog-type"><span class="dot cyan">●</span> Neutron Stars</span>
-        <span class="catalog-count">856</span>
+        <span class="catalog-count">0</span>
       </div>
       <div class="catalog-item">
         <span class="catalog-type"><span class="dot blue">●</span> Planets</span>
-        <span class="catalog-count">18,732</span>
+        <span class="catalog-count">0</span>
       </div>
     </div>
   </div>
@@ -150,7 +183,7 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
       </button>
       <div class="modal-title-group">
-        <h2>OBJECT 12,748</h2>
+        <h2>OBJECT --</h2>
         <span class="subtitle">Star</span>
       </div>
       <div style="width: 22px;"></div>
@@ -164,12 +197,10 @@
       <div class="glass-panel">
         <div class="panel-header">OVERVIEW</div>
         <div class="data-grid">
-          <div class="data-row"><span class="data-label">Name (AI)</span><span class="data-value">Helion-748</span></div>
-          <div class="data-row"><span class="data-label">Type</span><span class="data-value">G-Type Main Sequence Star</span></div>
+          <div class="data-row"><span class="data-label">Name (AI)</span><span class="data-value">Helion Core</span></div>
+          <div class="data-row"><span class="data-label">Type</span><span class="data-value">Main Sequence Star</span></div>
           <div class="data-row"><span class="data-label">Mass</span><span class="data-value">1.07 M☉</span></div>
-          <div class="data-row"><span class="data-label">Radius</span><span class="data-value">1.02 R☉</span></div>
           <div class="data-row"><span class="data-label">Temperature</span><span class="data-value">5,780 K</span></div>
-          <div class="data-row"><span class="data-label">Distance from Earth</span><span class="data-value">13,248 ly</span></div>
         </div>
       </div>
     </div>
@@ -178,7 +209,7 @@
   <!-- Bottom Navigation Bar -->
   <nav class="navbar">
     <button class="nav-item active" id="btn-explore">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"/></svg>
       <span>Explore</span>
     </button>
     <button class="nav-item" id="btn-events">
