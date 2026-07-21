@@ -3,7 +3,7 @@ import { cameraState } from '../engine/main.js';
 document.addEventListener('DOMContentLoaded', () => {
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
 
-    // --- 1. TOUCH & GESTURE CONTROLS ---
+    // 1. TOUCH & GESTURE CONTROLS
     const canvasContainer = document.getElementById('canvas-container');
     let isDragging = false, lastTouchX = 0, lastTouchY = 0, initialPinchDistance = null, initialZoom = 1.0, touchStartTime = 0, startX = 0, startY = 0;
 
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
     }
 
-    // --- 2. NAVIGATION & DRAWER ---
+    // 2. NAVIGATION & DRAWER
     const sideDrawer = document.getElementById('side-drawer');
     const btnOpenMenu = document.getElementById('btn-open-menu');
     const btnCloseDrawer = document.getElementById('btn-close-drawer');
@@ -73,13 +73,19 @@ document.addEventListener('DOMContentLoaded', () => {
     btnTimeline?.addEventListener('click', () => switchTab(btnTimeline, viewTimeline));
     btnCatalog?.addEventListener('click', () => switchTab(btnCatalog, viewCatalog));
 
+    document.getElementById('dmenu-explore')?.addEventListener('click', () => switchTab(btnExplore, null));
+    document.getElementById('dmenu-events')?.addEventListener('click', () => switchTab(btnEvents, viewEvents));
+    document.getElementById('dmenu-ai')?.addEventListener('click', () => switchTab(btnAi, viewAi));
+    document.getElementById('dmenu-timeline')?.addEventListener('click', () => switchTab(btnTimeline, viewTimeline));
+    document.getElementById('dmenu-catalog')?.addEventListener('click', () => switchTab(btnCatalog, viewCatalog));
+
     const inspectorPreview = document.getElementById('inspector-preview'), btnExpandInspect = document.getElementById('btn-expand-inspect'), btnCloseInspect = document.getElementById('btn-close-inspect');
     function openInspectModal() { resetTabs(); inspectModal?.classList.add('active'); }
     inspectorPreview?.addEventListener('click', openInspectModal);
     btnExpandInspect?.addEventListener('click', (e) => { e.stopPropagation(); openInspectModal(); });
     btnCloseInspect?.addEventListener('click', () => { inspectModal?.classList.remove('active'); btnExplore?.classList.add('active'); });
 
-    // --- 3. COSMIC TIMELINE EPOCHS ---
+    // 3. COSMIC TIMELINE EPOCHS
     const TIMELINE_EPOCHS = [
         { title: "🌌 Primordial Inflation", start: 0, end: 100000, desc: "Exponential space expansion driven by quantum vacuum density fluctuations." },
         { title: "⭐ Cosmic Dark Ages", start: 100000, end: 100000000, desc: "Neutral gas cools and collapses into early dark matter halos." },
@@ -110,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     }
 
-    // --- 4. REAL LIVE TELEMETRY POLLERS (NO FAKE DATA) ---
+    // 4. REAL TELEMETRY SYNC
     async function pollUniverseState() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`);
@@ -118,10 +124,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (Array.isArray(data) && data.length > 0) {
                     const state = data[0];
-                    const rawAge = state.age || 0;
+                    const rawAge = state.age || 0.0;
+                    cameraState.currentAge = rawAge; // Update 3D expansion camera engine
+
                     const totalYears = Math.floor(rawAge * 1000000);
-                    
-                    const formattedAge = `${totalYears.toLocaleString()} Years`;
+                    const formattedAge = totalYears > 1000000000 ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` : `${totalYears.toLocaleString()} Years`;
+
                     const hudAge = document.getElementById('hud-age');
                     const drawerAge = document.getElementById('drawer-hud-age');
                     if (hudAge) hudAge.innerText = formattedAge;
@@ -136,9 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (reasonElem && state.reasoning) reasonElem.innerText = state.reasoning;
                 }
             }
-        } catch (err) {
-            console.warn("Telemetry fetch error:", err);
-        }
+        } catch (err) {}
     }
 
     async function pollEvents() {
@@ -162,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             `;
                         }).join('');
                     } else {
-                        container.innerHTML = `<div style="color: #8080a0; font-size: 13px; text-align: center; padding: 20px;">No events logged in database yet.</div>`;
+                        container.innerHTML = `<div style="color: #8080a0; font-size: 13px; text-align: center; padding: 20px;">No cosmic events logged at current epoch.</div>`;
                     }
                 }
             }
@@ -190,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {}
     }
 
-    // --- 5. ANIMATED CONSTELLATION SPHERE ---
+    // 5. ANIMATED CONSTELLATION SPHERE
     const aiCanvas = document.getElementById('ai-constellation-canvas');
     if (aiCanvas) {
         const actx = aiCanvas.getContext('2d');
@@ -240,7 +246,6 @@ document.addEventListener('DOMContentLoaded', () => {
         animateAISphere();
     }
 
-    // --- 6. START REAL-TIME TELEMETRY POLL ---
     function pollAll() {
         pollUniverseState();
         pollEvents();
@@ -248,5 +253,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     pollAll();
-    setInterval(pollAll, 3000); // Fetch live database state every 3 seconds
+    setInterval(pollAll, 3000);
 });
