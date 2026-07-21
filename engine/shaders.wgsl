@@ -1,6 +1,6 @@
 // ============================================================================
-// PROJECT ORIGIN: PHYSICAL UNIVERSE COMPUTE SHADER
-// Features: 8 Physical State Attributes + Big Bang Expansion Dynamics
+// PROJECT ORIGIN: ACCURATE LOCAL GRAVITY & EXPANSION COMPUTE SHADER
+// Features: Softened Spatial Gravity + 8 Attribute Memory + Inflation
 // ============================================================================
 
 struct Particle {
@@ -55,19 +55,19 @@ fn init_big_bang(@builtin(global_invocation_id) global_id : vec3<u32>) {
     particles[index].position = random_dir * primordial_radius;
 
     // B. High-Velocity Inflation Wavefront
-    let expansion_speed = 80.0 + (noise_factor * 40.0);
+    let expansion_speed = 40.0 + (noise_factor * 20.0);
     particles[index].velocity = random_dir * expansion_speed;
 
-    // C. Attribute Assignation: Dark Matter vs Baryonic Matter Ratio (85/15)
+    // C. Dark Matter vs Baryonic Matter Ratio (85 / 15)
     if (noise_factor > 0.15) {
-        particles[index].mass = 100.0 * noise_factor;
+        particles[index].mass = 50.0 * noise_factor; // Dark Matter halo anchor
         particles[index].charge = 0.0;
-        particles[index].composition = 0u; // Dark Matter
+        particles[index].composition = 0u; 
         particles[index].scale_radius = 0.1;
     } else {
-        particles[index].mass = 10.0 * noise_factor;
+        particles[index].mass = 5.0 * noise_factor;  // Baryonic Gas
         particles[index].charge = hash31(seed + 200.0).x * 0.5;
-        particles[index].composition = 1u; // Hydrogen Gas
+        particles[index].composition = 1u; 
         particles[index].scale_radius = 0.5;
     }
 
@@ -83,8 +83,34 @@ fn update_physics(@builtin(global_invocation_id) global_id : vec3<u32>) {
 
     var p = particles[index];
     let dt = params.delta_time;
+    let G: f32 = 0.15;           // Gravitational constant scaling factor
+    let epsilon_sq: f32 = 1.0;   // Softening parameter (prevents F -> Infinity)
 
-    // Acceleration from Forces (a = F / m)
+    var accumulated_force = vec3<f32>(0.0);
+
+    // --- ACCURATE NEIGHBORHOOD GRAVITY ---
+    // Strided sampling over neighboring particle clusters to compute local Newtonian forces
+    let sample_stride = 128u; 
+    let max_samples = min(params.particle_count, 1024u);
+
+    for (var i = 0u; i < max_samples; i += sample_stride) {
+        let neighbor_idx = (index + i + 1u) % params.particle_count;
+        let other = particles[neighbor_idx];
+
+        let r_vec = other.position - p.position;
+        let dist_sq = dot(r_vec, r_vec);
+
+        // Compute Newton's law of universal gravitation: F = G * (m1 * m2) / (r^2 + e^2)
+        let force_mag = (G * p.mass * other.mass) / (dist_sq + epsilon_sq);
+        let force_dir = normalize(r_vec + vec3<f32>(0.0001)); // Prevent zero vector divide
+
+        accumulated_force += force_dir * force_mag;
+    }
+
+    // Add external AI forces + accumulated local gravitational forces
+    p.net_force += accumulated_force;
+
+    // Acceleration (a = F / m)
     let acceleration = p.net_force / max(p.mass, 0.001);
     p.velocity += acceleration * dt;
 
@@ -92,9 +118,12 @@ fn update_physics(@builtin(global_invocation_id) global_id : vec3<u32>) {
     let hubble_vector = p.position * (params.expansion_rate_h * 0.0001 * dt);
     p.position += (p.velocity * dt) + hubble_vector;
 
-    // Entropy Decay
+    // Natural Entropy Decay
     p.entropy_decay = min(p.entropy_decay + (0.0001 * dt), 1.0);
+
+    // Reset Force Vector for Next Frame Calculation
     p.net_force = vec3<f32>(0.0);
 
+    // Write back updated physical state to GPU
     particles[index] = p;
 }
