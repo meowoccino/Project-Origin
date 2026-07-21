@@ -98,7 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
         targetBtn?.classList.add('active');
         if (targetView) targetView.classList.add('active');
         
-        // Hide floating inspector preview when navigating away from Explore
         const inspectorPreview = document.getElementById('inspector-preview');
         if (targetBtn !== btnExplore && inspectorPreview) {
             inspectorPreview.classList.remove('active');
@@ -132,14 +131,10 @@ document.addEventListener('DOMContentLoaded', () => {
         btnExplore?.classList.add('active');
     });
 
-    // --- 4. UNIVERSE AGE SYNC & ANTI-JITTER ---
+    // --- 4. LIVE SUPABASE SYNC (AGE, EVENTS, AI ARCHITECT, CATALOG) ---
+    const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
     let currentDisplayAge = 0;
 
-    /**
-     * Updates the HUD Universe Age element safely.
-     * Rejects any incoming value that is lower than currentDisplayAge
-     * to eliminate 0.6 -> 0.5 jitter caused by delayed network fetches.
-     */
     function setHudAge(newAge) {
         const numericAge = Number(newAge);
         if (!isNaN(numericAge) && numericAge > currentDisplayAge) {
@@ -150,29 +145,85 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-
-    // Expose globally so WebGPU engine or external modules can update the HUD
     window.setHudAge = setHudAge;
-    window.updateUniverseAge = setHudAge;
 
-    // Direct background sync with Supabase REST API
-    const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
-
+    // A. Sync Universe Age & AI Goal
     async function pollUniverseState() {
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=age&order=id.desc&limit=1`);
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`);
             if (res.ok) {
                 const data = await res.json();
-                if (Array.isArray(data) && data.length > 0 && data[0].age !== undefined) {
-                    setHudAge(data[0].age);
+                if (Array.isArray(data) && data.length > 0) {
+                    const state = data[0];
+                    if (state.age !== undefined) setHudAge(state.age);
+
+                    // Update AI Goal & Reasoning if columns exist
+                    if (state.goal) {
+                        const goalElem = document.querySelector('#view-ai .panel-value-large');
+                        if (goalElem) goalElem.innerText = state.goal;
+                    }
+                    if (state.reasoning) {
+                        const reasonElem = document.querySelector('#view-ai .panel-desc');
+                        if (reasonElem) reasonElem.innerText = state.reasoning;
+                    }
                 }
             }
-        } catch (err) {
-            // Silently ignore network latency blips
-        }
+        } catch (err) {}
     }
 
-    // Poll Supabase every 3 seconds & run immediately on load
-    setInterval(pollUniverseState, 3000);
-    pollUniverseState();
+    // B. Sync Live Events Stream
+    async function pollEvents() {
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=created_at.desc&limit=10`);
+            if (res.ok) {
+                const events = await res.json();
+                const container = document.getElementById('events-container');
+                if (container && Array.isArray(events) && events.length > 0) {
+                    container.innerHTML = events.map(e => `
+                        <div class="event-card-rich">
+                          <div class="event-thumb ${e.type || 'blackhole'}"></div>
+                          <div class="event-content">
+                            <div class="event-title-row">
+                              <span class="dot-icon purple">●</span>
+                              <span class="event-title">${e.title || 'Cosmic Event'}</span>
+                            </div>
+                            <div class="event-desc">${e.description || e.message || ''}</div>
+                            <div class="event-time">${e.age ? e.age.toFixed(2) + ' Myr' : 'Live'}</div>
+                          </div>
+                        </div>
+                    `).join('');
+                }
+            }
+        } catch (err) {}
+    }
+
+    // C. Sync Dynamic Catalog Object Counts
+    async function pollCatalog() {
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/catalog_stats?select=*&limit=1`);
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    const stats = data[0];
+                    const items = document.querySelectorAll('.catalog-item .catalog-count');
+                    if (items.length >= 4) {
+                        if (stats.stars !== undefined) items[0].innerText = Number(stats.stars).toLocaleString();
+                        if (stats.black_holes !== undefined) items[1].innerText = Number(stats.black_holes).toLocaleString();
+                        if (stats.neutron_stars !== undefined) items[2].innerText = Number(stats.neutron_stars).toLocaleString();
+                        if (stats.planets !== undefined) items[3].innerText = Number(stats.planets).toLocaleString();
+                    }
+                }
+            }
+        } catch (err) {}
+    }
+
+    // Run all sync functions periodically
+    function pollAll() {
+        pollUniverseState();
+        pollEvents();
+        pollCatalog();
+    }
+
+    setInterval(pollAll, 3000);
+    pollAll();
 });
