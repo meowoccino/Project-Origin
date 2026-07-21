@@ -13,81 +13,97 @@ HEADERS = {
     "Prefer": "return=representation"
 }
 
-EVENT_TEMPLATES = [
-    {"type": "blackhole", "title": "Stellar Black Hole Collapse", "desc": "Massive star surpassed Chandrasekhar limit and collapsed into a singularity."},
-    {"type": "stellar", "title": "Core-Collapse Supernova", "desc": "Iron nucleosynthesis triggered core shockwave, dispersing heavy elements into the ISM."},
-    {"type": "cosmic", "title": "Baryonic Filament Alignment", "desc": "Intergalactic gas streams collapsed along dark matter filaments."},
-    {"type": "planetary", "title": "Protoplanetary Disk Accretion", "desc": "Dust grains coalesced into planetesimal seeds within a stable circumstellar zone."}
+INITIAL_BIG_BANG_EVENTS = [
+    {"type": "cosmic", "title": "🌌 Quantum Inflation Epoch", "desc": "Metric expansion of space began from a dense hot singularity."},
+    {"type": "cosmic", "title": "✨ Primordial Nucleosynthesis", "desc": "Protons and neutrons fused into early Hydrogen and Helium nuclei."},
+    {"type": "cosmic", "title": "⚡ Cosmic Microwave Background", "desc": "Photons decoupled from matter, making the universe transparent."}
 ]
 
-def update_simulation_state(new_age, goal, reasoning, redshift, entropy):
+DYNAMIC_EVENTS = [
+    {"type": "stellar", "title": "First Protostar Ignition", "desc": "Population III supermassive gas cloud collapsed into a luminous core."},
+    {"type": "blackhole", "title": "Primordial Black Hole Collapse", "desc": "High-density quantum fluctuation collapsed directly into a black hole."},
+    {"type": "cosmic", "title": "Dark Matter Filament Accretion", "desc": "Intergalactic gas streams aligned along cosmic web filaments."}
+]
+
+def reset_or_fetch_age():
+    try:
+        res = requests.get(f"{SUPABASE_URL}/rest/v1/universe_state?select=age&order=id.desc&limit=1", headers=HEADERS)
+        if res.status_code == 200 and len(res.json()) > 0:
+            return float(res.json()[0].get("age", 0.0))
+    except Exception as e:
+        print(f"[RECOVERY] Fetch error: {e}")
+    return 0.0
+
+def update_simulation_state(new_age, goal, reasoning):
     try:
         payload = {
             "age": new_age,
             "goal": goal,
-            "reasoning": reasoning,
-            "redshift": redshift,
-            "entropy": entropy
+            "reasoning": reasoning
         }
         res = requests.post(f"{SUPABASE_URL}/rest/v1/universe_state", json=payload, headers=HEADERS)
-        print(f"[ORIGIN PHYSICS] Age: {int(new_age * 1000000):,} Yrs | Redshift: z={redshift:.1f} | Entropy: {entropy:.4f} | Status: {res.status_code}")
+        print(f"[ORIGIN ENGINE] Age: {int(new_age * 1000000):,} Yrs | Status: {res.status_code}")
     except Exception as e:
-        print(f"[ERROR] State write failed: {e}")
+        print(f"[ERROR] State write error: {e}")
 
-def create_event(age):
-    template = random.choice(EVENT_TEMPLATES)
+def create_event(age, title=None, desc=None, event_type=None):
+    if not title:
+        tmpl = random.choice(DYNAMIC_EVENTS)
+        title, desc, event_type = tmpl["title"], tmpl["desc"], tmpl["type"]
+
     payload = {
-        "title": template["title"],
-        "description": template["desc"],
-        "type": template["type"],
+        "title": title,
+        "description": desc,
+        "type": event_type,
         "age": age
     }
     try:
         requests.post(f"{SUPABASE_URL}/rest/v1/events", json=payload, headers=HEADERS)
     except Exception as e:
-        print(f"[ERROR] Event write failed: {e}")
+        print(f"[ERROR] Event write error: {e}")
 
 def update_catalog(age):
-    multiplier = max(1.0, age * 12.0)
+    # Scale object populations realistically with cosmic age
+    multiplier = max(0.0, age * 15.0)
     payload = {
         "id": 1,
-        "stars": int(150000 + (multiplier * 500) + random.randint(-100, 100)),
-        "black_holes": int(1200 + (multiplier * 10) + random.randint(-2, 5)),
-        "neutron_stars": int(900 + (multiplier * 7) + random.randint(-2, 4)),
-        "planets": int(18000 + (multiplier * 150) + random.randint(-30, 50))
+        "stars": int(multiplier * 450 + (100 if age > 0.1 else 0)),
+        "black_holes": int(multiplier * 8),
+        "neutron_stars": int(multiplier * 5),
+        "planets": int(multiplier * 120)
     }
     try:
         headers_upsert = HEADERS.copy()
         headers_upsert["Prefer"] = "resolution=merge-duplicates"
         requests.post(f"{SUPABASE_URL}/rest/v1/catalog_stats", json=payload, headers=headers_upsert)
     except Exception as e:
-        print(f"[ERROR] Catalog write failed: {e}")
+        print(f"[ERROR] Catalog write error: {e}")
 
 def main():
-    print("⚡ [PROJECT ORIGIN] Astrophysical Physics Engine Active...")
+    print("⚡ [PROJECT ORIGIN] Primordial Cosmological Engine Started...")
     
-    physics_goals = [
-        ("Simulating Dark Matter Filament Accretion", "Gravitational potential wells guiding baryonic matter aggregation."),
-        ("Calculating Stellar Nucleosynthesis Yields", "Modeling heavy metal enrichment across Population II stellar clusters."),
-        ("Evaluating Hydrodynamic Disk Stability", "Resolving angular momentum distribution in protogalactic structures.")
+    current_age = reset_or_fetch_age()
+
+    # Log initial Big Bang event if starting at 0
+    if current_age == 0.0:
+        for init_e in INITIAL_BIG_BANG_EVENTS:
+            create_event(0.0, init_e["title"], init_e["desc"], init_e["type"])
+
+    goals = [
+        ("Simulating Quantum Inflation & Metric Expansion", "Hot Big Bang nucleosynthesis forming hydrogen and helium."),
+        ("Gravitational Clustering Along Dark Matter Filaments", "Primordial gas cooling into cosmic web structural seeds."),
+        ("Population III Protostar Ignition", "High-density nebulae collapsing into hypermassive primordial stars.")
     ]
 
-    # In-memory persistent state counter
-    current_age = 0.005
     cycle = 0
 
     while True:
         try:
-            # Advance age by 0.005 Myr (5,000 Years) per cycle
-            current_age += 0.005
+            current_age += 0.005 # Advance by 5,000 Years per cycle
             
-            redshift = max(0.0, 1100.0 / (1.0 + (current_age * 5.0)))
-            entropy = 1.0 + (current_age * 0.15)
-            
-            goal, reasoning = physics_goals[cycle % len(physics_goals)]
+            goal, reasoning = goals[cycle % len(goals)]
+            update_simulation_state(current_age, goal, reasoning)
 
-            update_simulation_state(current_age, goal, reasoning, redshift, entropy)
-            
             if cycle % 2 == 0:
                 create_event(current_age)
 
