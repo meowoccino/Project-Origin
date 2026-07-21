@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Project Origin | Live Cosmic Simulation</title>
+  <title>Project Origin | Cosmological Simulation</title>
   <link rel="stylesheet" href="./ui/styles.css">
 </head>
 <body>
@@ -34,11 +34,11 @@
       <div class="universe-age-value" id="hud-age">0 Years</div>
       <div class="hud-speed-row">
         <span class="speed-label">SPEED</span>
-        <span class="speed-val">1 Day = 1 Million Years <span class="badge-tag">1x</span></span>
+        <span class="speed-val">Real-time Continuum <span class="badge-tag">1x</span></span>
       </div>
     </div>
 
-    <!-- Right Side Floating Controls -->
+    <!-- Right Side Floating Tools -->
     <div class="right-hud-tools">
       <button class="tool-btn" id="tool-center" aria-label="Center Origin"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></button>
       <button class="tool-btn" id="tool-view" aria-label="View Mode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
@@ -75,13 +75,13 @@
     <div class="drawer-age-box">
       <span class="lbl">UNIVERSE AGE</span>
       <div class="val" id="drawer-hud-age">0 Years</div>
-      <span class="sub">SPEED: 1 Day = 1 Million Years (1x)</span>
+      <span class="sub">SPEED: Real-time Continuum</span>
     </div>
 
     <div class="drawer-menu">
       <button class="drawer-item active" id="dmenu-explore"><span class="icon">🌌</span> Explore Universe</button>
       <button class="drawer-item" id="dmenu-events"><span class="icon">📅</span> Events Feed</button>
-      <button class="drawer-item" id="dmenu-ai"><span class="icon">🔮</span> AI Architect</button>
+      <button class="drawer-item" id="dmenu-ai"><span class="icon">🔮</span> Origin Architect</button>
       <button class="drawer-item" id="dmenu-timeline"><span class="icon">⏱️</span> Timeline</button>
       <button class="drawer-item" id="dmenu-catalog"><span class="icon">📊</span> Catalog & Filters</button>
     </div>
@@ -109,10 +109,10 @@
     </div>
   </div>
 
-  <!-- 2. AI ARCHITECT VIEW -->
+  <!-- 2. ORIGIN ARCHITECT VIEW -->
   <div id="view-ai" class="view-screen">
     <div class="view-header-title" style="text-align: center;">
-      <h2>AI ARCHITECT</h2>
+      <h2>ORIGIN ARCHITECT</h2>
       <span class="status-online">● ONLINE</span>
     </div>
 
@@ -128,14 +128,15 @@
       <div class="panel-desc" id="ai-reasoning-text">Initial cosmological singularity transitioning into hot Big Bang nucleosynthesis.</div>
     </div>
 
+    <!-- ACTIVE PHYSICAL ACTIONS -->
     <div class="glass-panel" style="margin-top: 14px;">
-      <div class="panel-header-row">
+      <div class="panel-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
         <span class="panel-label">ACTIVE ACTIONS</span>
-        <span class="action-count-badge" id="ai-action-badge">3 ongoing</span>
+        <span class="action-count-badge" id="ai-action-badge" style="background: rgba(112,0,255,0.25); color: #00e5ff; font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: bold;">3 ongoing</span>
       </div>
 
-      <div class="action-timeline-list" id="ai-actions-list">
-        <!-- Live Action Items -->
+      <div class="action-timeline-list" id="origin-actions-container">
+        <!-- Rich Action Cards injected dynamically by ui/components.js -->
       </div>
     </div>
   </div>
@@ -169,16 +170,6 @@
       <div class="catalog-item"><span class="cat-type"><span class="dot cyan">●</span> Neutron Stars</span><span class="cat-num" id="cat-neutron">0</span></div>
       <div class="catalog-item"><span class="cat-type"><span class="dot blue">●</span> Planets</span><span class="cat-num" id="cat-planets">0</span></div>
     </div>
-
-    <div class="section-label" style="margin-top: 20px;">DISPLAY TOGGLES</div>
-    <div class="toggle-row">
-      <span>Show Orbits</span>
-      <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
-    </div>
-    <div class="toggle-row">
-      <span>Show Filaments</span>
-      <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
-    </div>
   </div>
 
   <!-- 5. DETAILED CELESTIAL INSPECTOR MODAL -->
@@ -195,10 +186,6 @@
     </div>
 
     <div class="modal-scroll-content">
-      <div class="star-hero-viewport">
-        <canvas id="detail-star-canvas" width="340" height="220"></canvas>
-      </div>
-
       <div class="glass-panel">
         <div class="panel-header-row">
           <span class="panel-title">OVERVIEW</span>
@@ -212,18 +199,12 @@
         </div>
       </div>
     </div>
-
-    <div class="modal-bottom-actions">
-      <button class="action-btn">Center</button>
-      <button class="action-btn">Follow</button>
-      <button class="action-btn primary">+ Add Note</button>
-    </div>
   </div>
 
   <!-- Bottom Navigation Bar -->
   <nav class="navbar">
     <button class="nav-item active" id="btn-explore">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"/></svg>
       <span>Explore</span>
     </button>
     <button class="nav-item" id="btn-events">
@@ -232,7 +213,7 @@
     </button>
     <button class="nav-item" id="btn-ai">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 17 22 12"/></svg>
-      <span>AI Architect</span>
+      <span>Origin</span>
     </button>
     <button class="nav-item" id="btn-timeline">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
