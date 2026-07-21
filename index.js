@@ -1,5 +1,4 @@
-// Vite Root Entry Point
-import './ui/styles.css';
+// Root Entry Point - Connects UI and Engine
 import './ui/components.js';
 import { initWebGPU } from './engine/main.js';
 
