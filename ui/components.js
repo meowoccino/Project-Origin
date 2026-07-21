@@ -131,23 +131,25 @@ document.addEventListener('DOMContentLoaded', () => {
         btnExplore?.classList.add('active');
     });
 
-    // --- 4. LIVE SUPABASE SYNC (AGE, EVENTS, AI ARCHITECT, CATALOG) ---
+    // --- 4. LIVE SUPABASE SYNC (FULL YEARS DISPLAY) ---
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
     let currentDisplayAge = 0;
 
-    function setHudAge(newAge) {
-        const numericAge = Number(newAge);
+    function setHudAge(rawAge) {
+        const numericAge = Number(rawAge);
         if (!isNaN(numericAge) && numericAge > currentDisplayAge) {
             currentDisplayAge = numericAge;
             const hudAge = document.getElementById('hud-age');
             if (hudAge) {
-                hudAge.innerText = `${currentDisplayAge.toFixed(4)} Million Years`;
+                // Formats cleanly as full years (e.g. 752,200 Years)
+                const totalYears = Math.floor(currentDisplayAge * 1000000);
+                hudAge.innerText = `${totalYears.toLocaleString()} Years`;
             }
         }
     }
     window.setHudAge = setHudAge;
 
-    // A. Sync Universe Age & AI Goal
+    // A. Sync Universe Age & AI Architect Goal/Reasoning
     async function pollUniverseState() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`);
@@ -157,7 +159,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const state = data[0];
                     if (state.age !== undefined) setHudAge(state.age);
 
-                    // Update AI Goal & Reasoning if columns exist
                     if (state.goal) {
                         const goalElem = document.querySelector('#view-ai .panel-value-large');
                         if (goalElem) goalElem.innerText = state.goal;
@@ -174,30 +175,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // B. Sync Live Events Stream
     async function pollEvents() {
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=created_at.desc&limit=10`);
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=10`);
             if (res.ok) {
                 const events = await res.json();
                 const container = document.getElementById('events-container');
                 if (container && Array.isArray(events) && events.length > 0) {
-                    container.innerHTML = events.map(e => `
-                        <div class="event-card-rich">
-                          <div class="event-thumb ${e.type || 'blackhole'}"></div>
-                          <div class="event-content">
-                            <div class="event-title-row">
-                              <span class="dot-icon purple">●</span>
-                              <span class="event-title">${e.title || 'Cosmic Event'}</span>
+                    container.innerHTML = events.map(e => {
+                        const eventYears = e.age ? Math.floor(e.age * 1000000).toLocaleString() + ' Years' : 'Live';
+                        return `
+                            <div class="event-card-rich">
+                              <div class="event-thumb ${e.type || 'blackhole'}"></div>
+                              <div class="event-content">
+                                <div class="event-title-row">
+                                  <span class="dot-icon purple">●</span>
+                                  <span class="event-title">${e.title || 'Cosmic Event'}</span>
+                                </div>
+                                <div class="event-desc">${e.description || e.message || ''}</div>
+                                <div class="event-time">${eventYears}</div>
+                              </div>
                             </div>
-                            <div class="event-desc">${e.description || e.message || ''}</div>
-                            <div class="event-time">${e.age ? e.age.toFixed(2) + ' Myr' : 'Live'}</div>
-                          </div>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 }
             }
         } catch (err) {}
     }
 
-    // C. Sync Dynamic Catalog Object Counts
+    // C. Sync Catalog Object Counts
     async function pollCatalog() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/catalog_stats?select=*&limit=1`);
@@ -217,7 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {}
     }
 
-    // Run all sync functions periodically
     function pollAll() {
         pollUniverseState();
         pollEvents();
