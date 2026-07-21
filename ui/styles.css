@@ -62,7 +62,14 @@ body, html {
   cursor: pointer;
 }
 
-/* --- TOP BAR NAVIGATION HEADER --- */
+/* --- TOP SECTION CONTAINER (Pins header & Universe Age card to top left) --- */
+.top-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
 .top-nav-bar {
   display: flex;
   justify-content: space-between;
@@ -106,10 +113,10 @@ body, html {
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 18px;
-  padding: 14px 16px;
+  padding: 12px 16px;
   backdrop-filter: blur(20px);
   max-width: 250px;
-  margin-top: 8px;
+  margin-top: 0;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
@@ -231,7 +238,7 @@ body, html {
   justify-content: center;
 }
 
-/* --- SIDE NAVIGATION DRAWER (Screenshot Panel 3) --- */
+/* --- SIDE NAVIGATION DRAWER --- */
 .side-drawer-overlay {
   position: absolute;
   top: 0;
