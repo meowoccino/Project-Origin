@@ -41,7 +41,9 @@
     </div>
   </div>
 
-  <!-- Full Screen Modals -->
+  <!-- Full Screen View Panels -->
+  
+  <!-- 1. EVENTS FEED -->
   <div id="view-events" class="view-screen">
     <h2 class="screen-title">EVENTS FEED</h2>
     <div id="events-container">
@@ -53,15 +55,76 @@
     </div>
   </div>
 
+  <!-- 2. ORIGIN ARCHITECT -->
   <div id="view-ai" class="view-screen">
-    <h2 class="screen-title">AI ARCHITECT</h2>
+    <h2 class="screen-title">ORIGIN ARCHITECT</h2>
     <div class="event-card" style="border-color: var(--accent-purple);">
       <div class="event-title" style="color: var(--accent-purple);">CURRENT GOAL</div>
       <div class="event-desc" style="font-size: 14px; margin-top:6px;">Monitor primordial expansion & dark matter web formation.</div>
     </div>
   </div>
 
-  <!-- Bottom Navigation Bar (5 Tabs matching design mockup) -->
+  <!-- 3. COSMIC TIMELINE -->
+  <div id="view-timeline" class="view-screen">
+    <h2 class="screen-title">COSMIC TIMELINE</h2>
+    <div class="event-card">
+      <div class="event-title">🌌 Primordial Inflation</div>
+      <div class="event-desc">0.00 - 0.10 Myr: Rapid expansion and quantum density fluctuations.</div>
+    </div>
+    <div class="event-card">
+      <div class="event-title">⭐ Cosmic Dark Ages</div>
+      <div class="event-desc">0.10 - 100 Myr: Cooling hydrogen gas and dark matter halo collapse.</div>
+    </div>
+    <div class="event-card">
+      <div class="event-title">✨ First Reionization</div>
+      <div class="event-desc">100 - 1,000 Myr: Ignition of Population III protostars.</div>
+    </div>
+  </div>
+
+  <!-- 4. CATALOG & FILTERS (Matching Mockup Screen 5) -->
+  <div id="view-catalog" class="view-screen">
+    <h2 class="screen-title">CATALOG & FILTERS</h2>
+    
+    <div class="search-box">
+      <input type="text" placeholder="🔍 Search objects..." class="catalog-search-input">
+    </div>
+
+    <div class="catalog-section">
+      <div class="section-label">OBJECT TYPES</div>
+
+      <div class="catalog-item">
+        <span class="catalog-type"><span class="dot gold"></span> Stars</span>
+        <span class="catalog-count">125,418</span>
+      </div>
+
+      <div class="catalog-item">
+        <span class="catalog-type"><span class="dot violet"></span> Black Holes</span>
+        <span class="catalog-count">1,203</span>
+      </div>
+
+      <div class="catalog-item">
+        <span class="catalog-type"><span class="dot cyan"></span> Neutron Stars</span>
+        <span class="catalog-count">856</span>
+      </div>
+
+      <div class="catalog-item">
+        <span class="catalog-type"><span class="dot blue"></span> Planets</span>
+        <span class="catalog-count">18,732</span>
+      </div>
+
+      <div class="catalog-item">
+        <span class="catalog-type"><span class="dot gray"></span> Asteroids & Comets</span>
+        <span class="catalog-count">132,654</span>
+      </div>
+
+      <div class="catalog-item">
+        <span class="catalog-type"><span class="dot purple"></span> Dark Matter Structures</span>
+        <span class="catalog-count">521</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar (5 Tabs) -->
   <nav class="navbar">
     <button class="nav-item active" id="btn-explore">
       <span class="nav-icon">🪐</span>
@@ -73,15 +136,15 @@
     </button>
     <button class="nav-item" id="btn-ai">
       <span class="nav-icon">🧠</span>
-      <span>AI Architect</span>
+      <span>Origin</span>
     </button>
     <button class="nav-item" id="btn-timeline">
       <span class="nav-icon">⏳</span>
       <span>Timeline</span>
     </button>
-    <button class="nav-item" id="btn-profile">
-      <span class="nav-icon">👤</span>
-      <span>Profile</span>
+    <button class="nav-item" id="btn-catalog">
+      <span class="nav-icon">📊</span>
+      <span>Catalog</span>
     </button>
   </nav>
 
