@@ -8,12 +8,10 @@ from supabase import create_client, Client
 # --- 1. DATABASE SETUP (SUPABASE) ---
 SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co"
 SUPABASE_KEY = "sb_publishable_O5qr-6UD-6wTzi51j3tYtw_00N9Q4ja"
-
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # --- 2. GROQ FREE API SETUP ---
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-# Set environment variable GROQ_API_KEY or paste your key below
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "YOUR_FREE_GROQ_API_KEY_HERE")
 
 # --- 3. DYNAMIC 8-ATTRIBUTE TELEMETRY GENERATOR ---
@@ -116,18 +114,19 @@ def write_to_supabase(cosmic_age, decision_data):
 def main():
     print("Starting 3-Month Continuous Cosmic Simulation Service...")
     
-    # Get current cosmic age from database or initialize at 0.0
+    # Get current cosmic age from database
     res = supabase.table("cosmic_state").select("cosmic_age_myr").eq("id", 1).execute()
     current_age = res.data[0]["cosmic_age_myr"] if res.data else 0.0
 
     while True:
         # Time increment: 1 tick (2 seconds) = +0.00355 Myr (~3,550 years)
+        # Reaches 13.8 Billion Years over 90 Earth days (3 months)
         current_age += 0.00355
         
-        # Update current age in database
+        # Update database time step
         supabase.table("cosmic_state").update({"cosmic_age_myr": current_age}).eq("id", 1).execute()
 
-        # Sample physical state and evaluate with Groq AI
+        # Evaluate state with Groq AI
         event = generate_telemetry_event(current_age)
         decision = ask_groq_ai_agent(event)
 
@@ -135,7 +134,7 @@ def main():
             write_to_supabase(current_age, decision)
             print(f"[t+{current_age:.5f} Myr] [{decision['decision']}] {decision['log']['what']}")
 
-        # 2-second sleep respects Groq's 30 req/min rate limit
+        # 2-second sleep strictly respects Groq free rate limit
         time.sleep(2.0)
 
 if __name__ == "__main__":
