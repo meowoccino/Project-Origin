@@ -1,20 +1,27 @@
 import shaderCode from './shaders.wgsl?raw';
 import { fetchCosmicState, subscribeToCosmicUpdates } from '../services/supabase.js';
 
-let device, pipeline, particleBuffer, paramsBuffer, bindGroup;
+let device, context, format;
+let computePipeline, renderPipeline;
+let particleBuffer, paramsBuffer, bindGroup;
 
-// 1. Fixed VRAM Pool Ceiling (reserves memory once on GPU for up to 500k particles)
+// Reserved VRAM Pool Size
 const MAX_PARTICLES = 500000;
 
-// 2. Dynamic Active Particle Count (starts small and grows as cosmic time advances)
+// Dynamic active particle count and live cosmic age
 let activeParticleCount = 1000;
 let cosmicAgeMyr = 0.0;
 
 export async function initWebGPU() {
     const container = document.getElementById('canvas-container');
     const canvas = document.createElement('canvas');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    
+    // Scale canvas dynamically to mobile display pixel density
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
     container.appendChild(canvas);
 
     if (!navigator.gpu) {
@@ -29,14 +36,18 @@ export async function initWebGPU() {
     }
 
     device = await adapter.requestDevice();
-    const context = canvas.getContext('webgpu');
-    const format = navigator.gpu.getPreferredCanvasFormat();
+    context = canvas.getContext('webgpu');
+    format = navigator.gpu.getPreferredCanvasFormat();
 
-    context.configure({ device, format });
+    context.configure({
+        device,
+        format,
+        alphaMode: 'premultiplied',
+    });
 
     const shaderModule = device.createShaderModule({ code: shaderCode });
 
-    // 64 Bytes per particle allocated for the full 500,000 particle pool (~32MB VRAM)
+    // 64 Bytes per particle stored in GPU memory (~32 MB VRAM allocation)
     particleBuffer = device.createBuffer({
         size: MAX_PARTICLES * 64,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
@@ -48,21 +59,52 @@ export async function initWebGPU() {
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
-    // Main Physics Update Pipeline
-    pipeline = device.createComputePipeline({
+    // --- COMPUTE PIPELINE SETUP ---
+    computePipeline = device.createComputePipeline({
         layout: 'auto',
         compute: { module: shaderModule, entryPoint: 'update_physics' },
     });
 
     bindGroup = device.createBindGroup({
-        layout: pipeline.getBindGroupLayout(0),
+        layout: computePipeline.getBindGroupLayout(0),
         entries: [
             { binding: 0, resource: { buffer: particleBuffer } },
             { binding: 1, resource: { buffer: paramsBuffer } },
         ],
     });
 
-    // Big Bang Initialization Pipeline across the full pool
+    // --- RENDER PIPELINE SETUP ---
+    renderPipeline = device.createRenderPipeline({
+        layout: 'auto',
+        vertex: {
+            module: shaderModule,
+            entryPoint: 'vs_main',
+        },
+        fragment: {
+            module: shaderModule,
+            entryPoint: 'fs_main',
+            targets: [{
+                format: format,
+                blend: {
+                    color: {
+                        srcFactor: 'src-alpha',
+                        dstFactor: 'one', // Additive blending for glowing cosmic particles
+                        operation: 'add',
+                    },
+                    alpha: {
+                        srcFactor: 'one',
+                        dstFactor: 'one',
+                        operation: 'add',
+                    }
+                }
+            }],
+        },
+        primitive: {
+            topology: 'point-list', // Render particles as individual point lights
+        },
+    });
+
+    // Big Bang Initialization Pipeline
     const initPipeline = device.createComputePipeline({
         layout: 'auto',
         compute: { module: shaderModule, entryPoint: 'init_big_bang' },
@@ -76,7 +118,7 @@ export async function initWebGPU() {
         ],
     });
 
-    // Write initial uniform params to initialize all particle seeds
+    // Write parameters to initialize all seeds across the full pool
     const initParamsArray = new Float32Array([0.0, 0.68, 0.016]);
     const initParamsUintArray = new Uint32Array(initParamsArray.buffer);
     initParamsUintArray[3] = MAX_PARTICLES;
@@ -84,30 +126,35 @@ export async function initWebGPU() {
 
     // Execute Big Bang Initialization Pass
     const commandEncoder = device.createCommandEncoder();
-    const pass = commandEncoder.beginComputePass();
-    pass.setPipeline(initPipeline);
-    pass.setBindGroup(0, initBindGroup);
-    pass.dispatchWorkgroups(Math.ceil(MAX_PARTICLES / 256));
-    pass.end();
+    const initPass = commandEncoder.beginComputePass();
+    initPass.setPipeline(initPipeline);
+    initPass.setBindGroup(0, initBindGroup);
+    initPass.dispatchWorkgroups(Math.ceil(MAX_PARTICLES / 256));
+    initPass.end();
 
     device.queue.submit([commandEncoder.finish()]);
 
-    // Connect Supabase Realtime Synchronization
+    // Handle Window Resizing
+    window.addEventListener('resize', () => {
+        const newDpr = window.devicePixelRatio || 1;
+        canvas.width = window.innerWidth * newDpr;
+        canvas.height = window.innerHeight * newDpr;
+    });
+
+    // Connect Supabase Sync
     setupSupabaseSync();
 
-    // Start 60 FPS Render & Physics Loop
+    // Start 60 FPS Engine Render & Compute Loop
     requestAnimationFrame(renderLoop);
 }
 
 function setupSupabaseSync() {
-    // Fetch current state on startup
     fetchCosmicState().then(data => {
         if (data && data.cosmic_age_myr !== undefined) {
             cosmicAgeMyr = data.cosmic_age_myr;
         }
     });
 
-    // Subscribe to continuous live updates
     subscribeToCosmicUpdates(
         (newState) => {
             if (newState && newState.cosmic_age_myr !== undefined) {
@@ -137,31 +184,47 @@ function prependEventFeed(logText) {
 }
 
 function renderLoop() {
-    // Dynamic Particle Count Progression:
-    // Starts at 1,000 active particles at Big Bang and scales dynamically up to 500,000 as universe ages
+    // Dynamically scale active particle count based on cosmic age
     activeParticleCount = Math.min(
         MAX_PARTICLES,
         Math.floor(1000 + cosmicAgeMyr * 15000)
     );
 
-    // Write parameters to GPU Uniform Buffer
+    // Update Uniform Parameters
     const paramsArray = new Float32Array([cosmicAgeMyr, 0.68, 0.016]);
     const paramsUintArray = new Uint32Array(paramsArray.buffer);
-    paramsUintArray[3] = activeParticleCount; // Dynamic active count passed to WGSL shader
+    paramsUintArray[3] = activeParticleCount;
 
     device.queue.writeBuffer(paramsBuffer, 0, paramsArray.buffer);
 
-    // Dispatch WebGPU compute pass strictly for active particles
     const commandEncoder = device.createCommandEncoder();
-    const pass = commandEncoder.beginComputePass();
-    pass.setPipeline(pipeline);
-    pass.setBindGroup(0, bindGroup);
-    pass.dispatchWorkgroups(Math.ceil(activeParticleCount / 256));
-    pass.end();
+
+    // --- PASS 1: COMPUTE PHYSICS UPDATE ---
+    const computePass = commandEncoder.beginComputePass();
+    computePass.setPipeline(computePipeline);
+    computePass.setBindGroup(0, bindGroup);
+    computePass.dispatchWorkgroups(Math.ceil(activeParticleCount / 256));
+    computePass.end();
+
+    // --- PASS 2: RENDER PARTICLES TO CANVAS ---
+    const renderPassDescriptor = {
+        colorAttachments: [{
+            view: context.getCurrentTexture().createView(),
+            clearValue: { r: 0.03, g: 0.02, b: 0.05, a: 1.0 }, // Dark deep-space background
+            loadOp: 'clear',
+            storeOp: 'store',
+        }],
+    };
+
+    const renderPass = commandEncoder.beginRenderPass(renderPassDescriptor);
+    renderPass.setPipeline(renderPipeline);
+    renderPass.setBindGroup(0, bindGroup);
+    renderPass.draw(activeParticleCount); // Draw all active particles to screen
+    renderPass.end();
 
     device.queue.submit([commandEncoder.finish()]);
 
-    // Update Universe Age HUD Display
+    // Update Cosmic Age HUD
     const hudAgeElement = document.getElementById('hud-age');
     if (hudAgeElement) {
         hudAgeElement.textContent = `${cosmicAgeMyr.toFixed(5)} Myr`;
