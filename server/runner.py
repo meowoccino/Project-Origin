@@ -4,7 +4,7 @@ import random
 import requests
 
 SUPABASE_URL = os.environ.get("ORIGIN_SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
-SERVICE_KEY = os.environ.get("ORIGIN_SUPABASE_SERVICE_ROLE_KEY", "")
+SERVICE_KEY = os.environ.get("ORIGIN_SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.placeholder")
 
 HEADERS = {
     "apikey": SERVICE_KEY,
@@ -29,8 +29,8 @@ def update_simulation_state(new_age, goal, reasoning, redshift, entropy):
             "redshift": redshift,
             "entropy": entropy
         }
-        requests.post(f"{SUPABASE_URL}/rest/v1/universe_state", json=payload, headers=HEADERS)
-        print(f"[ORIGIN PHYSICS] Age: {int(new_age * 1000000):,} Yrs | Redshift: z={redshift:.1f} | Entropy: {entropy:.4f}")
+        res = requests.post(f"{SUPABASE_URL}/rest/v1/universe_state", json=payload, headers=HEADERS)
+        print(f"[ORIGIN PHYSICS] Age: {int(new_age * 1000000):,} Yrs | Redshift: z={redshift:.1f} | Entropy: {entropy:.4f} | Status: {res.status_code}")
     except Exception as e:
         print(f"[ERROR] State write failed: {e}")
 
@@ -76,7 +76,6 @@ def main():
 
     while True:
         try:
-            # Fetch last age
             res = requests.get(f"{SUPABASE_URL}/rest/v1/universe_state?select=age&order=id.desc&limit=1", headers=HEADERS)
             current_age = 0.0
             if res.status_code == 200 and len(res.json()) > 0:
@@ -84,7 +83,6 @@ def main():
 
             new_age = current_age + 0.005
             
-            # Physics calculations
             redshift = max(0.0, 1100.0 / (1.0 + (new_age * 5.0)))
             entropy = 1.0 + (new_age * 0.15)
             
