@@ -131,4 +131,48 @@ document.addEventListener('DOMContentLoaded', () => {
         inspectModal?.classList.remove('active');
         btnExplore?.classList.add('active');
     });
+
+    // --- 4. UNIVERSE AGE SYNC & ANTI-JITTER ---
+    let currentDisplayAge = 0;
+
+    /**
+     * Updates the HUD Universe Age element safely.
+     * Rejects any incoming value that is lower than currentDisplayAge
+     * to eliminate 0.6 -> 0.5 jitter caused by delayed network fetches.
+     */
+    function setHudAge(newAge) {
+        const numericAge = Number(newAge);
+        if (!isNaN(numericAge) && numericAge > currentDisplayAge) {
+            currentDisplayAge = numericAge;
+            const hudAge = document.getElementById('hud-age');
+            if (hudAge) {
+                hudAge.innerText = `${currentDisplayAge.toFixed(4)} Million Years`;
+            }
+        }
+    }
+
+    // Expose globally so WebGPU engine or external modules can update the HUD
+    window.setHudAge = setHudAge;
+    window.updateUniverseAge = setHudAge;
+
+    // Direct background sync with Supabase REST API
+    const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
+
+    async function pollUniverseState() {
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=age&order=id.desc&limit=1`);
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0 && data[0].age !== undefined) {
+                    setHudAge(data[0].age);
+                }
+            }
+        } catch (err) {
+            // Silently ignore network latency blips
+        }
+    }
+
+    // Poll Supabase every 3 seconds & run immediately on load
+    setInterval(pollUniverseState, 3000);
+    pollUniverseState();
 });
