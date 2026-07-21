@@ -3,7 +3,7 @@ import { fetchCosmicState, subscribeToCosmicUpdates } from '../services/supabase
 
 let device, context, format;
 let computePipeline, renderPipeline;
-let particleBuffer, paramsBuffer, bindGroup;
+let particleBuffer, paramsBuffer, bindGroup, readBuffer;
 
 const MAX_PARTICLES = 500000;
 let activeParticleCount = 4000;
@@ -43,7 +43,6 @@ export async function initWebGPU() {
     canvas.style.left = '0';
     container.appendChild(canvas);
 
-    // 1. Try WebGPU Engine
     if (navigator.gpu) {
         try {
             const adapter = await navigator.gpu.requestAdapter();
@@ -60,14 +59,21 @@ export async function initWebGPU() {
 
                 const shaderModule = device.createShaderModule({ code: shaderCode });
 
+                // Add COPY_SRC so we can read the physics buffer back to the CPU for raycasting
                 particleBuffer = device.createBuffer({
                     size: MAX_PARTICLES * 64,
-                    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+                    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
                 });
 
                 paramsBuffer = device.createBuffer({
                     size: 32,
                     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+                });
+
+                // Dedicated read-back buffer for touch selection
+                readBuffer = device.createBuffer({
+                    size: MAX_PARTICLES * 64,
+                    usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
                 });
 
                 computePipeline = device.createComputePipeline({
@@ -146,19 +152,197 @@ export async function initWebGPU() {
         }
     }
 
-    // 2. Fallback: High-Performance 2D Canvas Engine
     initFallback2DEngine(canvas);
 }
+
+// --- RAYCASTING / TOUCH SELECTION PIPELINE ---
+let isMappingBuffer = false;
+
+window.selectParticleAt = async function(clientX, clientY) {
+    if (isMappingBuffer) return; // Prevent concurrent buffer reads
+
+    if (navigator.gpu && device && readBuffer) {
+        isMappingBuffer = true;
+        try {
+            const commandEncoder = device.createCommandEncoder();
+            commandEncoder.copyBufferToBuffer(particleBuffer, 0, readBuffer, 0, activeParticleCount * 64);
+            device.queue.submit([commandEncoder.finish()]);
+
+            await readBuffer.mapAsync(GPUMapMode.READ, 0, activeParticleCount * 64);
+            const arrayBuffer = readBuffer.getMappedRange(0, activeParticleCount * 64);
+            const data = new Float32Array(arrayBuffer);
+            const uintData = new Uint32Array(arrayBuffer);
+
+            let closestId = -1;
+            let minDistSq = Infinity;
+            let bestData = null;
+            const aspect = window.innerWidth / window.innerHeight;
+
+            for (let i = 0; i < activeParticleCount; i++) {
+                const base = i * 16;
+                const px = data[base];
+                const py = data[base + 1];
+                const pz = data[base + 2];
+
+                const cx = Math.cos(cameraState.rotX), sx = Math.sin(cameraState.rotX);
+                const cy = Math.cos(cameraState.rotY), sy = Math.sin(cameraState.rotY);
+
+                let rx = px * cy + pz * sy;
+                let rz = -px * sy + pz * cy;
+                let ry = py * cx - rz * sx;
+                rz = py * sx + rz * cx;
+
+                let cameraDist = 60.0 / Math.max(cameraState.zoom, 0.1);
+                let depth = rz + cameraDist;
+                
+                if (depth < 0.1) continue; 
+
+                let proj = 1.6 / depth;
+                let ndcX = (rx * proj) / aspect;
+                let ndcY = ry * proj;
+
+                let screenX = (ndcX + 1.0) * 0.5 * window.innerWidth;
+                let screenY = (1.0 - ndcY) * 0.5 * window.innerHeight;
+
+                let dx = screenX - clientX;
+                let dy = screenY - clientY;
+                let distSq = dx * dx + dy * dy;
+
+                if (distSq < minDistSq) {
+                    minDistSq = distSq;
+                    closestId = i;
+                    bestData = {
+                        mass: data[base + 3],
+                        type: uintData[base + 13],
+                        dist: Math.sqrt(px * px + py * py + pz * pz)
+                    };
+                }
+            }
+
+            readBuffer.unmap();
+
+            if (minDistSq < 2500) { 
+                updateInspectorUI(closestId, bestData);
+            }
+        } catch (e) {
+            console.error("Raycast mapping error:", e);
+        }
+        isMappingBuffer = false;
+    } else if (fallbackParticles && fallbackParticles.length > 0) {
+        // Fallback 2D Raycasting
+        let closestId = -1;
+        let minDistSq = Infinity;
+        let bestData = null;
+
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const cx = w / 2;
+        const cy = h / 2;
+
+        const cosY = Math.cos(cameraState.rotY), sinY = Math.sin(cameraState.rotY);
+        const cosX = Math.cos(cameraState.rotX), sinX = Math.sin(cameraState.rotX);
+
+        for (let i = 0; i < fallbackParticles.length; i++) {
+            let p = fallbackParticles[i];
+            let rx = p.x * cosY - p.z * sinY;
+            let rz = p.x * sinY + p.z * cosY;
+            let ry = p.y * cosX - rz * sinX;
+            rz = p.y * sinX + rz * cosX;
+
+            const scale = (400 / (400 + rz)) * cameraState.zoom;
+            const screenX = cx + rx * scale;
+            const screenY = cy + ry * scale;
+
+            let dx = screenX - clientX;
+            let dy = screenY - clientY;
+            let distSq = dx * dx + dy * dy;
+
+            if (distSq < minDistSq) {
+                minDistSq = distSq;
+                closestId = i;
+                bestData = {
+                    mass: p.radius * 6.5,
+                    type: p.type === 'gold' ? 2 : (p.type === 'cyan' ? 1 : 0),
+                    dist: Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z)
+                };
+            }
+        }
+        
+        if (minDistSq < 2500) {
+            updateInspectorUI(closestId, bestData);
+        }
+    }
+};
+
+function updateInspectorUI(id, data) {
+    let typeName = "Dark Matter Filament";
+    let subType = "Exotic Structure";
+    let colorClass = "purple";
+    let hexColor = "#8b5cf6";
+    
+    if (data.type === 2) {
+        typeName = "G-Type Main Sequence Star";
+        subType = "Star";
+        colorClass = "gold";
+        hexColor = "#f59e0b";
+    } else if (data.type === 1) {
+        typeName = "O-Type Blue Giant";
+        subType = "Star";
+        colorClass = "cyan";
+        hexColor = "#06b6d4";
+    }
+
+    const distanceLy = (data.dist * 1342.3).toLocaleString('en-US', {maximumFractionDigits: 0});
+    const massM = (data.mass / 12).toFixed(2);
+    
+    // Bottom floating preview card
+    const previewTitle = document.getElementById('obj-name');
+    const previewSub = document.getElementById('obj-sub');
+    const thumbGlow = document.querySelector('.thumb-glow');
+    
+    if (previewTitle) previewTitle.textContent = `OBJECT ${id.toLocaleString()}`;
+    if (previewSub) previewSub.textContent = `Type: ${subType} | Distance: ${distanceLy} ly`;
+    
+    if (thumbGlow) {
+        thumbGlow.style.boxShadow = `0 0 16px ${hexColor}, 0 0 30px ${hexColor}`;
+        thumbGlow.style.backgroundColor = hexColor;
+    }
+
+    // Deep inspector modal
+    const modalTitle = document.querySelector('.modal-title-group h2');
+    const modalSub = document.querySelector('.modal-title-group .subtitle');
+    const heroGlow = document.querySelector('.hero-star-glow');
+    
+    if (modalTitle) modalTitle.textContent = `OBJECT ${id.toLocaleString()}`;
+    if (modalSub) modalSub.textContent = subType;
+    
+    if (heroGlow) {
+        heroGlow.style.background = `radial-gradient(circle, ${hexColor} 0%, rgba(0,0,0,0) 70%)`;
+        heroGlow.style.boxShadow = `0 0 50px ${hexColor}`;
+    }
+
+    // Modal data grid details
+    const dataValues = document.querySelectorAll('.data-value');
+    if (dataValues.length >= 6) {
+        const hashStr = id.toString().padStart(4, '0');
+        dataValues[0].textContent = `Helion-${hashStr.substring(0, 3)}`; // Random AI Name
+        dataValues[1].textContent = typeName;
+        dataValues[2].textContent = `${massM} M☉`;
+        dataValues[3].textContent = `${(data.mass / 18).toFixed(2)} R☉`;
+        dataValues[4].textContent = `${Math.floor(data.mass * 480)} K`;
+        dataValues[5].textContent = `${distanceLy} ly`;
+    }
+}
+
+// --- ENGINE LOOPS & RENDER LOGIC ---
 
 function initFallback2DEngine(canvas) {
     canvas2D = canvas;
     ctx2D = canvas.getContext('2d');
     
-    // Scale context by DPR to fix mobile size rendering
     ctx2D.scale(dpr, dpr);
-
-    // Create 800 glowing particles for mobile fallback
     fallbackParticles = [];
+    
     for (let i = 0; i < 800; i++) {
         const angle = Math.random() * Math.PI * 2;
         const dist = Math.random() * (window.innerWidth * 0.4);
@@ -169,7 +353,7 @@ function initFallback2DEngine(canvas) {
             vx: -Math.sin(angle) * (0.5 + Math.random()),
             vz: Math.cos(angle) * (0.5 + Math.random()),
             type: Math.random() > 0.85 ? 'gold' : (Math.random() > 0.4 ? 'cyan' : 'purple'),
-            radius: 2.0 + Math.random() * 3.5 // Much larger radius for visibility
+            radius: 2.0 + Math.random() * 3.5 
         });
     }
 
@@ -188,7 +372,6 @@ function initFallback2DEngine(canvas) {
 function renderLoop2D() {
     cosmicAgeMyr += 0.0001;
 
-    // Use unscaled innerWidth/Height because context is scaled
     const w = window.innerWidth;
     const h = window.innerHeight;
     const cx = w / 2;
@@ -197,28 +380,22 @@ function renderLoop2D() {
     ctx2D.fillStyle = '#07060b';
     ctx2D.fillRect(0, 0, w, h);
 
-    const cosY = Math.cos(cameraState.rotY);
-    const sinY = Math.sin(cameraState.rotY);
-    const cosX = Math.cos(cameraState.rotX);
-    const sinX = Math.sin(cameraState.rotX);
+    const cosY = Math.cos(cameraState.rotY), sinY = Math.sin(cameraState.rotY);
+    const cosX = Math.cos(cameraState.rotX), sinX = Math.sin(cameraState.rotX);
 
     for (let p of fallbackParticles) {
-        // Simple orbital physics
         p.x += p.vx;
         p.z += p.vz;
 
-        // 3D Camera Rotation
         let rx = p.x * cosY - p.z * sinY;
         let rz = p.x * sinY + p.z * cosY;
         let ry = p.y * cosX - rz * sinX;
         rz = p.y * sinX + rz * cosX;
 
-        // Perspective Projection
         const scale = (400 / (400 + rz)) * cameraState.zoom;
         const screenX = cx + rx * scale;
         const screenY = cy + ry * scale;
 
-        // Draw if on screen
         if (screenX > -20 && screenX < w + 20 && screenY > -20 && screenY < h + 20 && scale > 0) {
             ctx2D.beginPath();
             ctx2D.arc(screenX, screenY, p.radius * scale, 0, Math.PI * 2);
@@ -258,7 +435,6 @@ function renderLoopGPU() {
     device.queue.writeBuffer(paramsBuffer, 0, paramsArray.buffer);
 
     const commandEncoder = device.createCommandEncoder();
-
     const computePass = commandEncoder.beginComputePass();
     computePass.setPipeline(computePipeline);
     computePass.setBindGroup(0, bindGroup);
