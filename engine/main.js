@@ -1,21 +1,11 @@
-// ============================================================================
-// PROJECT ORIGIN: WEBGPU ENGINE & UI BRIDGE (main.js)
-// ============================================================================
+import shaderCode from './shaders.wgsl?raw';
+import { fetchCosmicState, subscribeToCosmicUpdates } from '../services/supabase.js';
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-
-// --- SUPABASE CLIENT SETUP ---
-const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
-const SUPABASE_KEY = "sb_publishable_O5qr-6UD-6wTzi51j3tYtw_00N9Q4ja";
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// --- GLOBAL ENGINE STATE ---
 let device, pipeline, particleBuffer, paramsBuffer, bindGroup;
-const PARTICLE_COUNT = 50000; // Scalable particle count for mobile
+const PARTICLE_COUNT = 50000;
 let cosmicAgeMyr = 0.0;
 
-// --- 1. WEBGPU INITIALIZATION ---
-async function initWebGPU() {
+export async function initWebGPU() {
     const container = document.getElementById('canvas-container');
     const canvas = document.createElement('canvas');
     canvas.width = window.innerWidth;
@@ -23,7 +13,7 @@ async function initWebGPU() {
     container.appendChild(canvas);
 
     if (!navigator.gpu) {
-        console.error("WebGPU not supported on this browser/device.");
+        console.error("WebGPU not supported on this device/browser.");
         return;
     }
 
@@ -34,32 +24,22 @@ async function initWebGPU() {
 
     context.configure({ device, format });
 
-    // Fetch WGSL Shader Code
-    const shaderResponse = await fetch('./shaders.wgsl');
-    const shaderCode = await shaderResponse.text();
-
     const shaderModule = device.createShaderModule({ code: shaderCode });
 
     // 64 Bytes per particle (matches 8 WGSL physical attributes)
-    const particleBufferSize = PARTICLE_COUNT * 64; 
     particleBuffer = device.createBuffer({
-        size: particleBufferSize,
+        size: PARTICLE_COUNT * 64,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
 
-    // Cosmic Parameters Uniform Buffer
     paramsBuffer = device.createBuffer({
-        size: 16, // 4 x f32/u32 values
+        size: 16,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
-    // Compute Pipeline Setup
     pipeline = device.createComputePipeline({
         layout: 'auto',
-        compute: {
-            module: shaderModule,
-            entryPoint: 'update_physics',
-        },
+        compute: { module: shaderModule, entryPoint: 'update_physics' },
     });
 
     bindGroup = device.createBindGroup({
@@ -70,7 +50,7 @@ async function initWebGPU() {
         ],
     });
 
-    // Run Big Bang Initialization
+    // Run Big Bang Initialization Pass
     const initPipeline = device.createComputePipeline({
         layout: 'auto',
         compute: { module: shaderModule, entryPoint: 'init_big_bang' },
@@ -93,36 +73,34 @@ async function initWebGPU() {
 
     device.queue.submit([commandEncoder.finish()]);
 
-    // Connect Supabase Realtime Sync
+    // Connect Supabase Sync
     setupSupabaseSync();
 
     // Start 60 FPS Engine Render & HUD Loop
     requestAnimationFrame(renderLoop);
 }
 
-// --- 2. SUPABASE REALTIME SYNC ---
 function setupSupabaseSync() {
-    // Listen for Cosmic Age updates from server
-    supabase
-        .channel('public:cosmic_state')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cosmic_state' }, payload => {
-            if (payload.new && payload.new.cosmic_age_myr) {
-                cosmicAgeMyr = payload.new.cosmic_age_myr;
-            }
-        })
-        .subscribe();
+    // 1. Fetch initial state on boot
+    fetchCosmicState().then(data => {
+        if (data && data.cosmic_age_myr) {
+            cosmicAgeMyr = data.cosmic_age_myr;
+        }
+    });
 
-    // Listen for live AI Journal events
-    supabase
-        .channel('public:ai_journal')
-        .on('INSERT', schema => {
-            const newLog = schema.new.thought_log;
-            prependEventFeed(newLog);
-        })
-        .subscribe();
+    // 2. Subscribe to live stream updates
+    subscribeToCosmicUpdates(
+        (newState) => {
+            if (newState && newState.cosmic_age_myr) {
+                cosmicAgeMyr = newState.cosmic_age_myr;
+            }
+        },
+        (newThought) => {
+            prependEventFeed(newThought.thought_log);
+        }
+    );
 }
 
-// Update UI Feed dynamically
 function prependEventFeed(logText) {
     const container = document.getElementById('events-container');
     if (!container) return;
@@ -137,20 +115,13 @@ function prependEventFeed(logText) {
     container.prepend(card);
 }
 
-// --- 3. MAIN RENDER & PHYSICS LOOP ---
 function renderLoop() {
-    // 1. Update Uniform Parameters (Cosmic Time & Expansion)
-    const paramsArray = new Float32Array([
-        cosmicAgeMyr, // cosmic_age_myr
-        0.68,         // expansion_rate_h
-        0.016,        // delta_time (dt = ~16ms)
-    ]);
+    const paramsArray = new Float32Array([cosmicAgeMyr, 0.68, 0.016]);
     const paramsUintArray = new Uint32Array(paramsArray.buffer);
     paramsUintArray[3] = PARTICLE_COUNT;
 
     device.queue.writeBuffer(paramsBuffer, 0, paramsArray.buffer);
 
-    // 2. Dispatch Compute Shader Pass
     const commandEncoder = device.createCommandEncoder();
     const pass = commandEncoder.beginComputePass();
     pass.setPipeline(pipeline);
@@ -160,7 +131,6 @@ function renderLoop() {
 
     device.queue.submit([commandEncoder.finish()]);
 
-    // 3. Update HUD Display
     const hudAgeElement = document.getElementById('hud-age');
     if (hudAgeElement) {
         hudAgeElement.textContent = `${cosmicAgeMyr.toFixed(5)} Myr`;
@@ -168,8 +138,3 @@ function renderLoop() {
 
     requestAnimationFrame(renderLoop);
 }
-
-// Initialize when DOM is ready
-window.addEventListener('DOMContentLoaded', () => {
-    initWebGPU();
-});
