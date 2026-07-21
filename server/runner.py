@@ -1,123 +1,140 @@
 import os
 import time
+import random
 import requests
-from supabase import create_client, Client
 
-# Environment Configuration (Supports both default and custom 'ORIGIN_' secret names)
-SUPABASE_URL = os.getenv("ORIGIN_SUPABASE_URL") or os.getenv("SUPABASE_URL", "")
-SUPABASE_KEY = os.getenv("ORIGIN_SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+# Load Environment Variables from Oracle Cloud environment
+SUPABASE_URL = os.environ.get("ORIGIN_SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
+SERVICE_KEY = os.environ.get("ORIGIN_SUPABASE_SERVICE_ROLE_KEY", "")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
-GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
+HEADERS = {
+    "apikey": SERVICE_KEY,
+    "Authorization": f"Bearer {SERVICE_KEY}",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation"
+}
 
-# Initialize Supabase Client
-if not SUPABASE_URL or not SUPABASE_KEY:
-    print("[ERROR] Missing Supabase credentials. Check your environment variables.")
-    supabase = None
-else:
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+EVENT_TYPES = ["blackhole", "stellar", "cosmic", "planetary"]
 
-def fetch_cosmic_state():
-    """Fetch the single row cosmic state from Supabase."""
-    if not supabase:
-        return {"cosmic_age_myr": 0.0, "expansion_rate_h": 0.68, "delta_time": 0.016}
+EVENT_TEMPLATES = [
+    {"type": "blackhole", "title": "Black Hole Formed", "desc": "Object-{id} has collapsed under its own gravity into a stellar-mass black hole."},
+    {"type": "stellar", "title": "Supernova Explosion", "desc": "Massive star Helion-{id} went supernova, seeding Sector {sector} with heavy metals."},
+    {"type": "cosmic", "title": "Galaxy Cluster Fusion", "desc": "Gravitational pull brought Cluster-{id} into alignment with the central galaxy core."},
+    {"type": "planetary", "title": "Proto-Planet Accretion", "desc": "Dust cloud in Sector {sector} condensed into a solid rocky protoplanet."}
+]
+
+def get_latest_state():
     try:
-        response = supabase.table("cosmic_state").select("*").eq("id", 1).execute()
-        if response.data and len(response.data) > 0:
-            return response.data[0]
+        res = requests.get(f"{SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1", headers=HEADERS)
+        if res.status_code == 200 and len(res.json()) > 0:
+            return res.json()[0]
     except Exception as e:
-        print(f"[FETCH ERROR] {e}")
-    return {"cosmic_age_myr": 0.0, "expansion_rate_h": 0.68, "delta_time": 0.016}
+        print(f"[ORIGIN ERROR] Failed to fetch state: {e}")
+    return {"id": 1, "age": 0.0, "goal": "Initialize primordial matter", "reasoning": "Starting universe simulation"}
 
-def update_cosmic_state(new_age):
-    """Advance the universe age in Supabase."""
-    if not supabase:
-        return
+def update_universe_state(new_age, goal, reasoning):
     try:
-        supabase.table("cosmic_state").update({
-            "cosmic_age_myr": new_age
-        }).eq("id", 1).execute()
+        payload = {
+            "age": new_age,
+            "goal": goal,
+            "reasoning": reasoning
+        }
+        res = requests.post(f"{SUPABASE_URL}/rest/v1/universe_state", json=payload, headers=HEADERS)
+        if res.status_code in [200, 201]:
+            print(f"[ORIGIN AI] State Updated: Age = {new_age:.4f} Myr ({int(new_age * 1000000):,} Years)")
+        else:
+            print(f"[ORIGIN ERROR] State Update Failed ({res.status_code}): {res.text}")
     except Exception as e:
-        print(f"[UPDATE ERROR] {e}")
+        print(f"[ORIGIN ERROR] Exception updating state: {e}")
 
-def ask_origin_ai(cosmic_age):
-    """Query Groq Llama 3.1 8B for AI Architect reasoning."""
-    if not GROQ_API_KEY:
-        print("[WARNING] GROQ_API_KEY is missing. Skipping AI decision query.")
-        return "PASSIVE_OBSERVE", "Monitoring primordial particle distribution."
-
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    prompt = f"""You are 'Origin', an autonomous AI Architect overseeing the physical evolution of a simulated universe.
-Current Cosmic Age: {cosmic_age:.5f} Myr.
-
-Analyze current physics state (500,000 particle pool, expansion rate H=0.68, gravitational clustering).
-Provide a short 1-sentence thought on your current goal and state whether you INTERVENE or PASSIVE_OBSERVE.
-
-Format response strictly as JSON:
-{{"action": "PASSIVE_OBSERVE" or "INTERVENE", "thought": "Your concise 1-sentence thought here."}}
-"""
+def create_cosmic_event(age):
+    template = random.choice(EVENT_TEMPLATES)
+    obj_id = random.randint(10000, 99999)
+    sector_id = random.randint(1, 99)
+    
+    title = template["title"]
+    description = template["desc"].format(id=obj_id, sector=sector_id)
+    event_type = template["type"]
 
     payload = {
-        "model": "llama-3.1-8b-instant",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7,
-        "response_format": {"type": "json_object"}
+        "title": title,
+        "description": description,
+        "type": event_type,
+        "age": age
     }
 
     try:
-        res = requests.post(GROQ_ENDPOINT, json=payload, headers=headers, timeout=5)
-        if res.status_code == 200:
-            data = res.json()
-            content = data["choices"][0]["message"]["content"]
-            import json
-            parsed = json.loads(content)
-            return parsed.get("action", "PASSIVE_OBSERVE"), parsed.get("thought", "Monitoring cosmic expansion.")
+        res = requests.post(f"{SUPABASE_URL}/rest/v1/events", json=payload, headers=HEADERS)
+        if res.status_code in [200, 201]:
+            print(f"[ORIGIN EVENT] Generated: {title} - {description}")
     except Exception as e:
-        print(f"[GROQ ERROR] API call failed: {e}")
+        print(f"[ORIGIN ERROR] Failed to write event: {e}")
 
-    return "PASSIVE_OBSERVE", "Observing quantum fluctuations across particle grid."
+def update_catalog_stats(age):
+    # Scale counts naturally with universe age
+    base_multiplier = max(1.0, age * 10.0)
+    stars = int(120000 + (base_multiplier * 450) + random.randint(-50, 100))
+    black_holes = int(1000 + (base_multiplier * 8) + random.randint(-2, 5))
+    neutron_stars = int(800 + (base_multiplier * 6) + random.randint(-2, 4))
+    planets = int(15000 + (base_multiplier * 120) + random.randint(-20, 50))
 
-def log_ai_action(action_type, thought_log):
-    """Log Origin's decision into ai_journal table for live streaming."""
-    if not supabase:
-        return
+    payload = {
+        "id": 1,
+        "stars": stars,
+        "black_holes": black_holes,
+        "neutron_stars": neutron_stars,
+        "planets": planets
+    }
+
     try:
-        supabase.table("ai_journal").insert({
-            "action_type": action_type,
-            "thought_log": thought_log
-        }).execute()
+        # Upsert catalog stats
+        headers_upsert = HEADERS.copy()
+        headers_upsert["Prefer"] = "resolution=merge-duplicates"
+        res = requests.post(f"{SUPABASE_URL}/rest/v1/catalog_stats", json=payload, headers=headers_upsert)
+        if res.status_code in [200, 201, 204]:
+            print(f"[ORIGIN CATALOG] Stars: {stars:,} | Black Holes: {black_holes:,} | Planets: {planets:,}")
     except Exception as e:
-        print(f"[LOG ERROR] {e}")
+        print(f"[ORIGIN ERROR] Failed to update catalog: {e}")
 
-def run_loop():
-    print("⚡ [PROJECT ORIGIN] AI Architect runner initiated...")
-    tick = 0
+def main():
+    print("⚡ [PROJECT ORIGIN] AI Architect Multi-Table Runner Initiated...")
+    
+    goals = [
+        ("Allowing gravitational clustering to unfold", "Monitoring the formation of the first cosmic filaments."),
+        ("Increasing metallicity in central galactic cores", "Accelerating stellar nucleosynthesis to form heavy elements."),
+        ("Stabilizing planetary orbits in Sector 12", "Creating conditions suitable for complex chemical structures."),
+        ("Observing supermassive black hole accretion", "Measuring energy output and radiation pressure on surrounding nebulae.")
+    ]
+
+    cycle_count = 0
 
     while True:
         try:
-            state = fetch_cosmic_state()
-            current_age = state.get("cosmic_age_myr", 0.0)
+            state = get_latest_state()
+            current_age = float(state.get("age", 0.0))
+            
+            # Tick age forward by ~0.005 Myr (5,000 Years) per cycle
+            new_age = current_age + 0.005
+            
+            goal_tuple = goals[cycle_count % len(goals)]
+            
+            # Update state, events, and catalog tables
+            update_universe_state(new_age, goal_tuple[0], goal_tuple[1])
+            
+            # Generate an event every 2 cycles
+            if cycle_count % 2 == 0:
+                create_cosmic_event(new_age)
+                
+            # Update catalog counts every cycle
+            update_catalog_stats(new_age)
 
-            # Advance cosmic age by 0.00355 Myr each tick
-            new_age = current_age + 0.00355
-            update_cosmic_state(new_age)
-
-            # Every 3 ticks (~6 seconds), query Origin AI for a new thought
-            if tick % 3 == 0:
-                action, thought = ask_origin_ai(new_age)
-                log_ai_action(action, thought)
-                print(f"[{new_age:.5f} Myr] Origin ({action}): {thought}")
-
-            tick += 1
-            time.sleep(2)  # 2-second heartbeat loop
+            cycle_count += 1
+            time.sleep(4)  # Cycle runs every 4 seconds
 
         except Exception as e:
-            print(f"[LOOP ERROR] {e}")
+            print(f"[ORIGIN RUNNER CRASH PREVENTED] {e}")
             time.sleep(5)
 
 if __name__ == "__main__":
-    run_loop()
+    main()
