@@ -1,4 +1,4 @@
-import shaderCode from './shaders.wgsl?raw';
+import { shaderCode } from './shaders.js';
 import { fetchCosmicState, subscribeToCosmicUpdates } from '../services/supabase.js';
 
 let device, context, format;
@@ -6,10 +6,9 @@ let computePipeline, renderPipeline;
 let particleBuffer, paramsBuffer, bindGroup;
 
 const MAX_PARTICLES = 500000;
-let activeParticleCount = 2000; // Visible immediately on load
+let activeParticleCount = 2000;
 let cosmicAgeMyr = 0.0;
 
-// Camera State (Manipulated by finger gestures)
 export const cameraState = {
     zoom: 1.0,
     rotX: 0.3,
@@ -18,128 +17,124 @@ export const cameraState = {
 
 export async function initWebGPU() {
     const container = document.getElementById('canvas-container');
+    if (!container) return;
+
+    // Remove any leftover canvas elements to prevent duplicate layers
+    container.innerHTML = '';
+
     const canvas = document.createElement('canvas');
-    
     const dpr = window.devicePixelRatio || 1;
     canvas.width = window.innerWidth * dpr;
     canvas.height = window.innerHeight * dpr;
     canvas.style.width = '100%';
     canvas.style.height = '100%';
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
     container.appendChild(canvas);
 
     if (!navigator.gpu) {
-        console.error("WebGPU is not supported on this device/browser.");
+        console.warn("WebGPU is not supported on this browser context.");
         return;
     }
 
-    const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter) return;
+    try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) return;
 
-    device = await adapter.requestDevice();
-    context = canvas.getContext('webgpu');
-    format = navigator.gpu.getPreferredCanvasFormat();
+        device = await adapter.requestDevice();
+        context = canvas.getContext('webgpu');
+        format = navigator.gpu.getPreferredCanvasFormat();
 
-    context.configure({
-        device,
-        format,
-        alphaMode: 'premultiplied',
-    });
+        context.configure({
+            device,
+            format,
+            alphaMode: 'premultiplied',
+        });
 
-    const shaderModule = device.createShaderModule({ code: shaderCode });
+        const shaderModule = device.createShaderModule({ code: shaderCode });
 
-    particleBuffer = device.createBuffer({
-        size: MAX_PARTICLES * 64,
-        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
+        particleBuffer = device.createBuffer({
+            size: MAX_PARTICLES * 64,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+        });
 
-    // 32 Bytes Uniform Buffer (age, H, dt, count, zoom, rotX, rotY, aspect)
-    paramsBuffer = device.createBuffer({
-        size: 32,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
+        paramsBuffer = device.createBuffer({
+            size: 32,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
 
-    computePipeline = device.createComputePipeline({
-        layout: 'auto',
-        compute: { module: shaderModule, entryPoint: 'update_physics' },
-    });
+        computePipeline = device.createComputePipeline({
+            layout: 'auto',
+            compute: { module: shaderModule, entryPoint: 'update_physics' },
+        });
 
-    bindGroup = device.createBindGroup({
-        layout: computePipeline.getBindGroupLayout(0),
-        entries: [
-            { binding: 0, resource: { buffer: particleBuffer } },
-            { binding: 1, resource: { buffer: paramsBuffer } },
-        ],
-    });
+        bindGroup = device.createBindGroup({
+            layout: computePipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: particleBuffer } },
+                { binding: 1, resource: { buffer: paramsBuffer } },
+            ],
+        });
 
-    renderPipeline = device.createRenderPipeline({
-        layout: 'auto',
-        vertex: {
-            module: shaderModule,
-            entryPoint: 'vs_main',
-        },
-        fragment: {
-            module: shaderModule,
-            entryPoint: 'fs_main',
-            targets: [{
-                format: format,
-                blend: {
-                    color: {
-                        srcFactor: 'src-alpha',
-                        dstFactor: 'one',
-                        operation: 'add',
-                    },
-                    alpha: {
-                        srcFactor: 'one',
-                        dstFactor: 'one',
-                        operation: 'add',
+        renderPipeline = device.createRenderPipeline({
+            layout: 'auto',
+            vertex: { module: shaderModule, entryPoint: 'vs_main' },
+            fragment: {
+                module: shaderModule,
+                entryPoint: 'fs_main',
+                targets: [{
+                    format: format,
+                    blend: {
+                        color: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
+                        alpha: { srcFactor: 'one', dstFactor: 'one', operation: 'add' }
                     }
-                }
-            }],
-        },
-        primitive: {
-            topology: 'point-list',
-        },
-    });
+                }],
+            },
+            primitive: { topology: 'point-list' },
+        });
 
-    // Big Bang Init Pass
-    const initPipeline = device.createComputePipeline({
-        layout: 'auto',
-        compute: { module: shaderModule, entryPoint: 'init_big_bang' },
-    });
+        const initPipeline = device.createComputePipeline({
+            layout: 'auto',
+            compute: { module: shaderModule, entryPoint: 'init_big_bang' },
+        });
 
-    const initBindGroup = device.createBindGroup({
-        layout: initPipeline.getBindGroupLayout(0),
-        entries: [
-            { binding: 0, resource: { buffer: particleBuffer } },
-            { binding: 1, resource: { buffer: paramsBuffer } },
-        ],
-    });
+        const initBindGroup = device.createBindGroup({
+            layout: initPipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: particleBuffer } },
+                { binding: 1, resource: { buffer: paramsBuffer } },
+            ],
+        });
 
-    const initParams = new Float32Array([
-        0.0, 0.68, 0.016, 0,
-        cameraState.zoom, cameraState.rotX, cameraState.rotY,
-        window.innerWidth / window.innerHeight
-    ]);
-    new Uint32Array(initParams.buffer)[3] = MAX_PARTICLES;
-    device.queue.writeBuffer(paramsBuffer, 0, initParams.buffer);
+        const initParams = new Float32Array([
+            0.0, 0.68, 0.016, 0,
+            cameraState.zoom, cameraState.rotX, cameraState.rotY,
+            window.innerWidth / window.innerHeight
+        ]);
+        new Uint32Array(initParams.buffer)[3] = MAX_PARTICLES;
+        device.queue.writeBuffer(paramsBuffer, 0, initParams.buffer);
 
-    const commandEncoder = device.createCommandEncoder();
-    const initPass = commandEncoder.beginComputePass();
-    initPass.setPipeline(initPipeline);
-    initPass.setBindGroup(0, initBindGroup);
-    initPass.dispatchWorkgroups(Math.ceil(MAX_PARTICLES / 256));
-    initPass.end();
+        const commandEncoder = device.createCommandEncoder();
+        const initPass = commandEncoder.beginComputePass();
+        initPass.setPipeline(initPipeline);
+        initPass.setBindGroup(0, initBindGroup);
+        initPass.dispatchWorkgroups(Math.ceil(MAX_PARTICLES / 256));
+        initPass.end();
 
-    device.queue.submit([commandEncoder.finish()]);
+        device.queue.submit([commandEncoder.finish()]);
 
-    window.addEventListener('resize', () => {
-        const newDpr = window.devicePixelRatio || 1;
-        canvas.width = window.innerWidth * newDpr;
-        canvas.height = window.innerHeight * newDpr;
-    });
+        window.addEventListener('resize', () => {
+            const newDpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * newDpr;
+            canvas.height = window.innerHeight * newDpr;
+        });
 
-    setupSupabaseSync();
-    requestAnimationFrame(renderLoop);
+        setupSupabaseSync();
+        requestAnimationFrame(renderLoop);
+    } catch (err) {
+        console.error("WebGPU Initialization error:", err);
+    }
 }
 
 function setupSupabaseSync() {
@@ -168,17 +163,22 @@ function prependEventFeed(logText) {
     if (!container) return;
 
     const card = document.createElement('div');
-    card.className = 'event-card';
+    card.className = 'event-card-rich';
     card.innerHTML = `
-        <div class="event-title">⚡ AI Action</div>
-        <div class="event-desc">${logText}</div>
-        <div class="event-time">Just now</div>
+        <div class="event-thumb blackhole"></div>
+        <div class="event-content">
+          <div class="event-title-row">
+            <span class="dot-icon purple">●</span>
+            <span class="event-title">Origin AI Intervention</span>
+          </div>
+          <div class="event-desc">${logText}</div>
+          <div class="event-time">Just now</div>
+        </div>
     `;
     container.prepend(card);
 }
 
 function renderLoop() {
-    // If Supabase isn't ticking yet, run a gentle local time progression so universe advances
     cosmicAgeMyr += 0.0001;
 
     activeParticleCount = Math.min(
@@ -197,14 +197,12 @@ function renderLoop() {
 
     const commandEncoder = device.createCommandEncoder();
 
-    // 1. Physics Compute Pass
     const computePass = commandEncoder.beginComputePass();
     computePass.setPipeline(computePipeline);
     computePass.setBindGroup(0, bindGroup);
     computePass.dispatchWorkgroups(Math.ceil(activeParticleCount / 256));
     computePass.end();
 
-    // 2. Particle Render Pass
     const renderPassDescriptor = {
         colorAttachments: [{
             view: context.getCurrentTexture().createView(),
@@ -224,7 +222,6 @@ function renderLoop() {
 
     const hudAgeElement = document.getElementById('hud-age');
     if (hudAgeElement) {
-        // Format cosmic age nicely (Millions -> Billions format matching your design)
         if (cosmicAgeMyr >= 1000) {
             hudAgeElement.textContent = `${(cosmicAgeMyr / 1000).toFixed(3)} Billion Years`;
         } else {
