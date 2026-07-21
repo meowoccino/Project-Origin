@@ -1,98 +1,67 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<style>
-  body {
-    background: #0a0e14;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    margin: 0;
-    color: white;
-    font-family: monospace;
-  }
-
-  /* The Logo Animation Area */
-  .logo-box {
-    position: relative;
-    width: 150px;
-    height: 150px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 20px;
-  }
-
-  /* Concentric Rings */
-  .ring {
-    position: absolute;
-    border: 1px solid rgba(100, 150, 255, 0.2);
-    border-radius: 50%;
-  }
-  .r1 { width: 40px; height: 40px; }
-  .r2 { width: 85px; height: 85px; }
-  .r3 { width: 130px; height: 130px; }
-
-  /* Central Star */
-  .star {
-    width: 4px;
-    height: 4px;
-    background: white;
-    border-radius: 50%;
-  }
-
-  /* Orbiting Planet */
-  .planet {
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    border: 1px solid #ffaa55;
-    border-radius: 50%;
-    /* Distance matches radius of r2 (85/2 = 42.5) */
-    animation: orbit 5s linear infinite;
-  }
-
-  @keyframes orbit {
-    from { transform: rotate(0deg) translateX(42.5px) rotate(0deg); }
-    to { transform: rotate(360deg) translateX(42.5px) rotate(-360deg); }
-  }
-
-  /* Text and CTA */
-  h1 { letter-spacing: 0.3em; margin: 0; font-weight: normal; }
-  .accent { color: #ffaa55; }
-  .sub { color: #555; letter-spacing: 0.2em; font-size: 0.8em; margin-top: 10px; }
-
-  .cta {
-    position: absolute;
-    bottom: 50px;
-    color: #444;
-    letter-spacing: 0.1em;
-    animation: blink 2s infinite;
-  }
-
-  @keyframes blink {
-    0%, 100% { opacity: 0.2; }
-    50% { opacity: 0.8; }
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Continuous AI Universe Engine</title>
+    <link rel="stylesheet" href="ui/styles.css">
 </head>
 <body>
+    <!-- Main 3D Canvas for Particle Renderer -->
+    <canvas id="universe-canvas"></canvas>
 
-  <div class="logo-box">
-    <div class="ring r1"></div>
-    <div class="ring r2"></div>
-    <div class="ring r3"></div>
-    <div class="star"></div>
-    <div class="planet"></div>
-  </div>
+    <!-- Overlay UI Header -->
+    <div id="hud-overlay">
+        <div id="cosmic-clock">Cosmic Age: <span id="age-display">t + 0.0 Myr</span></div>
+        <div id="node-count">Active Particles: <span id="nodes-display">500,000</span></div>
+    </div>
 
-  <h1>PROJECT <span class="accent">ORIGIN</span></h1>
-  <div class="sub">AN AI-DIRECTED UNIVERSE</div>
+    <!-- AI Thought Feed Overlay -->
+    <div id="ai-journal-panel">
+        <h3>AI Observer Log</h3>
+        <ul id="thought-list">
+            <li>Awaiting continuous simulation pulse from Oracle Cloud...</li>
+        </ul>
+    </div>
 
-  <div class="cta">tap to observe →</div>
+    <!-- JavaScript Module Loading -->
+    <script type="module">
+        import { fetchCosmicState, fetchAIJournal, subscribeToCosmicUpdates } from './services/supabase.js';
 
+        // Load initial state on page start
+        async function initWebAssemblyViewer() {
+            const state = await fetchCosmicState();
+            if (state) {
+                document.getElementById('age-display').innerText = `t + ${state.cosmic_age_myr.toFixed(1)} Myr`;
+                document.getElementById('nodes-display').innerText = state.total_active_nodes.toLocaleString();
+            }
+
+            const journals = await fetchAIJournal(5);
+            if (journals && journals.length > 0) {
+                const list = document.getElementById('thought-list');
+                list.innerHTML = '';
+                journals.forEach(entry => {
+                    const li = document.createElement('li');
+                    li.innerText = `[t+${entry.cosmic_age_myr} Myr]: ${entry.thought_log}`;
+                    list.appendChild(li);
+                });
+            }
+        }
+
+        // Listen for live updates pushed by Oracle/AI
+        subscribeToCosmicUpdates(
+            (updatedState) => {
+                document.getElementById('age-display').innerText = `t + ${updatedState.cosmic_age_myr.toFixed(1)} Myr`;
+            },
+            (newThought) => {
+                const list = document.getElementById('thought-list');
+                const li = document.createElement('li');
+                li.innerText = `[t+${newThought.cosmic_age_myr} Myr]: ${newThought.thought_log}`;
+                list.insertBefore(li, list.firstChild);
+            }
+        );
+
+        initWebAssemblyViewer();
+    </script>
 </body>
 </html>
