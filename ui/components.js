@@ -131,19 +131,55 @@ document.addEventListener('DOMContentLoaded', () => {
         btnExplore?.classList.add('active');
     });
 
-    // --- 4. LIVE SUPABASE SYNC & DIRECTIVES ---
+    // --- 4. LIVE SUPABASE SYNC ---
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
     let currentDisplayAge = 0;
+
+    // COSMIC TIMELINE MILESTONES (In Years)
+    const TIMELINE_EPOCHS = [
+        { title: "🌌 Primordial Inflation", start: 0, end: 100000, desc: "Rapid metric expansion and quantum density fluctuations." },
+        { title: "⭐ Cosmic Dark Ages", start: 100000, end: 100000000, desc: "Cooling neutral gas collapsing into dark matter haloes." },
+        { title: "✨ First Stars & Reionization", start: 100000000, end: 1000000000, desc: "Population III supermassive stars ignite, ionizing primordial hydrogen." },
+        { title: "🪐 Galactic Disk Formation", start: 1000000000, end: 10000000000, desc: "Spinning protogalaxies settle into flat disks with heavy metallicity." }
+    ];
+
+    function updateTimelineUI(totalYears) {
+        const container = document.querySelector('.timeline-container');
+        if (!container) return;
+
+        container.innerHTML = TIMELINE_EPOCHS.map(epoch => {
+            const isPassed = totalYears >= epoch.start;
+            const isActive = totalYears >= epoch.start && totalYears < epoch.end;
+            
+            const markerColor = isActive ? '#7000ff' : (isPassed ? '#00e5ff' : 'rgba(255,255,255,0.2)');
+            const statusBadge = isActive ? '<span style="color:#00e5ff; font-weight:bold; font-size:11px;"> [CURRENT EPOCH]</span>' : '';
+
+            return `
+                <div class="timeline-node" style="opacity: ${isPassed ? '1' : '0.4'}; margin-bottom: 20px;">
+                  <div class="node-marker" style="background: ${markerColor}; box-shadow: ${isActive ? '0 0 12px #7000ff' : 'none'};"></div>
+                  <div class="node-content">
+                    <div class="node-title">${epoch.title}${statusBadge}</div>
+                    <div class="node-time" style="color: #a0a0c0; font-size: 12px;">${epoch.start.toLocaleString()} - ${epoch.end.toLocaleString()} Years</div>
+                    <div class="node-desc" style="margin-top: 4px; font-size: 13px;">${epoch.desc}</div>
+                  </div>
+                </div>
+            `;
+        }).join('');
+    }
 
     function setHudAge(rawAge) {
         const numericAge = Number(rawAge);
         if (!isNaN(numericAge) && numericAge > currentDisplayAge) {
             currentDisplayAge = numericAge;
+            const totalYears = Math.floor(currentDisplayAge * 1000000);
+
             const hudAge = document.getElementById('hud-age');
             if (hudAge) {
-                const totalYears = Math.floor(currentDisplayAge * 1000000);
                 hudAge.innerText = `${totalYears.toLocaleString()} Years`;
             }
+
+            // Dynamically update timeline based on age
+            updateTimelineUI(totalYears);
         }
     }
     window.setHudAge = setHudAge;
