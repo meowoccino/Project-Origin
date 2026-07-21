@@ -123,7 +123,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     }
 
-    // --- 4. REAL TELEMETRY SYNC WITH AUTHORIZATION HEADERS ---
+    // --- 4. REAL TELEMETRY SYNC ---
+    let localCurrentAge = 0.0;
+
+    function renderActiveActions(age) {
+        const container = document.getElementById('origin-actions-container');
+        if (!container) return;
+
+        // Dynamic physical actions based on cosmic age detailing: Target Object, Current Action, Reasoning (Why), Target Goal (For What / ETA)
+        const actions = [
+            {
+                object: `Object-${Math.floor(100 + age * 12)} (Molecular Gas Cloud)`,
+                action: "Collapsing gravitational potential well",
+                why: "Density reached Jeans Instability threshold in Sector 4",
+                forWhat: "Igniting Population III Protostar",
+                eta: `${(1.2 + age * 0.1).toFixed(1)} Million Years`
+            },
+            {
+                object: `Object-${Math.floor(250 + age * 8)} (Dark Matter Halo)`,
+                action: "Channeling baryonic filament gas streams",
+                why: "Higher mass concentration reduces thermal pressure",
+                forWhat: "Accelerating protogalactic disk accretion",
+                eta: `${(2.8 + age * 0.15).toFixed(1)} Million Years`
+            },
+            {
+                object: `Object-${Math.floor(50 + age * 5)} (Primordial Core)`,
+                action: "Stabilizing circumstellar radiation zone",
+                why: "Heavy element metallicity threshold reached",
+                forWhat: "Testing prebiotic molecular formation",
+                eta: `${(4.1 + age * 0.2).toFixed(1)} Million Years`
+            }
+        ];
+
+        container.innerHTML = actions.map(act => `
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 12px; border-radius: 10px; margin-top: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: bold; color: #00e5ff; font-size: 13px;">● ${act.object}</span>
+                <span style="font-size: 10px; background: rgba(112,0,255,0.3); color: #a680ff; padding: 2px 6px; border-radius: 4px;">${act.eta}</span>
+              </div>
+              <div style="font-size: 12px; color: #fff; font-weight: bold; margin-top: 6px;">Action: ${act.action}</div>
+              <div style="font-size: 11px; color: #a0a0c0; margin-top: 3px;"><strong>Why:</strong> ${act.why}</div>
+              <div style="font-size: 11px; color: #7000ff; font-weight: bold; margin-top: 3px;"><strong>Goal:</strong> ${act.forWhat}</div>
+            </div>
+        `).join('');
+    }
+
     async function pollUniverseState() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`, { headers: FETCH_HEADERS });
@@ -131,24 +175,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (Array.isArray(data) && data.length > 0) {
                     const state = data[0];
-                    const rawAge = state.age || 0.0;
-                    cameraState.currentAge = rawAge;
-
-                    const totalYears = Math.floor(rawAge * 1000000);
-                    const formattedAge = totalYears >= 1000000000 ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` : `${totalYears.toLocaleString()} Years`;
-
-                    const hudAge = document.getElementById('hud-age');
-                    const drawerAge = document.getElementById('drawer-hud-age');
-                    if (hudAge) hudAge.innerText = formattedAge;
-                    if (drawerAge) drawerAge.innerText = formattedAge;
-
-                    updateTimelineUI(totalYears);
-
-                    const goalElem = document.getElementById('ai-goal-text');
-                    if (goalElem && state.goal) goalElem.innerText = state.goal;
-
-                    const reasonElem = document.getElementById('ai-reasoning-text');
-                    if (reasonElem && state.reasoning) reasonElem.innerText = state.reasoning;
+                    if (state.age !== undefined && state.age >= localCurrentAge) {
+                        localCurrentAge = Number(state.age);
+                    }
+                    if (state.goal) {
+                        const goalElem = document.getElementById('ai-goal-text');
+                        if (goalElem) goalElem.innerText = state.goal;
+                    }
+                    if (state.reasoning) {
+                        const reasonElem = document.getElementById('ai-reasoning-text');
+                        if (reasonElem) reasonElem.innerText = state.reasoning;
+                    }
                 }
             }
         } catch (err) {}
@@ -202,6 +239,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {}
     }
+
+    // Smooth continuous local age progression fallback to advance time smoothly every second
+    setInterval(() => {
+        localCurrentAge += 0.0001; // Advance 100 Years per second locally
+        cameraState.currentAge = localCurrentAge;
+
+        const totalYears = Math.floor(localCurrentAge * 1000000);
+        const formattedAge = totalYears >= 1000000000 ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` : `${totalYears.toLocaleString()} Years`;
+
+        const hudAge = document.getElementById('hud-age');
+        const drawerAge = document.getElementById('drawer-hud-age');
+        if (hudAge) hudAge.innerText = formattedAge;
+        if (drawerAge) drawerAge.innerText = formattedAge;
+
+        updateTimelineUI(totalYears);
+        renderActiveActions(localCurrentAge);
+    }, 1000);
 
     // --- 5. ANIMATED CONSTELLATION SPHERE ---
     const aiCanvas = document.getElementById('ai-constellation-canvas');
