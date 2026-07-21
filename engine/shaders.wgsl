@@ -3,7 +3,6 @@
 // Features: 8 Physical State Attributes + Big Bang Expansion Dynamics
 // ============================================================================
 
-// --- THE 8 PHYSICAL STATE ATTRIBUTES (64-Byte GPU Alignment) ---
 struct Particle {
     // 1. Position (x, y, z) & 3. Mass
     position : vec3<f32>,
@@ -24,7 +23,6 @@ struct Particle {
     pad2 : f32,
 };
 
-// Global Cosmic Parameters (Updated every frame from JS)
 struct CosmicParams {
     cosmic_age_myr : f32,
     expansion_rate_h : f32, // Hubble metric expansion
@@ -52,7 +50,7 @@ fn init_big_bang(@builtin(global_invocation_id) global_id : vec3<u32>) {
     let random_dir = normalize(hash31(seed));
     let noise_factor = length(hash31(seed + 100.0));
 
-    // A. Singularity Core Placement (Near 0,0,0 with high primordial density)
+    // A. Singularity Core Placement
     let primordial_radius = 0.05 * noise_factor;
     particles[index].position = random_dir * primordial_radius;
 
@@ -62,13 +60,11 @@ fn init_big_bang(@builtin(global_invocation_id) global_id : vec3<u32>) {
 
     // C. Attribute Assignation: Dark Matter vs Baryonic Matter Ratio (85/15)
     if (noise_factor > 0.15) {
-        // Dark Matter Node (Provides invisible gravitational structure)
         particles[index].mass = 100.0 * noise_factor;
         particles[index].charge = 0.0;
         particles[index].composition = 0u; // Dark Matter
         particles[index].scale_radius = 0.1;
     } else {
-        // Baryonic Matter (Gas / Star potential)
         particles[index].mass = 10.0 * noise_factor;
         particles[index].charge = hash31(seed + 200.0).x * 0.5;
         particles[index].composition = 1u; // Hydrogen Gas
@@ -76,7 +72,7 @@ fn init_big_bang(@builtin(global_invocation_id) global_id : vec3<u32>) {
     }
 
     particles[index].net_force = vec3<f32>(0.0);
-    particles[index].entropy_decay = 0.01; // Fresh primordial state
+    particles[index].entropy_decay = 0.01;
 }
 
 // --- 2. REALTIME PHYSICS INTEGRATION LOOP ---
@@ -88,24 +84,17 @@ fn update_physics(@builtin(global_invocation_id) global_id : vec3<u32>) {
     var p = particles[index];
     let dt = params.delta_time;
 
-    // A. Acceleration Calculation from Accumulated AI & Local Forces (a = F / m)
+    // Acceleration from Forces (a = F / m)
     let acceleration = p.net_force / max(p.mass, 0.001);
-
-    // B. Update Velocity (v = v0 + a * dt)
     p.velocity += acceleration * dt;
 
-    // C. Cosmic Metric Expansion (Space itself stretching over time)
+    // Cosmic Metric Expansion (Space stretching over time)
     let hubble_vector = p.position * (params.expansion_rate_h * 0.0001 * dt);
-    
-    // D. Update Position (x = x0 + v * dt + expansion)
     p.position += (p.velocity * dt) + hubble_vector;
 
-    // E. Natural Entropy Decay (Stars aging / volatile dissipation)
+    // Entropy Decay
     p.entropy_decay = min(p.entropy_decay + (0.0001 * dt), 1.0);
-
-    // F. Reset Force Vector for Next Frame Calculation
     p.net_force = vec3<f32>(0.0);
 
-    // Write Back to GPU Storage Buffer
     particles[index] = p;
 }
