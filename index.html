@@ -5,40 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Project Origin</title>
   
-  <!-- SINGLE CSS SOURCE OF TRUTH: UI Stylesheet -->
+  <!-- Direct Link to UI Stylesheet -->
   <link rel="stylesheet" href="./ui/styles.css">
 </head>
 <body>
 
-  <!-- 3D WebGPU Viewport -->
+  <!-- 3D WebGPU / Canvas Viewport -->
   <div id="canvas-container"></div>
 
   <!-- Main HUD Layer -->
   <div class="ui-layer">
     
-    <!-- Top Bar Navigation Header -->
-    <header class="top-nav-bar interactive">
-      <button class="icon-btn" id="btn-open-drawer" aria-label="Menu">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-      </button>
+    <!-- Top Section (Header + Universe Age HUD Card pinned top left) -->
+    <div class="top-section">
+      <!-- Top Bar Navigation Header -->
+      <header class="top-nav-bar interactive">
+        <button class="icon-btn" id="btn-open-drawer" aria-label="Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
 
-      <div class="header-center">
-        <div class="app-title-text">Project Origin</div>
-        <div class="badge-live"><span class="badge-dot"></span> LIVE</div>
-      </div>
+        <div class="header-center">
+          <div class="app-title-text">Project Origin</div>
+          <div class="badge-live"><span class="badge-dot"></span> LIVE</div>
+        </div>
 
-      <button class="icon-btn" id="btn-top-search" aria-label="Search">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </button>
-    </header>
+        <button class="icon-btn" id="btn-top-search" aria-label="Search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+      </header>
 
-    <!-- Top Left Status Card -->
-    <div class="top-hud-card interactive">
-      <div class="hud-label">UNIVERSE AGE</div>
-      <div class="universe-age-value" id="hud-age">6.214 Billion Years</div>
-      <div class="hud-speed">
-        <span class="speed-label">SPEED</span>
-        <span class="speed-val">1 Day = 1 Million Years (1x)</span>
+      <!-- Top Left Status Card -->
+      <div class="top-hud-card interactive">
+        <div class="hud-label">UNIVERSE AGE</div>
+        <div class="universe-age-value" id="hud-age">6.214 Billion Years</div>
+        <div class="hud-speed">
+          <span class="speed-label">SPEED</span>
+          <span class="speed-val">1 Day = 1 Million Years (1x)</span>
+        </div>
       </div>
     </div>
 
@@ -249,7 +252,6 @@
     </div>
 
     <div class="ai-node-sphere">
-      <div class="sphere-mesh"></div>
       <div class="sphere-glow"></div>
     </div>
 
@@ -455,7 +457,7 @@
   <!-- Bottom Navigation Bar -->
   <nav class="navbar">
     <button class="nav-item active" id="btn-explore">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"/></svg>
       <span>Explore</span>
     </button>
     <button class="nav-item" id="btn-events">
