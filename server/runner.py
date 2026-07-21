@@ -3,7 +3,7 @@ import time
 import random
 import requests
 
-SUPABASE_URL = os.environ.get("ORIGIN_SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
+SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co"
 SERVICE_KEY = os.environ.get("ORIGIN_SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.placeholder")
 
 HEADERS = {
@@ -72,28 +72,26 @@ def main():
         ("Evaluating Hydrodynamic Disk Stability", "Resolving angular momentum distribution in protogalactic structures.")
     ]
 
+    # In-memory persistent state counter
+    current_age = 0.005
     cycle = 0
 
     while True:
         try:
-            res = requests.get(f"{SUPABASE_URL}/rest/v1/universe_state?select=age&order=id.desc&limit=1", headers=HEADERS)
-            current_age = 0.0
-            if res.status_code == 200 and len(res.json()) > 0:
-                current_age = float(res.json()[0].get("age", 0.0))
-
-            new_age = current_age + 0.005
+            # Advance age by 0.005 Myr (5,000 Years) per cycle
+            current_age += 0.005
             
-            redshift = max(0.0, 1100.0 / (1.0 + (new_age * 5.0)))
-            entropy = 1.0 + (new_age * 0.15)
+            redshift = max(0.0, 1100.0 / (1.0 + (current_age * 5.0)))
+            entropy = 1.0 + (current_age * 0.15)
             
             goal, reasoning = physics_goals[cycle % len(physics_goals)]
 
-            update_simulation_state(new_age, goal, reasoning, redshift, entropy)
+            update_simulation_state(current_age, goal, reasoning, redshift, entropy)
             
             if cycle % 2 == 0:
-                create_event(new_age)
+                create_event(current_age)
 
-            update_catalog(new_age)
+            update_catalog(current_age)
 
             cycle += 1
             time.sleep(4)
