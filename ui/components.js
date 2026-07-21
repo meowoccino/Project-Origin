@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnExplore?.classList.add('active');
     });
 
-    // --- 4. LIVE SUPABASE SYNC (FULL YEARS DISPLAY) ---
+    // --- 4. LIVE SUPABASE SYNC & DIRECTIVES ---
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
     let currentDisplayAge = 0;
 
@@ -141,7 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
             currentDisplayAge = numericAge;
             const hudAge = document.getElementById('hud-age');
             if (hudAge) {
-                // Formats cleanly as full years (e.g. 752,200 Years)
                 const totalYears = Math.floor(currentDisplayAge * 1000000);
                 hudAge.innerText = `${totalYears.toLocaleString()} Years`;
             }
@@ -149,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.setHudAge = setHudAge;
 
-    // A. Sync Universe Age & AI Architect Goal/Reasoning
+    // A. Sync Universe Age & AI Goal
     async function pollUniverseState() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`);
@@ -220,6 +219,40 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {}
     }
+
+    // D. Send User "God Directive" to Supabase
+    const inputDirective = document.getElementById('input-directive');
+    const btnSendDirective = document.getElementById('btn-send-directive');
+
+    async function sendDirective() {
+        const text = inputDirective?.value?.trim();
+        if (!text) return;
+
+        btnSendDirective.disabled = true;
+        btnSendDirective.innerText = "Sending...";
+
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/user_commands`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: text, status: 'pending' })
+            });
+
+            if (res.ok) {
+                inputDirective.value = '';
+                btnSendDirective.innerText = "Sent!";
+                setTimeout(() => { btnSendDirective.innerText = "Send"; btnSendDirective.disabled = false; }, 2000);
+            } else {
+                btnSendDirective.innerText = "Error";
+                btnSendDirective.disabled = false;
+            }
+        } catch (err) {
+            btnSendDirective.innerText = "Error";
+            btnSendDirective.disabled = false;
+        }
+    }
+
+    btnSendDirective?.addEventListener('click', sendDirective);
 
     function pollAll() {
         pollUniverseState();
