@@ -1,1 +1,70 @@
 
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+body {
+    background-color: #050508;
+    color: #e0e6ed;
+    overflow-x: hidden;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: rgba(10, 10, 18, 0.8);
+    border-bottom: 1px solid #1f293d;
+}
+
+h1 {
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    color: #00f0ff;
+}
+
+#cosmic-clock, #expansion-rate {
+    font-size: 0.9rem;
+    color: #a0aec0;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 60px);
+}
+
+#universe-canvas {
+    flex: 1;
+    width: 100%;
+    background: radial-gradient(circle at center, #0a0a14 0%, #020204 100%);
+}
+
+#ai-feed {
+    height: 220px;
+    background: #080811;
+    border-top: 1px solid #1f293d;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+#ai-feed h2 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: #718096;
+    margin-bottom: 10px;
+}
+
+.log-entry {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    color: #cbd5e0;
+}
+
+.log-entry.system { color: #4a5568; }
+.log-entry.ai { color: #00f0ff; }
