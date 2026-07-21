@@ -10,11 +10,9 @@ let cosmicNodes = [];
 const NODE_COUNT = 900;
 let selectedNode = null;
 
-// Generate 3D Cosmic Web Filaments & Galaxy Nodes
 function createCosmicWeb() {
     cosmicNodes = [];
     for (let i = 0; i < NODE_COUNT; i++) {
-        // Filamental clustering math
         const isClusterCore = Math.random() < 0.15;
         let x, y, z;
 
@@ -26,7 +24,6 @@ function createCosmicWeb() {
             y = r * Math.sin(phi) * Math.sin(theta);
             z = r * Math.cos(phi);
         } else {
-            // Intergalactic filament strands
             const strand = i % 12;
             const t = (Math.random() - 0.5) * 500;
             x = Math.sin(strand) * t + (Math.random() - 0.5) * 40;
@@ -34,10 +31,12 @@ function createCosmicWeb() {
             z = t + (Math.random() - 0.5) * 30;
         }
 
-        // Monochromatic scientific astro-spectrum colors (deep space white, cyan, gold)
         const colors = ['#ffffff', '#80d4ff', '#ffffff', '#ffd280', '#00e5ff'];
         const color = colors[Math.floor(Math.random() * colors.length)];
         const size = Math.random() * 2.0 + 0.8;
+
+        // Assign ignition age thresholds so objects light up over cosmological time
+        const ignitionAge = Math.random() * 0.5; // Appears between 0 and 500,000 years
 
         cosmicNodes.push({
             id: `NODE-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -45,6 +44,7 @@ function createCosmicWeb() {
             initX: x, initY: y, initZ: z,
             size,
             color,
+            ignitionAge,
             screenX: -999,
             screenY: -999
         });
@@ -74,7 +74,6 @@ export async function initWebGPU() {
 
     createCosmicWeb();
 
-    // Tap Selection Raycast Listener
     window.selectParticleAt = function(clientX, clientY) {
         const rect = canvas.getBoundingClientRect();
         const tapX = (clientX - rect.left) * window.devicePixelRatio;
@@ -101,17 +100,13 @@ export async function initWebGPU() {
             const preview = document.getElementById('inspector-preview');
 
             if (objName) objName.innerText = closest.name;
-            if (objSub) objSub.innerText = `Cosmic Filament Node | Mass Density: Active`;
+            if (objSub) objSub.innerText = `Cosmic Filament Node | Density Active`;
             if (preview) preview.classList.add('active');
-
-            renderThumbStarCanvas(closest.color);
 
             const inspectTitle = document.getElementById('inspect-title');
             const specName = document.getElementById('spec-name');
             if (inspectTitle) inspectTitle.innerText = closest.name;
             if (specName) specName.innerText = closest.name;
-
-            renderDetailStarCanvas(closest.color);
         }
     };
 
@@ -131,18 +126,22 @@ function render() {
     ctx.fillStyle = '#030308';
     ctx.fillRect(0, 0, width, height);
 
-    // Dynamic Space Expansion Factor based on Cosmological Age
-    // Starts dense at t = 0 (Big Bang), expands outward continuously
-    const expansionFactor = Math.max(0.12, Math.min(2.5, 0.15 + (cameraState.currentAge * 0.08)));
+    const age = cameraState.currentAge || 0.0;
 
-    // Cosmic Origin Glow (Singularity at t=0)
-    const coreGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, (80 * cameraState.zoom) / expansionFactor);
-    coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
-    coreGrad.addColorStop(0.3, 'rgba(112, 0, 255, 0.3)');
+    // Big Bang Expansion & Ignition Math
+    // Space expands outward from singularity as age increases
+    const expansionFactor = Math.max(0.05, Math.min(2.5, 0.05 + (age * 0.12)));
+
+    // Render Big Bang Primordial Singularity Glow at Origin Center
+    const singularityRadius = Math.max(4, (120 * cameraState.zoom) / (1.0 + age * 2.0));
+    const coreGrad = ctx.createRadialGradient(cx, cy, 1, cx, cy, singularityRadius);
+    coreGrad.addColorStop(0, '#ffffff');
+    coreGrad.addColorStop(0.3, 'rgba(112, 0, 255, 0.6)');
     coreGrad.addColorStop(1, 'rgba(0,0,0,0)');
+
     ctx.fillStyle = coreGrad;
     ctx.beginPath();
-    ctx.arc(cx, cy, (80 * cameraState.zoom) / expansionFactor, 0, Math.PI * 2);
+    ctx.arc(cx, cy, singularityRadius, 0, Math.PI * 2);
     ctx.fill();
 
     autoRot += 0.0006;
@@ -155,7 +154,12 @@ function render() {
     for (let i = 0; i < cosmicNodes.length; i++) {
         const p = cosmicNodes[i];
 
-        // Apply Expansion Math
+        // Do NOT draw objects if universe age is before their ignition threshold
+        if (age < p.ignitionAge) {
+            p.screenX = -999;
+            continue;
+        }
+
         const expX = p.initX * expansionFactor;
         const expY = p.initY * expansionFactor;
         const expZ = p.initZ * expansionFactor;
@@ -191,40 +195,4 @@ function render() {
             p.screenX = -999;
         }
     }
-}
-
-function renderThumbStarCanvas(color) {
-    const thumbCanvas = document.getElementById('thumb-star-canvas');
-    if (!thumbCanvas) return;
-    const tctx = thumbCanvas.getContext('2d');
-    tctx.clearRect(0, 0, 48, 48);
-
-    const grad = tctx.createRadialGradient(24, 24, 2, 24, 24, 20);
-    grad.addColorStop(0, '#ffffff');
-    grad.addColorStop(0.5, color);
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
-
-    tctx.fillStyle = grad;
-    tctx.beginPath();
-    tctx.arc(24, 24, 20, 0, Math.PI * 2);
-    tctx.fill();
-}
-
-function renderDetailStarCanvas(color) {
-    const detailCanvas = document.getElementById('detail-star-canvas');
-    if (!detailCanvas) return;
-    const dctx = detailCanvas.getContext('2d');
-    dctx.clearRect(0, 0, 340, 220);
-
-    const cx = 170, cy = 110;
-
-    const auraGrad = dctx.createRadialGradient(cx, cy, 30, cx, cy, 90);
-    auraGrad.addColorStop(0, '#ffffff');
-    auraGrad.addColorStop(0.4, color);
-    auraGrad.addColorStop(1, 'rgba(0,0,0,0)');
-
-    dctx.fillStyle = auraGrad;
-    dctx.beginPath();
-    dctx.arc(cx, cy, 90, 0, Math.PI * 2);
-    dctx.fill();
 }
