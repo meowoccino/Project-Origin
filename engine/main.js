@@ -1,4 +1,4 @@
-// Export camera state so ui/components.js touch gestures can update it
+// Export camera state so touch gestures in ui/components.js can rotate/zoom
 export const cameraState = {
     rotX: 0,
     rotY: 0,
@@ -8,10 +8,19 @@ export const cameraState = {
 let particles = [];
 const PARTICLE_COUNT = 700;
 
+// Spectral classifications for tapped object metadata
+const STAR_TYPES = [
+    { type: 'O-Type Blue Supergiant', temp: '32,000 K', mass: '18.4 M☉', color: '#80d4ff' },
+    { type: 'B-Type Main Sequence', temp: '18,500 K', mass: '7.2 M☉', color: '#a680ff' },
+    { type: 'G-Type Yellow Star', temp: '5,780 K', mass: '1.0 M☉', color: '#ffd280' },
+    { type: 'M-Type Red Dwarf', temp: '3,100 K', mass: '0.3 M☉', color: '#ff80a0' },
+    { type: 'Neutron Star', temp: '600,000 K', mass: '1.4 M☉', color: '#40e0d0' },
+    { type: 'Primordial Black Hole', temp: '0.0001 K', mass: '30.0 M☉', color: '#ffffff' }
+];
+
 function createParticles() {
     particles = [];
     for (let i = 0; i < PARTICLE_COUNT; i++) {
-        // Distribute particles in a 3D spherical galaxy cloud
         const u = Math.random();
         const v = Math.random();
         const theta = u * 2.0 * Math.PI;
@@ -22,12 +31,24 @@ function createParticles() {
         const y = r * Math.sin(phi) * Math.sin(theta);
         const z = r * Math.cos(phi);
 
-        // Stellar spectrum colors
-        const colors = ['#ffffff', '#80d4ff', '#ffd280', '#ff80a0', '#a680ff', '#40e0d0'];
-        const color = colors[Math.floor(Math.random() * colors.length)];
+        const typeInfo = STAR_TYPES[Math.floor(Math.random() * STAR_TYPES.length)];
         const size = Math.random() * 2.2 + 0.8;
 
-        particles.push({ x, y, z, color, size });
+        particles.push({
+            id: Math.floor(10000 + Math.random() * 90000),
+            name: `Object-${Math.floor(100 + Math.random() * 900)}`,
+            x, y, z,
+            size,
+            type: typeInfo.type,
+            temp: typeInfo.temp,
+            mass: typeInfo.mass,
+            color: typeInfo.color,
+            distanceLy: (Math.random() * 45000 + 500).toFixed(0),
+            // Projected screen coordinates updated inside render loop
+            screenX: -999,
+            screenY: -999,
+            renderSize: 0
+        });
     }
 }
 
@@ -35,22 +56,20 @@ export async function initWebGPU() {
     const container = document.getElementById('canvas-container');
     if (!container) return;
 
-    // Check for WebGPU browser capability
     if ('gpu' in navigator) {
         try {
             const adapter = await navigator.gpu.requestAdapter();
             if (adapter) {
                 const device = await adapter.requestDevice();
                 if (device) {
-                    // WebGPU initialized successfully
+                    // WebGPU context available
                 }
             }
         } catch (e) {
-            console.warn("WebGPU not available on this browser, using 2D fallback renderer.", e);
+            console.warn("WebGPU not available, fallback to 2D/3D canvas engine.", e);
         }
     }
 
-    // Mobile-friendly 2D/3D projected fallback engine
     initCanvasFallback(container);
 }
 
@@ -76,6 +95,47 @@ function initCanvasFallback(container) {
 
     let autoRotation = 0;
 
+    // --- RAYCASTING / TAP SELECTION ---
+    window.selectParticleAt = function(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const tapX = (clientX - rect.left) * window.devicePixelRatio;
+        const tapY = (clientY - rect.top) * window.devicePixelRatio;
+
+        let closestParticle = null;
+        let minDistance = 45 * window.devicePixelRatio; // Touch hit radius in pixels
+
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            if (p.screenX < 0 || p.screenY < 0) continue;
+
+            const dx = tapX - p.screenX;
+            const dy = tapY - p.screenY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < minDistance) {
+                minDistance = dist;
+                closestParticle = p;
+            }
+        }
+
+        if (closestParticle) {
+            // Update Floating Inspector Preview Card
+            const objName = document.getElementById('obj-name');
+            const objSub = document.getElementById('obj-sub');
+            const inspectorPreview = document.getElementById('inspector-preview');
+
+            if (objName) objName.innerText = `${closestParticle.name}`;
+            if (objSub) objSub.innerText = `${closestParticle.type} | ${Number(closestParticle.distanceLy).toLocaleString()} ly`;
+            if (inspectorPreview) inspectorPreview.classList.add('active');
+
+            // Update Modal Stats
+            const modalTitle = document.querySelector('#modal-object-detail h2');
+            const modalSubtitle = document.querySelector('#modal-object-detail .subtitle');
+            if (modalTitle) modalTitle.innerText = closestParticle.name;
+            if (modalSubtitle) modalSubtitle.innerText = closestParticle.type;
+        }
+    };
+
     function render() {
         requestAnimationFrame(render);
 
@@ -84,7 +144,6 @@ function initCanvasFallback(container) {
         const cx = width / 2;
         const cy = height / 2;
 
-        // Cosmic space background gradient
         const bgGrad = ctx.createRadialGradient(cx, cy, 50, cx, cy, Math.max(width, height) * 0.7);
         bgGrad.addColorStop(0, '#0a0818');
         bgGrad.addColorStop(1, '#020205');
@@ -102,33 +161,32 @@ function initCanvasFallback(container) {
 
         const zoomScale = Math.min(width, height) * 0.0035 * cameraState.zoom;
 
-        // Render particles with 3D projection
         for (let i = 0; i < particles.length; i++) {
             const p = particles[i];
 
-            // Y Axis Rotation
             let x1 = p.x * cosY - p.z * sinY;
             let z1 = p.x * sinY + p.z * cosY;
 
-            // X Axis Rotation
             let y1 = p.y * cosX - z1 * sinX;
             let z2 = p.y * sinX + z1 * cosX;
 
-            // Perspective math
             const cameraDistance = 350;
             const perspective = cameraDistance / (cameraDistance + z2);
 
             if (perspective > 0) {
-                const screenX = cx + x1 * zoomScale * perspective;
-                const screenY = cy + y1 * zoomScale * perspective;
-                const drawSize = p.size * perspective * (window.devicePixelRatio || 1);
+                p.screenX = cx + x1 * zoomScale * perspective;
+                p.screenY = cy + y1 * zoomScale * perspective;
+                p.renderSize = p.size * perspective * (window.devicePixelRatio || 1);
 
                 ctx.beginPath();
-                ctx.arc(screenX, screenY, Math.max(0.5, drawSize), 0, Math.PI * 2);
+                ctx.arc(p.screenX, p.screenY, Math.max(0.5, p.renderSize), 0, Math.PI * 2);
                 ctx.fillStyle = p.color;
                 ctx.shadowColor = p.color;
                 ctx.shadowBlur = p.size > 2 ? 8 : 0;
                 ctx.fill();
+            } else {
+                p.screenX = -999;
+                p.screenY = -999;
             }
         }
     }
