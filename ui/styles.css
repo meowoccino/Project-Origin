@@ -114,7 +114,7 @@ body {
     z-index: 1;
 }
 
-/* HUD Universe Age: Scoped to Explore Tab */
+/* HUD Universe Age: Scoped Strictly to Explore Tab */
 #hud-age-container {
     position: fixed;
     top: 20px;
@@ -185,7 +185,7 @@ body {
     filter: drop-shadow(0 0 8px rgba(255, 140, 0, 0.5));
 }
 
-/* Tab Panels (Flush 20px top padding when HUD is hidden) */
+/* Tab Panels */
 .view-panel {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 70px;
@@ -204,7 +204,7 @@ body {
     pointer-events: auto;
 }
 
-/* Origin Cards */
+/* Origin Task Cards */
 .action-card {
     background: rgba(255,255,255,0.02);
     border: 1px solid rgba(255,255,255,0.05);
@@ -237,7 +237,7 @@ body {
     font-weight: 700;
 }
 
-/* Catalog Single-Column List (Flush Top) */
+/* Catalog Single-Column List */
 .catalog-list {
     display: flex;
     flex-direction: column;
@@ -349,7 +349,7 @@ body {
     color: #d0d0e0;
 }
 
-/* Inspector */
+/* Inspector Preview & Modal */
 #inspector-preview {
     position: fixed;
     bottom: 85px; left: 20px; right: 20px;
