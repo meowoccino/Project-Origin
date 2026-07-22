@@ -81,7 +81,7 @@
     <div class="drawer-menu">
       <button class="drawer-item active" id="dmenu-explore"><span class="icon">🌌</span> Explore Universe</button>
       <button class="drawer-item" id="dmenu-events"><span class="icon">📅</span> Events Feed</button>
-      <button class="drawer-item" id="dmenu-ai"><span class="icon">🔮</span> Origin Architect</button>
+      <button class="drawer-item" id="dmenu-ai"><span class="icon">🔮</span> Origin</button>
       <button class="drawer-item" id="dmenu-timeline"><span class="icon">⏱️</span> Timeline</button>
       <button class="drawer-item" id="dmenu-catalog"><span class="icon">📊</span> Catalog & Filters</button>
     </div>
@@ -109,36 +109,40 @@
     </div>
   </div>
 
-  <!-- 2. ORIGIN ARCHITECT VIEW -->
+  <!-- 2. ORIGIN TAB VIEW -->
   <div id="view-ai" class="view-screen">
-    <div class="view-header-title" style="text-align: center;">
-      <h2>ORIGIN ARCHITECT</h2>
-      <span class="status-online">● ONLINE</span>
-    </div>
-
-    <!-- Glowing Geodesic Constellation Sphere Canvas -->
-    <div class="ai-sphere-wrapper">
-      <canvas id="ai-constellation-canvas" width="220" height="220"></canvas>
-    </div>
-
-    <div class="glass-panel">
-      <div class="panel-label">CURRENT GOAL</div>
+    
+    <!-- Top: Prominent Current Goal Card with Animated Pulse Glow -->
+    <div class="goal-card-animated">
+      <div class="panel-label-row">
+        <span class="panel-label">ACTIVE COMPUTATIONAL GOAL</span>
+        <span class="pulse-indicator">● RUNNING</span>
+      </div>
       <div class="panel-goal-title" id="ai-goal-text">Simulating Quantum Inflation & Metric Expansion</div>
-      <div class="panel-label" style="margin-top: 14px;">REASONING</div>
+      
+      <div class="panel-divider"></div>
+
+      <div class="panel-label">PHYSICAL REASONING</div>
       <div class="panel-desc" id="ai-reasoning-text">Initial cosmological singularity transitioning into hot Big Bang nucleosynthesis.</div>
     </div>
 
-    <!-- ACTIVE PHYSICAL ACTIONS -->
+    <!-- Active Physical Actions Below Goal -->
     <div class="glass-panel" style="margin-top: 14px;">
-      <div class="panel-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <div class="panel-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
         <span class="panel-label">ACTIVE ACTIONS</span>
-        <span class="action-count-badge" id="ai-action-badge" style="background: rgba(112,0,255,0.25); color: #00e5ff; font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: bold;">3 ongoing</span>
+        <span class="action-count-badge" id="ai-action-badge">--</span>
       </div>
 
       <div class="action-timeline-list" id="origin-actions-container">
-        <!-- Rich Action Cards injected dynamically by ui/components.js -->
+        <!-- Dynamic Actions Injected Here -->
       </div>
     </div>
+
+    <!-- Bottom: Subtle Animated Constellation Node Sphere -->
+    <div class="ai-sphere-wrapper" style="margin-top: 16px; text-align: center;">
+      <canvas id="ai-constellation-canvas" width="180" height="180"></canvas>
+    </div>
+
   </div>
 
   <!-- 3. COSMIC TIMELINE -->
@@ -204,7 +208,7 @@
   <!-- Bottom Navigation Bar -->
   <nav class="navbar">
     <button class="nav-item active" id="btn-explore">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"/></svg>
       <span>Explore</span>
     </button>
     <button class="nav-item" id="btn-events">
