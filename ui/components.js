@@ -60,10 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById(btnId)?.classList.add('active');
         if (viewId) document.getElementById(viewId)?.classList.add('active');
         
-        hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
+        if (hudContainer) hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
         MainEngine.isExploreActive = (btnId === 'btn-explore');
 
-        // Ensure inspector popout only shows in Explore tab
         if (btnId !== 'btn-explore') {
             document.getElementById('inspector-preview')?.classList.remove('active');
         }
@@ -89,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     initEarthClock();
 
-    // --- EYE ANIMATION STATE SWITCHER ---
+    // --- OBSERVER EYE STATE SWITCHER ---
     function setObserverEyeState(mode) {
         const ui = document.getElementById('observer-ui');
         const label = document.getElementById('status-label');
@@ -148,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return card;
     }
 
-    // --- HYBRID 4-CARD BATCH LOAD ENGINE ---
+    // --- SEEK-BASED LOG PAGINATION ---
     let oldestLoadedId = null;
     let isLoadingLogs = false;
 
@@ -181,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
             logs.forEach(log => {
                 oldestLoadedId = log.id;
                 const card = createLogCard(log);
-                container.appendChild(card);
+                container?.appendChild(card);
             });
 
             if (btn) btn.innerText = "QUERY PAST TELEMETRY";
@@ -197,13 +196,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById("btn-load-more")?.addEventListener("click", loadNextBatch);
     loadNextBatch();
 
-    // --- TIMELINE ENGINE ---
+    // --- OPEN-ENDED TIMELINE ENGINE ---
     const TIMELINE_EPOCHS = [
         { title: "Primordial Inflation", start: 0, end: 100000, desc: "Exponential space-time expansion driven by quantum vacuum inflaton field decay." },
         { title: "Recombination & Decoupling", start: 100000, end: 100000000, desc: "Thermal baryonic gas cools below 3,000 K, releasing Cosmic Microwave Background radiation." },
         { title: "Pop-III Star Reionization", start: 100000000, end: 1000000000, desc: "Zero-metallicity primordial gas collapses into hypermassive stars, ionising neutral hydrogen." },
         { title: "Galactic Disk Accretion", start: 1000000000, end: 13800000000, desc: "Angular momentum conservation forms flat spinning galactic disks with MHD turbulence." },
-        { title: "Degenerate Stellar Era", start: 13800000000, end: 100000000000, desc: "Interstellar gas depletion halts main sequence star formation; white dwarfs & black holes dominate." }
+        { title: "Degenerate & Far Cosmic Era", start: 13800000000, end: Infinity, desc: "Interstellar gas depletion, white dwarf dominance, and open-ended thermodynamic entropy decay." }
     ];
 
     function updateTimelineUI(totalYears) {
@@ -212,11 +211,12 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = TIMELINE_EPOCHS.map(epoch => {
             const isActive = totalYears >= epoch.start && totalYears < epoch.end;
             const actClass = isActive ? 'active' : '';
+            const endLabel = (epoch.end === Infinity) ? "∞" : epoch.end.toLocaleString();
             return `
                 <div class="timeline-node">
                   <div class="node-marker ${actClass}"></div>
                   <div class="node-title ${actClass}">${epoch.title}</div>
-                  <div class="node-time data-font ${actClass}">${epoch.start.toLocaleString()} - ${epoch.end.toLocaleString()} Yrs</div>
+                  <div class="node-time data-font ${actClass}">${epoch.start.toLocaleString()} - ${endLabel} Yrs</div>
                   <div class="node-desc ${actClass}">${epoch.desc}</div>
                 </div>
             `;
