@@ -8,6 +8,27 @@
 </head>
 <body>
 
+    <!-- 0. SPLASH SCREEN (Tap to dismiss) -->
+    <div id="splash-screen">
+        <div class="splash-content">
+            <!-- Procedural SVG Orbital Logo -->
+            <svg class="splash-logo" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="14" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+                <circle cx="50" cy="50" r="26" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+                <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+                <!-- Center Mass -->
+                <circle cx="50" cy="50" r="2" fill="#ffffff" />
+                <!-- Orbiting Body -->
+                <g class="orbit-anim">
+                    <circle cx="50" cy="24" r="3.5" fill="#00e5ff" />
+                </g>
+            </svg>
+            <div class="splash-title">PROJECT <span style="color: #00e5ff;">ORIGIN</span></div>
+            <div class="splash-subtitle">AN AI-DIRECTED UNIVERSE</div>
+        </div>
+        <div class="splash-prompt data-font">tap to observe &rarr;</div>
+    </div>
+
     <!-- 1. The 3D/2D Canvas Background -->
     <div id="canvas-container"></div>
 
@@ -17,7 +38,7 @@
         <div id="hud-age" class="hud-value data-font">0 Years</div>
     </div>
 
-    <!-- 3. Bottom Navigation (Sleek, strictly icons) -->
+    <!-- 3. Bottom Navigation -->
     <div id="bottom-nav">
         <div class="nav-btn active" id="btn-explore">
             <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -42,12 +63,10 @@
     </div>
 
     <!-- 4. Tab Views -->
-    <!-- Events Tab -->
     <div id="view-events" class="view-panel">
         <div id="events-container"></div>
     </div>
 
-    <!-- Origin AI Tab -->
     <div id="view-ai" class="view-panel">
         <div class="glass-panel" style="padding: 20px; margin-bottom: 20px;">
             <div class="hud-label" style="color: #00e5ff;">Active Computational Goal</div>
@@ -57,12 +76,10 @@
         <div id="origin-actions-container"></div>
     </div>
 
-    <!-- Timeline Tab -->
     <div id="view-timeline" class="view-panel">
         <div class="timeline-wrapper" id="timeline-container"></div>
     </div>
 
-    <!-- Catalog Tab -->
     <div id="view-catalog" class="view-panel">
         <div class="catalog-grid">
             <div class="glass-panel cat-card">
@@ -85,7 +102,6 @@
     </div>
 
     <!-- 5. Object Inspector UI -->
-    <!-- Quick Preview Bubble -->
     <div id="inspector-preview" class="glass-panel">
         <div>
             <div id="obj-name">Target Acquired</div>
@@ -94,7 +110,6 @@
         <button id="btn-expand-inspect" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:8px; padding:8px 16px; font-weight:bold;">Inspect</button>
     </div>
 
-    <!-- Full Screen Details -->
     <div id="modal-object-detail" class="view-panel">
         <div class="modal-header">
             <button class="btn-back" id="btn-close-inspect">←</button>
@@ -106,7 +121,6 @@
         <div class="glass-panel" style="padding: 24px;">
             <div class="hud-label" style="margin-bottom: 16px;">Overview Specifications</div>
             <div class="grid-specs" id="spec-name" class="data-font" style="color: #e0e0e0; font-size: 14px; line-height: 1.8;">
-                <!-- JS injects the clean Designation, Class, Temp, and Mass here -->
             </div>
         </div>
     </div>
