@@ -128,46 +128,81 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderActiveActions(age) {
         const container = document.getElementById('origin-actions-container');
+        const badge = document.getElementById('ai-action-badge');
         if (!container) return;
 
         const totalYears = Math.floor(age * 1000000);
 
-        // Dynamically scale action ETAs relative to CURRENT cosmic age
-        const actions = [
+        // Pool of potential physical actions
+        const actionPool = [
             {
-                object: `Object-${Math.floor(100 + age * 12)} (Molecular Gas Cloud)`,
+                object: `Object-${Math.floor(100 + age * 12)} (Molecular Cloud)`,
                 action: "Collapsing gravitational potential well",
-                why: "Density reached Jeans Instability threshold in Sector 4",
-                forWhat: "Igniting Population III Protostar",
-                etaYears: Math.floor(totalYears + 150000)
+                why: "Gas density reached Jeans Instability threshold in Sector 4",
+                goal: "Igniting Population III Protostar",
+                etaOffset: 150000
             },
             {
                 object: `Object-${Math.floor(250 + age * 8)} (Dark Matter Halo)`,
                 action: "Channeling baryonic filament gas streams",
                 why: "Higher mass concentration reduces thermal pressure",
-                forWhat: "Accelerating protogalactic disk accretion",
-                etaYears: Math.floor(totalYears + 350000)
+                goal: "Accelerating protogalactic disk accretion",
+                etaOffset: 320000
             },
             {
                 object: `Object-${Math.floor(50 + age * 5)} (Primordial Core)`,
                 action: "Stabilizing circumstellar radiation zone",
                 why: "Heavy element metallicity threshold reached",
-                forWhat: "Testing prebiotic molecular formation",
-                etaYears: Math.floor(totalYears + 600000)
+                goal: "Testing prebiotic molecular formation",
+                etaOffset: 500000
+            },
+            {
+                object: `Object-${Math.floor(410 + age * 15)} (Accretion Disk)`,
+                action: "Resolving magnetohydrodynamic turbulence",
+                why: "Angular momentum dissipation required for core collapse",
+                goal: "Triggering stellar core ignition",
+                etaOffset: 210000
+            },
+            {
+                object: `Object-${Math.floor(88 + age * 3)} (Singularity Halo)`,
+                action: "Mapping quantum event horizon geodesics",
+                why: "Evaluating local Hawking radiation entropy loss",
+                goal: "Measuring black hole mass evaporation",
+                etaOffset: 750000
             }
         ];
 
-        container.innerHTML = actions.map(act => `
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 12px; border-radius: 10px; margin-top: 8px;">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-weight: bold; color: #00e5ff; font-size: 13px;">● ${act.object}</span>
-                <span style="font-size: 10px; background: rgba(112,0,255,0.3); color: #a680ff; padding: 2px 6px; border-radius: 4px;">${act.etaYears.toLocaleString()} Years</span>
-              </div>
-              <div style="font-size: 12px; color: #fff; font-weight: bold; margin-top: 6px;">Action: ${act.action}</div>
-              <div style="font-size: 11px; color: #a0a0c0; margin-top: 3px;"><strong>Why:</strong> ${act.why}</div>
-              <div style="font-size: 11px; color: #7000ff; font-weight: bold; margin-top: 3px;"><strong>Goal:</strong> ${act.forWhat}</div>
-            </div>
-        `).join('');
+        // Dynamic count (1 to 4 active items) based on age cycle
+        const cycleStep = Math.floor(age * 100) % 4;
+        const count = 1 + cycleStep; // Dynamic count: 1, 2, 3, or 4 actions!
+
+        const activeItems = actionPool.slice(0, count);
+
+        if (badge) {
+            badge.innerText = `${count} ${count === 1 ? 'action' : 'actions'} active`;
+            badge.style.background = "rgba(0, 229, 255, 0.12)";
+            badge.style.color = "#00e5ff";
+            badge.style.border = "1px solid rgba(0, 229, 255, 0.3)";
+            badge.style.padding = "2px 8px";
+            badge.style.borderRadius = "6px";
+            badge.style.fontSize = "11px";
+            badge.style.fontWeight = "bold";
+        }
+
+        container.innerHTML = activeItems.map(act => {
+            const etaYears = Math.floor(totalYears + act.etaOffset);
+            return `
+                <div class="action-card">
+                  <div class="action-card-header">
+                    <span class="action-card-title">● ${act.object}</span>
+                    <span class="action-eta-badge">ETA: ${etaYears.toLocaleString()} Yrs</span>
+                  </div>
+                  <div class="action-body-text">${act.action}</div>
+                  <div class="action-meta-row"><strong>Why:</strong> ${act.why}</div>
+                  <div class="action-meta-row" style="color: #a680ff; font-weight: 600; margin-top: 3px;"><strong>Goal:</strong> ${act.goal}</div>
+                </div>
+            `;
+        }).join('');
     }
 
     async function pollUniverseState() {
@@ -266,9 +301,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function animateAISphere() {
             requestAnimationFrame(animateAISphere);
-            actx.clearRect(0, 0, 220, 220);
+            actx.clearRect(0, 0, 180, 180);
 
-            const cx = 110, cy = 110, r = 75;
+            const cx = 90, cy = 90, r = 60;
             sphereRot += 0.01;
 
             const nodes = [];
@@ -288,7 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
             for (let i = 0; i < nodes.length; i++) {
                 for (let j = i + 1; j < nodes.length; j++) {
                     const dist = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
-                    if (dist < 48) {
+                    if (dist < 40) {
                         actx.beginPath();
                         actx.moveTo(nodes[i].x, nodes[i].y);
                         actx.lineTo(nodes[j].x, nodes[j].y);
