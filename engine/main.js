@@ -24,7 +24,6 @@ const CATEGORY_STYLES = {
 
 function initWebHubs() {
     webHubs = [];
-    // Fullscreen expansion: Scale the bounds dynamically to fill the whole mobile screen
     const bounds = Math.max(window.innerWidth, window.innerHeight) * 2.5; 
     for (let i = 0; i < NUM_HUBS; i++) {
         webHubs.push({
@@ -121,7 +120,6 @@ export async function initWebGPU() {
     function renderLoop() {
         requestAnimationFrame(renderLoop);
         
-        // Pause rendering completely if not on the Explore tab to prevent background glitches
         if (!isExploreActive) return;
 
         animTime += 0.015;
@@ -175,7 +173,6 @@ export async function initWebGPU() {
             document.getElementById('obj-sub').innerText = CATEGORY_STYLES[closest.category].name;
             preview.classList.add('active');
 
-            // AUTO-PAN LOGIC: Smoothly snap object to center, offset upward to clear the UI popup
             cameraState.panX = (canvas.width / 2) - (closest.baseX * cameraState.zoom);
             cameraState.panY = (canvas.height / 2) - (closest.baseY * cameraState.zoom) - (80 * window.devicePixelRatio);
             
