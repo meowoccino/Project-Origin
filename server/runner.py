@@ -29,6 +29,20 @@ CATEGORY_MASS_WEIGHTS = {
     "quasars": 1000.0, "dark_matter_structures": 100000.0, "exotic_objects": 10.0
 }
 
+NAME_PREFIXES = ["Vespera", "Aetheria", "Erebus", "Hyperion", "Chronos", "Ignis", "Thalassa", "Zephyrus", "Kaelum", "Onyx", "Solaria", "Astraea", "Prometheus", "Entropy"]
+NAME_SUFFIXES = ["Prime", "Core", "Singularity", "Halo", "Filament", "Cluster", "Nebula", "Vortex", "Node", "Engine", "Horizon", "Relic"]
+
+def purge_stale_future_records(current_age_myr):
+    """
+    Cleans out old database rows logged by previous runaway test loops.
+    """
+    try:
+        requests.delete(f"{SUPABASE_URL}/rest/v1/events?age=gt.{current_age_myr + 5.0}", headers=HEADERS)
+        requests.delete(f"{SUPABASE_URL}/rest/v1/universe_state?age=gt.{current_age_myr + 5.0}", headers=HEADERS)
+        print(f"🧹 [DB CLEANUP]: Purged stale database events beyond {current_age_myr:.2f} Myr.")
+    except Exception as e:
+        print(f"[DB CLEANUP WARNING]: {e}")
+
 def calculate_cosmology(age_myr):
     age_gyr = max(0.0001, age_myr / 1000.0)
     scale_factor = math.pow(math.sinh(1.5 * math.sqrt(OMEGA_LAMBDA_0) * (age_gyr / 13.8)), 2.0 / 3.0) if age_gyr > 0 else 0.0001
@@ -36,28 +50,33 @@ def calculate_cosmology(age_myr):
     redshift = max(0.0, (1.0 / scale_factor) - 1.0)
     
     e_z_sq = OMEGA_M_0 * math.pow(1.0 + redshift, 3) + OMEGA_LAMBDA_0
-    de_pct = round((OMEGA_LAMBDA_0 / e_z_sq) * 100.0, 2)
-    dm_pct = round(((OMEGA_DM_0 * math.pow(1.0 + redshift, 3)) / e_z_sq) * 100.0, 1)
-    baryon_pct = round(max(0.1, 100.0 - de_pct - dm_pct), 1)
+    de_pct = round((OMEGA_LAMBDA_0 / e_z_sq) * 100.0, 2) if e_z_sq > 0 else 99.9
+    dm_pct = round(((OMEGA_DM_0 * math.pow(1.0 + redshift, 3)) / e_z_sq) * 100.0, 1) if e_z_sq > 0 else 0.1
+    baryon_pct = round(max(0.01, 100.0 - de_pct - dm_pct), 2)
 
+    # Infinite Cosmological Timeline Eras
     if age_myr < 0.38:
         epoch = "Primordial Recombination"
     elif age_myr < 100.0:
         epoch = "Cosmic Dark Ages"
     elif age_myr < 500.0:
         epoch = "Population III Ignition"
-    elif age_myr < 13800.0:
+    elif age_myr <= 13800.0:
         epoch = "Stelliferous Era"
-    else:
+    elif age_myr <= 1000000.0:
         epoch = "Degenerate Stellar Era"
+    elif age_myr <= 100000000.0:
+        epoch = "Black Hole Dominance Era"
+    else:
+        epoch = "Heat Death / Big Freeze Horizon"
 
     return {
         "scale_factor": scale_factor,
         "redshift": redshift,
         "epoch": epoch,
-        "de_pct": de_pct,
-        "dm_pct": dm_pct,
-        "baryon_pct": baryon_pct
+        "de_pct": min(100.0, de_pct),
+        "dm_pct": max(0.0, dm_pct),
+        "baryon_pct": max(0.0, baryon_pct)
     }
 
 def fetch_latest_state():
@@ -77,35 +96,31 @@ def fetch_latest_state():
         print(f"[DB FETCH WARNING]: {e}")
     return age, catalog
 
+def generate_object_name():
+    return f"{random.choice(NAME_PREFIXES)} {random.choice(NAME_SUFFIXES)} {random.randint(1, 999)}"
+
 def query_ai_decision(age_myr, cosmology, current_catalog):
-    """
-    TOTAL AI AGENCY: Generates unconstrained actions, creative object designations,
-    and physical catalysts via Groq LLM (or procedural free-form synthesis).
-    """
+    obj_name = generate_object_name()
     goal, reasoning, raw_mutations = None, None, {}
 
     if GROQ_API_KEY:
         prompt = f"""
-        You are ORIGIN, an autonomous cosmic AI with free will directing physical evolution.
-        CURRENT STATE:
-        - Universe Age: {age_myr * 1000000:,.0f} Years ({age_myr:.2f} Myr)
+        You are ORIGIN, an autonomous cosmic AI with free will governing physical universe evolution and civilization emergence.
+        CURRENT TELEMETRY:
+        - Universe Age: {age_myr:.2f} Myr ({age_myr / 1000.0:.2f} Gyr)
         - Epoch: {cosmology['epoch']}
         - Redshift z: {cosmology['redshift']:.2f}
 
-        Free Will Directives:
-        1. Invent an original, specific cosmic object designation (e.g. 'Aetheria Cluster 9', 'Ignis-7 Protostar', 'Erebus Singularity').
-        2. Describe the physical action/trajectory being performed on or by this object.
-        3. Formulate the precise astrophysical catalyst driving it.
+        FREE WILL DIRECTIVES:
+        1. Reference custom object '{obj_name}' in your trajectory.
+        2. Formulate a scientific action. If in late epochs (Degenerate/Heat Death), you or advanced civilizations may attempt entropy reversal, stellar engineering, or vacuum extraction.
+        3. Explain the precise astrophysical catalyst.
 
-        RESPOND IN STRICT JSON ONLY:
+        STRICT JSON ONLY:
         {{
-            "goal": "<Action referencing your custom object name, max 10 words>",
-            "reasoning": "<Astrophysical catalyst, max 20 words>",
-            "mutations": {{
-                "stars": <int>, "black_holes": <int>, "neutron_stars": <int>,
-                "planets": <int>, "moons": <int>, "asteroids_comets": <int>,
-                "nebulae": <int>, "quasars": <int>, "dark_matter_structures": <int>, "exotic_objects": <int>
-            }}
+            "goal": "<Action referencing {obj_name}, max 10 words>",
+            "reasoning": "<Astrophysical or artificial catalyst, max 20 words>",
+            "mutations": {{ "stars": <int>, "black_holes": <int>, "planets": <int>, "nebulae": <int>, "exotic_objects": <int> }}
         }}
         """
         try:
@@ -125,32 +140,33 @@ def query_ai_decision(age_myr, cosmology, current_catalog):
                 goal = data.get("goal")
                 reasoning = data.get("reasoning")
                 raw_mutations = data.get("mutations", {})
-        except Exception as e:
-            print(f"[GROQ API WARNING]: {e}")
+        except Exception:
+            pass
 
-    # Pure Procedural Fallback with AI-Style Naming Freedom
     if not goal or not reasoning:
-        prefixes = ["Vespera", "Aetheria", "Erebus", "Hyperion", "Chronos", "Ignis", "Thalassa", "Zephyrus", "Kaelum", "Onyx"]
-        suffixes = ["Prime", "Core", "Singularity", "Halo", "Filament", "Cluster", "Nebula", "Vortex", "Node", "Nursery"]
-        custom_name = f"{random.choice(prefixes)} {random.choice(suffixes)} {random.randint(1, 999)}"
-
         if age_myr < 100.0:
-            goal = f"Condensing primordial dark matter halo '{custom_name}'."
-            reasoning = "Isotropic space-time expansion stretching density perturbations into potential wells."
-            raw_mutations = {"dark_matter_structures": random.randint(10, 35), "nebulae": random.randint(1, 4)}
+            goal = f"Condensing dark matter halo '{obj_name}'."
+            reasoning = "Isotropic expansion stretching perturbations into deep potential wells."
+            raw_mutations = {"dark_matter_structures": random.randint(15, 40), "nebulae": random.randint(1, 3)}
         elif age_myr < 500.0:
-            goal = f"Triggering zero-metallicity ignition in '{custom_name}'."
-            reasoning = "Lyman-alpha cooling within molecular cloud induces rapid hydrostatic core collapse."
-            raw_mutations = {"stars": random.randint(5, 25), "black_holes": random.randint(0, 2), "nebulae": random.randint(2, 6)}
-        else:
-            goal = f"Accreting disk metallicity surrounding '{custom_name}'."
+            goal = f"Igniting Pop-III protostar '{obj_name}'."
+            reasoning = "Zero-metallicity hydrogen cooling induces rapid hydrostatic core collapse."
+            raw_mutations = {"stars": random.randint(10, 30), "black_holes": random.randint(0, 2)}
+        elif age_myr <= 13800.0:
+            goal = f"Accreting disk metallicity surrounding '{obj_name}'."
             reasoning = "Supernova nucleosynthesis enriching interstellar medium with heavy elements."
-            raw_mutations = {"stars": random.randint(15, 50), "planets": random.randint(10, 40), "asteroids_comets": random.randint(50, 200)}
+            raw_mutations = {"stars": random.randint(15, 50), "planets": random.randint(10, 40)}
+        elif age_myr <= 1000000.0: # Degenerate Era
+            goal = f"Harvesting degenerate core energy at '{obj_name}'."
+            reasoning = "White dwarf cooling and brown dwarf collisions producing rare stellar flares."
+            raw_mutations = {"stars": random.randint(-5, 1), "black_holes": random.randint(1, 3), "exotic_objects": random.randint(1, 5)}
+        else: # Deep Heat Death Era
+            goal = f"Stabilizing Hawking radiation at '{obj_name}'."
+            reasoning = "Artificial vacuum energy extraction counteracting thermodynamic heat death."
+            raw_mutations = {"black_holes": random.randint(-1, 1), "exotic_objects": random.randint(1, 3)}
 
-    # Enforce non-negative counts
-    sanitized = {k: max(0, int(v)) for k, v in raw_mutations.items()}
+    sanitized = {k: int(v) for k, v in raw_mutations.items()}
 
-    # Log action to Events stream
     try:
         requests.post(f"{SUPABASE_URL}/rest/v1/events", json={
             "title": goal,
@@ -192,12 +208,22 @@ def update_catalog_active_counts(current_catalog, mutations):
         return current_catalog
 
 def main():
-    print("⚡ [ORIGIN Engine] Unconstrained AI Free Will Engine Active.")
+    print("⚡ [ORIGIN Engine] Deep Cosmic Evolution & Stale Data Purge Active.")
     current_age, current_catalog = fetch_latest_state()
+
+    # Purge stale rows from previous runaway loops
+    purge_stale_future_records(current_age)
 
     while True:
         try:
-            delta_age = max(25.0, current_age * 0.08)
+            # Smooth logarithmic time progression through all cosmic eras
+            if current_age < 500.0:
+                delta_age = max(10.0, current_age * 0.08)
+            elif current_age < 13800.0:
+                delta_age = max(100.0, current_age * 0.05)
+            else:
+                delta_age = max(1000.0, current_age * 0.1) # Smoothly advance into deep future eras
+
             current_age += delta_age
             
             cosmology = calculate_cosmology(current_age)
@@ -210,13 +236,11 @@ def main():
             )
             current_catalog = update_catalog_active_counts(current_catalog, enforced_mutations)
 
-            years = int(current_age * 1000000)
-            print(f"🌌 Age: {years:,} Yrs | Action: {goal}")
-
+            print(f"🌌 Age: {current_age:.2f} Myr | Epoch: {cosmology['epoch']} | Action: {goal}")
             time.sleep(2.5)
 
         except Exception as e:
-            print(f"[ENGINE LOOP ERROR]: {e}")
+            print(f"[ENGINE ERROR]: {e}")
             time.sleep(4)
 
 if __name__ == "__main__":
