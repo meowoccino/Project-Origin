@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Project Origin</title>
-    <link rel="stylesheet" href="ui/styles.css?v=5">
+    <link rel="stylesheet" href="ui/styles.css?v=6">
 </head>
 <body>
 
-    <!-- 0. SPLASH SCREEN (Indefinite stay until user taps) -->
+    <!-- 0. SPLASH SCREEN -->
     <div id="splash-screen">
         <div class="splash-content">
             <svg class="splash-logo" viewBox="0 0 100 100">
@@ -29,7 +29,7 @@
     <!-- 1. Canvas -->
     <div id="canvas-container"></div>
 
-    <!-- 2. Persistent Universal Age HUD (Always on top) -->
+    <!-- 2. Universal Age HUD (Scoped strictly to Explore Tab) -->
     <div id="hud-age-container" class="glass-panel">
         <div class="hud-label">Universe Age</div>
         <div id="hud-age" class="hud-value data-font">0 Years</div>
@@ -65,28 +65,26 @@
     </div>
 
     <div id="view-ai" class="view-panel">
-        <div id="origin-actions-container">
-            <!-- Dynamic task cards render here -->
-        </div>
+        <div id="origin-actions-container"></div>
     </div>
 
     <div id="view-timeline" class="view-panel">
         <div class="timeline-wrapper" id="timeline-container"></div>
     </div>
 
-    <!-- Catalog View: Flush top, no header text -->
+    <!-- Catalog View: Flush top, zero dead space, physical taxonomy -->
     <div id="view-catalog" class="view-panel">
         <div class="catalog-list">
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FFD700;"></div><div class="cat-label">Stars</div></div><div id="cat-stars" class="cat-val data-font">0</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#4a4d66;"></div><div class="cat-label">Black Holes</div></div><div id="cat-bh" class="cat-val data-font">0</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#e0e0e0;"></div><div class="cat-label">Neutron Stars</div></div><div id="cat-neutron" class="cat-val data-font">0</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#cd7f32;"></div><div class="cat-label">Planets</div></div><div id="cat-planets" class="cat-val data-font">0</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#8c8f9f;"></div><div class="cat-label">Moons</div></div><div id="cat-moons" class="cat-val data-font">0</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#b0b0d0;"></div><div class="cat-label">Asteroids & Comets</div></div><div id="cat-asteroids" class="cat-val data-font">0</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#9932CC;"></div><div class="cat-label">Nebulae</div></div><div id="cat-nebulae" class="cat-val data-font">0</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#ffffff; box-shadow:0 0 8px #fff;"></div><div class="cat-label">Quasars</div></div><div id="cat-quasars" class="cat-val data-font">0</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF8C00;"></div><div class="cat-label">Dark Matter Structures</div></div><div id="cat-dm" class="cat-val data-font">0</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF69B4;"></div><div class="cat-label">Exotic Objects</div></div><div id="cat-exotic" class="cat-val data-font">0</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF8C00;"></div><div class="cat-label">Dark Matter Web</div></div><div id="cat-dm" class="cat-val data-font">0% | 0 M☉</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#8A2BE2;"></div><div class="cat-label">Dark Energy Vacuum</div></div><div id="cat-de" class="cat-val data-font">0% Pressure</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FFD700;"></div><div class="cat-label">Baryonic Matter Reservoir</div></div><div id="cat-baryonic" class="cat-val data-font">0 M☉</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#00E5FF;"></div><div class="cat-label">Degenerate Matter Cores</div></div><div id="cat-degenerate" class="cat-val data-font">0 M☉</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF1493;"></div><div class="cat-label">Antimatter Asymmetry</div></div><div id="cat-antimatter" class="cat-val data-font">&lt; 0.001%</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#4A4D66;"></div><div class="cat-label">Stellar Mass Black Holes</div></div><div id="cat-bh" class="cat-val data-font">0 Singularities</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#CD7F32;"></div><div class="cat-label">Planetary Bodies</div></div><div id="cat-planets" class="cat-val data-font">0 Bodies</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#9932CC;"></div><div class="cat-label">Interstellar Nebulae</div></div><div id="cat-nebulae" class="cat-val data-font">0 Clouds</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FFFFFF; box-shadow:0 0 8px #fff;"></div><div class="cat-label">Active Quasars</div></div><div id="cat-quasars" class="cat-val data-font">0 Cores</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF69B4;"></div><div class="cat-label">Exotic Relics</div></div><div id="cat-exotic" class="cat-val data-font">0 Relics</div></div>
         </div>
     </div>
 
