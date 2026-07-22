@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Project Origin</title>
-    <link rel="stylesheet" href="ui/styles.css?v=4">
+    <link rel="stylesheet" href="ui/styles.css?v=5">
 </head>
 <body>
 
-    <!-- 0. SPLASH SCREEN -->
+    <!-- 0. SPLASH SCREEN (Indefinite stay until user taps) -->
     <div id="splash-screen">
         <div class="splash-content">
             <svg class="splash-logo" viewBox="0 0 100 100">
@@ -26,10 +26,10 @@
         <div class="splash-prompt data-font">tap to observe &rarr;</div>
     </div>
 
-    <!-- 1. The Canvas -->
+    <!-- 1. Canvas -->
     <div id="canvas-container"></div>
 
-    <!-- 2. HUD -->
+    <!-- 2. Persistent Universal Age HUD (Always on top) -->
     <div id="hud-age-container" class="glass-panel">
         <div class="hud-label">Universe Age</div>
         <div id="hud-age" class="hud-value data-font">0 Years</div>
@@ -65,10 +65,8 @@
     </div>
 
     <div id="view-ai" class="view-panel">
-        <!-- Active Server Logic at the top -->
-        <div class="hud-label" style="margin-bottom: 12px;">Active Server Telemetry</div>
         <div id="origin-actions-container">
-            <!-- JS will inject the true server action here -->
+            <!-- Dynamic task cards render here -->
         </div>
     </div>
 
@@ -76,8 +74,8 @@
         <div class="timeline-wrapper" id="timeline-container"></div>
     </div>
 
+    <!-- Catalog View: Flush top, no header text -->
     <div id="view-catalog" class="view-panel">
-        <div class="hud-label" style="margin-bottom: 8px;">Universal Catalog</div>
         <div class="catalog-list">
             <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FFD700;"></div><div class="cat-label">Stars</div></div><div id="cat-stars" class="cat-val data-font">0</div></div>
             <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#4a4d66;"></div><div class="cat-label">Black Holes</div></div><div id="cat-bh" class="cat-val data-font">0</div></div>
@@ -87,7 +85,7 @@
             <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#b0b0d0;"></div><div class="cat-label">Asteroids & Comets</div></div><div id="cat-asteroids" class="cat-val data-font">0</div></div>
             <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#9932CC;"></div><div class="cat-label">Nebulae</div></div><div id="cat-nebulae" class="cat-val data-font">0</div></div>
             <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#ffffff; box-shadow:0 0 8px #fff;"></div><div class="cat-label">Quasars</div></div><div id="cat-quasars" class="cat-val data-font">0</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#4B0082;"></div><div class="cat-label">Dark Matter Structures</div></div><div id="cat-dm" class="cat-val data-font">0</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF8C00;"></div><div class="cat-label">Dark Matter Structures</div></div><div id="cat-dm" class="cat-val data-font">0</div></div>
             <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF69B4;"></div><div class="cat-label">Exotic Objects</div></div><div id="cat-exotic" class="cat-val data-font">0</div></div>
         </div>
     </div>
@@ -111,9 +109,7 @@
         </div>
         <div class="glass-panel" style="padding: 24px;">
             <div class="hud-label" style="margin-bottom: 16px;">Physical Specifications</div>
-            <div id="spec-name" style="width: 100%;">
-                <!-- Dynamic Specs will be injected here by JS -->
-            </div>
+            <div id="spec-name" style="width: 100%;"></div>
         </div>
     </div>
 
