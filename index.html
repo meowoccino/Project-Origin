@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Project Origin</title>
     <link rel="stylesheet" href="ui/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
@@ -16,9 +17,7 @@
                 <circle cx="50" cy="50" r="26" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
                 <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
                 <circle cx="50" cy="50" r="2" fill="#ffffff" />
-                <g class="orbit-anim">
-                    <circle cx="50" cy="24" r="3.5" fill="#FF8C00" />
-                </g>
+                <g class="orbit-anim"><circle cx="50" cy="24" r="3.5" fill="#FF8C00" /></g>
             </svg>
             <div class="splash-title">PROJECT <span style="color: #FF8C00;">ORIGIN</span></div>
             <div class="splash-subtitle">AN AI-DIRECTED UNIVERSE</div>
@@ -60,110 +59,38 @@
     </div>
 
     <!-- 4. TAB VIEWS -->
+    <div id="view-events" class="view-panel"><div id="events-container"></div></div>
+    <div id="view-ai" class="view-panel"><div id="origin-actions-container"></div></div>
+    <div id="view-timeline" class="view-panel"><div class="timeline-wrapper" id="timeline-container"></div></div>
     
-    <!-- Events View -->
-    <div id="view-events" class="view-panel">
-        <div id="events-container"></div>
-    </div>
-
-    <!-- Origin View -->
-    <div id="view-ai" class="view-panel">
-        <div id="origin-actions-container"></div>
-    </div>
-
-    <!-- Timeline View -->
-    <div id="view-timeline" class="view-panel">
-        <div class="timeline-wrapper" id="timeline-container"></div>
-    </div>
-
-    <!-- Catalog View -->
     <div id="view-catalog" class="view-panel">
         <div class="catalog-viewport">
-            
-            <!-- Cosmological Mass-Energy Bar -->
             <div class="macro-container">
                 <div class="macro-bar-visual">
                     <div id="bar-de" class="bar-de"></div>
                     <div id="bar-dm" class="bar-dm"></div>
                     <div id="bar-baryon" class="bar-baryonic"></div>
                 </div>
-
                 <div class="macro-grid">
-                    <div class="macro-item">
-                        <div class="dot" style="background: #8A2BE2;"></div>
-                        <div>
-                            <div class="macro-label">Dark Energy</div>
-                            <div id="cat-de-val" class="macro-val data-font">&lt; 0.1%</div>
-                        </div>
-                    </div>
-                    <div class="macro-item">
-                        <div class="dot" style="background: #FF8C00;"></div>
-                        <div>
-                            <div class="macro-label">Dark Matter</div>
-                            <div id="cat-dm-val" class="macro-val data-font">0% | 0 M_sun</div>
-                        </div>
-                    </div>
-                    <div class="macro-item">
-                        <div class="dot" style="background: #FFD700;"></div>
-                        <div>
-                            <div class="macro-label">Baryonic Reservoir</div>
-                            <div id="cat-baryon-val" class="macro-val data-font">0% | 0 M_sun</div>
-                        </div>
-                    </div>
-                    <div class="macro-item">
-                        <div class="dot" style="background: #FF1493;"></div>
-                        <div>
-                            <div class="macro-label">Antimatter Asymmetry</div>
-                            <div class="macro-val data-font">&lt; 10⁻⁹</div>
-                        </div>
-                    </div>
+                    <div class="macro-item"><div class="dot" style="background: #8A2BE2;"></div><div><div class="macro-label">Dark Energy</div><div id="cat-de-val" class="macro-val data-font">&lt; 0.1%</div></div></div>
+                    <div class="macro-item"><div class="dot" style="background: #FF8C00;"></div><div><div class="macro-label">Dark Matter</div><div id="cat-dm-val" class="macro-val data-font">0% | 0 M_sun</div></div></div>
+                    <div class="macro-item"><div class="dot" style="background: #FFD700;"></div><div><div class="macro-label">Baryonic Reservoir</div><div id="cat-baryon-val" class="macro-val data-font">0% | 0 M_sun</div></div></div>
+                    <div class="macro-item"><div class="dot" style="background: #FF1493;"></div><div><div class="macro-label">Antimatter Asymmetry</div><div class="macro-val data-font">&lt; 10⁻⁹</div></div></div>
                 </div>
             </div>
 
-            <!-- Discrete Object Inventory Grid -->
             <div class="inventory-grid">
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #9932CC;"></div><div class="inv-title">Nebulae</div></div>
-                    <div id="cat-nebulae-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #FFF066;"></div><div class="inv-title">Stars & Protostars</div></div>
-                    <div id="cat-stars-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #4A4D66;"></div><div class="inv-title">Black Holes</div></div>
-                    <div id="cat-bh-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #00E5FF;"></div><div class="inv-title">Neutron Cores</div></div>
-                    <div id="cat-degenerate-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #CD7F32;"></div><div class="inv-title">Planetary Bodies</div></div>
-                    <div id="cat-planets-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #8C8F9F;"></div><div class="inv-title">Moons & Satellites</div></div>
-                    <div id="cat-moons-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #B0B0D0;"></div><div class="inv-title">Asteroids & Comets</div></div>
-                    <div id="cat-asteroids-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #FFFFFF; box-shadow: 0 0 6px #fff;"></div><div class="inv-title">Active Quasars</div></div>
-                    <div id="cat-quasars-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #FF69B4;"></div><div class="inv-title">Exotic Relics</div></div>
-                    <div id="cat-exotic-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #00E5FF;"></div><div class="inv-title">Inhabited Worlds</div></div>
-                    <div id="cat-inhabited-val" class="inv-val data-font">0</div>
-                </div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #9932CC;"></div><div class="inv-title">Nebulae</div></div><div id="cat-nebulae-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #FFF066;"></div><div class="inv-title">Stars & Protostars</div></div><div id="cat-stars-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #4A4D66;"></div><div class="inv-title">Black Holes</div></div><div id="cat-bh-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #00E5FF;"></div><div class="inv-title">Neutron Cores</div></div><div id="cat-degenerate-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #CD7F32;"></div><div class="inv-title">Planetary Bodies</div></div><div id="cat-planets-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #8C8F9F;"></div><div class="inv-title">Moons & Satellites</div></div><div id="cat-moons-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #B0B0D0;"></div><div class="inv-title">Asteroids & Comets</div></div><div id="cat-asteroids-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #FFFFFF; box-shadow: 0 0 6px #fff;"></div><div class="inv-title">Active Quasars</div></div><div id="cat-quasars-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #FF69B4;"></div><div class="inv-title">Exotic Relics</div></div><div id="cat-exotic-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #00E5FF;"></div><div class="inv-title">Inhabited Worlds</div></div><div id="cat-inhabited-val" class="inv-val data-font">0</div></div>
             </div>
-
         </div>
     </div>
 
@@ -181,7 +108,7 @@
             <button class="btn-back" id="btn-close-inspect">←</button>
             <div>
                 <div id="inspect-title" style="font-size: 20px; font-weight: bold;">Object</div>
-                <div style="font-size: 12px; color: #8c8f9f;">Deep Space Telemetry</div>
+                <div style="font-size: 12px; color: #8c8f9f; display: none;">Deep Space Telemetry</div>
             </div>
         </div>
         <div class="glass-panel" style="padding: 24px;">
