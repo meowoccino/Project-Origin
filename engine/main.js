@@ -2,13 +2,56 @@ export const cameraState = {
     rotX: 0,
     rotY: 0,
     zoom: 1.0,
-    currentAge: 0.0
+    currentAge: 0.0 // Age in Millions of Years (Myr)
 };
 
 let canvas, ctx;
 let cosmicNodes = [];
 const NODE_COUNT = 900;
 let selectedNode = null;
+
+// STRICT COSMOLOGICAL STATE CALCULATOR
+function getRealisticNodeStats(nodeIndex, currentAgeMyr) {
+    let stats = {
+        designation: `Object-${nodeIndex}`,
+        classification: "Unknown",
+        temp: "0 K",
+        mass: "0 M☉",
+        notes: ""
+    };
+
+    if (currentAgeMyr < 0.38) {
+        // Pre-Recombination: Photons trapped, super hot plasma
+        stats.designation = `Plasma-Wave-${nodeIndex}`;
+        stats.classification = "Primordial Plasma Perturbation";
+        stats.temp = "4,000 - 10,000+ K";
+        stats.mass = "Fluid State";
+    } 
+    else if (currentAgeMyr < 100.0) {
+        // The Dark Ages: 380k to 100M Years. NO STARS.
+        const isDarkMatter = nodeIndex % 3 === 0;
+        stats.designation = isDarkMatter ? `DM-Halo-${nodeIndex}` : `H1-Region-${nodeIndex}`;
+        stats.classification = isDarkMatter ? "Dark Matter Halo" : "Neutral Hydrogen Cloud";
+        stats.temp = "10 - 300 K"; 
+        stats.mass = "10^5 - 10^6 M☉"; 
+    } 
+    else if (currentAgeMyr < 500.0) {
+        // Cosmic Dawn: 100M to 500M Years. First stars ignite.
+        stats.designation = `PopIII-${nodeIndex}`;
+        stats.classification = "Population III Hypermassive Star";
+        stats.temp = "100,000+ K";
+        stats.mass = "100 - 1000 M☉";
+    } 
+    else {
+        // Stelliferous Era: 500M+ Years. Galaxies and modern stars form.
+        stats.designation = `Star-${nodeIndex}`;
+        stats.classification = "Main Sequence Star System";
+        stats.temp = "3,000 - 30,000 K";
+        stats.mass = "0.1 - 50 M☉";
+    }
+
+    return stats;
+}
 
 function createCosmicWeb() {
     cosmicNodes = [];
@@ -35,16 +78,11 @@ function createCosmicWeb() {
         const color = colors[Math.floor(Math.random() * colors.length)];
         const size = Math.random() * 2.0 + 0.8;
 
-        // Assign ignition age thresholds so objects light up over cosmological time
-        const ignitionAge = Math.random() * 0.5; // Appears between 0 and 500,000 years
-
         cosmicNodes.push({
-            id: `NODE-${Math.floor(10000 + Math.random() * 90000)}`,
-            name: `Cluster-${Math.floor(100 + Math.random() * 900)}`,
+            id: i,
             initX: x, initY: y, initZ: z,
             size,
             color,
-            ignitionAge,
             screenX: -999,
             screenY: -999
         });
@@ -94,19 +132,25 @@ export async function initWebGPU() {
 
         if (closest) {
             selectedNode = closest;
+            
+            // Get realistic stats based on current universe age
+            const currentStats = getRealisticNodeStats(closest.id, cameraState.currentAge);
 
             const objName = document.getElementById('obj-name');
             const objSub = document.getElementById('obj-sub');
             const preview = document.getElementById('inspector-preview');
-
-            if (objName) objName.innerText = closest.name;
-            if (objSub) objSub.innerText = `Cosmic Filament Node | Density Active`;
-            if (preview) preview.classList.add('active');
-
             const inspectTitle = document.getElementById('inspect-title');
             const specName = document.getElementById('spec-name');
-            if (inspectTitle) inspectTitle.innerText = closest.name;
-            if (specName) specName.innerText = closest.name;
+
+            if (objName) objName.innerText = currentStats.designation;
+            if (objSub) objSub.innerText = currentStats.classification;
+            if (preview) preview.classList.add('active');
+            
+            if (inspectTitle) inspectTitle.innerText = currentStats.designation;
+            if (specName) {
+                // Using the specName area to display the dynamically generated stats
+                specName.innerHTML = `${currentStats.classification}<br/>Temp: ${currentStats.temp}<br/>Mass: ${currentStats.mass}`;
+            }
         }
     };
 
@@ -128,11 +172,10 @@ function render() {
 
     const age = cameraState.currentAge || 0.0;
 
-    // Big Bang Expansion & Ignition Math
-    // Space expands outward from singularity as age increases
+    // Big Bang Expansion
     const expansionFactor = Math.max(0.05, Math.min(2.5, 0.05 + (age * 0.12)));
 
-    // Render Big Bang Primordial Singularity Glow at Origin Center
+    // Render Primordial Singularity Glow
     const singularityRadius = Math.max(4, (120 * cameraState.zoom) / (1.0 + age * 2.0));
     const coreGrad = ctx.createRadialGradient(cx, cy, 1, cx, cy, singularityRadius);
     coreGrad.addColorStop(0, '#ffffff');
@@ -154,12 +197,6 @@ function render() {
     for (let i = 0; i < cosmicNodes.length; i++) {
         const p = cosmicNodes[i];
 
-        // Do NOT draw objects if universe age is before their ignition threshold
-        if (age < p.ignitionAge) {
-            p.screenX = -999;
-            continue;
-        }
-
         const expX = p.initX * expansionFactor;
         const expY = p.initY * expansionFactor;
         const expZ = p.initZ * expansionFactor;
@@ -175,20 +212,38 @@ function render() {
         if (perspective > 0) {
             p.screenX = cx + x1 * zoomScale * perspective;
             p.screenY = cy + y1 * zoomScale * perspective;
-            const drawSize = p.size * perspective * (window.devicePixelRatio || 1);
+            let drawSize = p.size * perspective * (window.devicePixelRatio || 1);
+            
+            // DYNAMIC VISUAL PHYSICS BASED ON AGE
+            let drawColor = p.color;
+            let glowBlur = p.size > 2 ? 8 : 0;
+
+            if (age < 0.38) {
+                // Hot opaque plasma
+                drawColor = 'rgba(255, 120, 50, 0.4)';
+                drawSize *= 3;
+                glowBlur = 15;
+            } else if (age < 100.0) {
+                // Dark ages: Faint, diffuse cold gas and dark matter halos
+                const isDarkMatter = p.id % 3 === 0;
+                drawColor = isDarkMatter ? 'rgba(40, 10, 60, 0.15)' : 'rgba(90, 20, 130, 0.2)';
+                drawSize *= 4; 
+                glowBlur = 12;
+            }
 
             ctx.beginPath();
             ctx.arc(p.screenX, p.screenY, Math.max(0.6, drawSize), 0, Math.PI * 2);
-            ctx.fillStyle = p.color;
-            ctx.shadowColor = p.color;
-            ctx.shadowBlur = p.size > 2 ? 8 : 0;
+            ctx.fillStyle = drawColor;
+            ctx.shadowColor = drawColor;
+            ctx.shadowBlur = glowBlur;
             ctx.fill();
 
             if (selectedNode === p) {
                 ctx.strokeStyle = '#00e5ff';
                 ctx.lineWidth = 1.5;
+                ctx.shadowBlur = 0; // Reset shadow for selection ring
                 ctx.beginPath();
-                ctx.arc(p.screenX, p.screenY, drawSize * 4 + 6, 0, Math.PI * 2);
+                ctx.arc(p.screenX, p.screenY, drawSize * 2 + 6, 0, Math.PI * 2);
                 ctx.stroke();
             }
         } else {
