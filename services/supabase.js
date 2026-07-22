@@ -19,7 +19,7 @@ export async function fetchCosmicState() {
     return data;
 }
 
-// Fetch AI thought journal
+// Fetch AI thought journal (Legacy)
 export async function fetchAIJournal(limit = 10) {
     const { data, error } = await supabase
         .from('ai_journal')
@@ -29,6 +29,26 @@ export async function fetchAIJournal(limit = 10) {
         
     if (error) console.error('Error fetching AI journal:', error);
     return data;
+}
+
+// Fetch Origin Logs in 4-Card Batches
+export async function fetchOriginLogsBatch(limit = 4, oldestId = null) {
+    let query = supabase
+        .from('origin_logs')
+        .select('*')
+        .order('id', { ascending: false })
+        .limit(limit);
+
+    if (oldestId) {
+        query = query.lt('id', oldestId);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+        console.error('Error fetching origin_logs:', error);
+        return [];
+    }
+    return data || [];
 }
 
 // Subscribe to real-time updates from cloud server
