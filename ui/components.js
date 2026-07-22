@@ -1,9 +1,8 @@
-import { initWebGPU, cameraState } from '../engine/main.js';
+import { initWebGPU, cameraState, updateCanvasFromCatalog } from '../engine/main.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("🚀 [ORIGIN UI] Bootstrapping interface...");
 
-    // Start 2D Canvas Renderer Engine immediately
     initWebGPU().then(() => {
         console.log("✅ [ENGINE] Canvas successfully attached to Explore tab.");
     }).catch(err => {
@@ -240,6 +239,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (Array.isArray(data) && data.length > 0) {
                     const stats = data[0];
                     
+                    updateCanvasFromCatalog(stats, localCurrentAge);
+
                     if (document.getElementById('cat-dm-val')) {
                         const dmMass = (stats.dark_matter_structures || 0) * 100000;
                         const dmPct = document.getElementById('bar-dm')?.style.width || '0%';
@@ -261,7 +262,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (document.getElementById('cat-quasars-val')) document.getElementById('cat-quasars-val').innerText = (stats.quasars || 0).toLocaleString();
                     if (document.getElementById('cat-exotic-val')) document.getElementById('cat-exotic-val').innerText = (stats.exotic_objects || 0).toLocaleString();
                     
-                    // Inhabited Worlds (Realistic physics calculation)
                     if (document.getElementById('cat-inhabited-val')) {
                         const planets = stats.planets || 0;
                         const inhabited = (localCurrentAge > 500.0) ? Math.floor(planets * 0.012) : 0;
