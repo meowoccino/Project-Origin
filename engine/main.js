@@ -1,9 +1,13 @@
-export const cameraState = { rotX: 0, rotY: 0, zoom: 1.0, currentAge: 0.0 };
+export const cameraState = { rotX: 0, rotY: 0, zoom: 1.0, currentAge: 0.0, panX: 0, panY: 0 };
 
 let canvas, ctx;
-let cosmicNodes = [];
-let selectedNode = null;
-let currentCatalogData = null;
+export let cosmicNodes = [];
+export let selectedNode = null;
+
+// Persistent Hubs for the Cosmic Web
+let webHubs = [];
+const NUM_HUBS = 25;
+let globalNodeId = 0;
 
 const CATEGORY_STYLES = {
     nebulae: { color: '#9932CC', name: 'Nebula Gas Cloud', size: 4.5 },
@@ -18,80 +22,101 @@ const CATEGORY_STYLES = {
     inhabited: { color: '#00E5FF', name: 'Inhabited World', size: 3.2, glow: true }
 };
 
+function initWebHubs() {
+    webHubs = [];
+    const bounds = 800; // Size of the initial generative space
+    for (let i = 0; i < NUM_HUBS; i++) {
+        webHubs.push({
+            x: (Math.random() - 0.5) * bounds,
+            y: (Math.random() - 0.5) * bounds
+        });
+    }
+}
+
+function createWebNode(category, id) {
+    const style = CATEGORY_STYLES[category];
+    const hubA = webHubs[Math.floor(Math.random() * webHubs.length)];
+    const hubB = webHubs[Math.floor(Math.random() * webHubs.length)];
+    
+    // Interpolate along the filament
+    const t = Math.random();
+    let x = hubA.x + (hubB.x - hubA.x) * t;
+    let y = hubA.y + (hubB.y - hubA.y) * t;
+
+    // Scatter (tighter near hubs, looser in the void)
+    const scatter = (Math.random() > 0.7) ? 80 : 15;
+    x += (Math.random() - 0.5) * scatter;
+    y += (Math.random() - 0.5) * scatter;
+
+    return {
+        id: id,
+        category: category,
+        designation: `${style.name} #${id}`,
+        baseX: x, baseY: y,
+        size: style.size, color: style.color, glow: style.glow || false,
+        pulseSpeed: 0.02 + Math.random() * 0.03,
+        pulsePhase: Math.random() * Math.PI * 2,
+        screenX: 0, screenY: 0
+    };
+}
+
 export function updateCanvasFromCatalog(stats, ageMyr) {
-    currentCatalogData = stats;
     if (!ctx) return;
+    if (webHubs.length === 0) initWebHubs();
 
-    const planets = stats.planets || 0;
-    const inhabitedCount = (ageMyr > 500.0) ? Math.floor(planets * 0.012) : 0;
-
+    const inhabitedCount = (ageMyr > 500.0) ? Math.floor((stats.planets || 0) * 0.012) : 0;
     const counts = {
-        nebulae: stats.nebulae || 0,
-        stars: stats.stars || 0,
-        black_holes: stats.black_holes || 0,
-        neutron_stars: stats.neutron_stars || 0,
-        planets: stats.planets || 0,
-        moons: stats.moons || 0,
-        asteroids_comets: stats.asteroids_comets || 0,
-        quasars: stats.quasars || 0,
-        exotic_objects: stats.exotic_objects || 0,
-        inhabited: inhabitedCount
+        nebulae: stats.nebulae || 0, stars: stats.stars || 0,
+        black_holes: stats.black_holes || 0, neutron_stars: stats.neutron_stars || 0,
+        planets: stats.planets || 0, moons: stats.moons || 0,
+        asteroids_comets: stats.asteroids_comets || 0, quasars: stats.quasars || 0,
+        exotic_objects: stats.exotic_objects || 0, inhabited: inhabitedCount
     };
 
     let totalObjects = Object.values(counts).reduce((a, b) => a + b, 0);
-    
-    const MAX_VISUAL_NODES = 1200;
+    const MAX_VISUAL_NODES = 1500;
     const scaleFactor = totalObjects > 0 ? Math.min(1.0, MAX_VISUAL_NODES / Math.min(500000, totalObjects)) : 0;
 
-    const newNodes = [];
-    let nodeId = 0;
-
+    // PERSISTENT MEMORY UPDATE: Only add/remove the difference
     Object.keys(counts).forEach(cat => {
-        const rawCount = counts[cat];
-        const visualCount = Math.round(rawCount * scaleFactor);
-        const style = CATEGORY_STYLES[cat];
+        const targetVisualCount = Math.round(counts[cat] * scaleFactor);
+        const currentVisualNodes = cosmicNodes.filter(n => n.category === cat);
 
-        for (let i = 0; i < visualCount; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const dist = Math.pow(Math.random(), 1.5) * 300;
-
-            newNodes.push({
-                id: nodeId++,
-                category: cat,
-                designation: `${style.name} #${nodeId}`,
-                baseX: Math.cos(angle) * dist,
-                baseY: Math.sin(angle) * dist,
-                size: style.size,
-                color: style.color,
-                glow: style.glow || false,
-                ring: style.ring || false,
-                pulseSpeed: 0.02 + Math.random() * 0.03,
-                pulsePhase: Math.random() * Math.PI * 2,
-                screenX: 0, screenY: 0
-            });
+        if (currentVisualNodes.length < targetVisualCount) {
+            const toAdd = targetVisualCount - currentVisualNodes.length;
+            for (let i = 0; i < toAdd; i++) cosmicNodes.push(createWebNode(cat, ++globalNodeId));
+        } else if (currentVisualNodes.length > targetVisualCount) {
+            const toRemove = currentVisualNodes.length - targetVisualCount;
+            for (let i = 0; i < toRemove; i++) {
+                const index = cosmicNodes.findIndex(n => n.category === cat);
+                if (index > -1) {
+                    if (selectedNode && cosmicNodes[index].id === selectedNode.id) {
+                        selectedNode = null;
+                        document.getElementById('inspector-preview')?.classList.remove('active');
+                    }
+                    cosmicNodes.splice(index, 1);
+                }
+            }
         }
     });
-
-    cosmicNodes = newNodes;
 }
 
 export async function initWebGPU() {
-    console.log("🌌 [ENGINE] Initializing State-Driven Canvas Engine...");
+    console.log("🌌 [ENGINE] Initializing Cosmic Web Engine...");
     const container = document.getElementById('canvas-container');
     if (!container) return;
     
     container.innerHTML = '';
     canvas = document.createElement('canvas');
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    canvas.style.display = 'block';
+    canvas.style.width = '100%'; canvas.style.height = '100%'; canvas.style.display = 'block';
     container.appendChild(canvas);
-
     ctx = canvas.getContext('2d');
 
     function resize() {
         canvas.width = window.innerWidth * window.devicePixelRatio;
         canvas.height = window.innerHeight * window.devicePixelRatio;
+        cameraState.panX = canvas.width / 2;
+        cameraState.panY = canvas.height / 2;
     }
     window.addEventListener('resize', resize);
     resize();
@@ -101,60 +126,39 @@ export async function initWebGPU() {
     function renderLoop() {
         requestAnimationFrame(renderLoop);
         animTime += 0.015;
-
         if (!ctx || !canvas) return;
 
-        const w = canvas.width;
-        const h = canvas.height;
-        const cx = w / 2;
-        const cy = h / 2;
-
-        const bgGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, Math.max(w, h) * 0.7);
-        bgGrad.addColorStop(0, '#121426');
-        bgGrad.addColorStop(0.5, '#0A0B14');
-        bgGrad.addColorStop(1, '#05050A');
-        ctx.fillStyle = bgGrad;
-        ctx.fillRect(0, 0, w, h);
-
-        const targetScale = (Math.min(w, h) * 0.38) / 320;
-        const viewScale = targetScale * cameraState.zoom;
-
-        const cosR = Math.cos(cameraState.rotY);
-        const sinR = Math.sin(cameraState.rotY);
+        ctx.fillStyle = '#0A0B14';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         for (let i = 0; i < cosmicNodes.length; i++) {
             const p = cosmicNodes[i];
             
-            const rx = p.baseX * cosR - p.baseY * sinR;
-            const ry = p.baseX * sinR + p.baseY * cosR;
+            p.screenX = cameraState.panX + (p.baseX * cameraState.zoom);
+            p.screenY = cameraState.panY + (p.baseY * cameraState.zoom);
 
-            p.screenX = cx + rx * viewScale;
-            p.screenY = cy + ry * viewScale;
+            // Culling (don't render objects off screen to save battery)
+            if (p.screenX < -50 || p.screenX > canvas.width + 50 || p.screenY < -50 || p.screenY > canvas.height + 50) continue;
 
             const pulse = Math.sin(animTime * p.pulseSpeed * 100 + p.pulsePhase) * 0.2 + 1.0;
-            const drawRadius = p.size * window.devicePixelRatio * pulse * cameraState.zoom;
+            const drawRadius = Math.max(0.5, p.size * window.devicePixelRatio * pulse * Math.sqrt(cameraState.zoom));
 
-            ctx.beginPath();
-            ctx.arc(p.screenX, p.screenY, drawRadius * (p.glow ? 3.5 : 2.0), 0, Math.PI * 2);
-            ctx.fillStyle = p.color;
-            ctx.globalAlpha = p.glow ? 0.45 : 0.2;
-            ctx.fill();
+            if (p.glow) {
+                ctx.beginPath();
+                ctx.arc(p.screenX, p.screenY, drawRadius * 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = p.color; ctx.globalAlpha = 0.3; ctx.fill();
+            }
 
             ctx.beginPath();
             ctx.arc(p.screenX, p.screenY, drawRadius, 0, Math.PI * 2);
-            ctx.fillStyle = p.color;
-            ctx.globalAlpha = 0.95;
-            ctx.fill();
-            ctx.globalAlpha = 1.0;
-
+            ctx.fillStyle = p.color; ctx.globalAlpha = 0.95; ctx.fill();
+            
             if (selectedNode === p) {
-                ctx.strokeStyle = '#FF8C00';
-                ctx.lineWidth = 2.5 * window.devicePixelRatio;
-                ctx.beginPath();
-                ctx.arc(p.screenX, p.screenY, drawRadius * 3 + 6, 0, Math.PI * 2);
-                ctx.stroke();
+                ctx.strokeStyle = '#FF8C00'; ctx.lineWidth = 2.5 * window.devicePixelRatio;
+                ctx.beginPath(); ctx.arc(p.screenX, p.screenY, drawRadius * 3 + 10, 0, Math.PI * 2); ctx.stroke();
             }
         }
+        ctx.globalAlpha = 1.0;
     }
 
     renderLoop();
@@ -164,29 +168,23 @@ export async function initWebGPU() {
         const tapX = (clientX - rect.left) * window.devicePixelRatio;
         const tapY = (clientY - rect.top) * window.devicePixelRatio;
 
-        let closest = null, minDist = 50 * window.devicePixelRatio;
+        let closest = null, minDist = 40 * window.devicePixelRatio;
         for (let i = 0; i < cosmicNodes.length; i++) {
             const p = cosmicNodes[i];
             const dist = Math.hypot(tapX - p.screenX, tapY - p.screenY);
             if (dist < minDist) { minDist = dist; closest = p; }
         }
 
+        const preview = document.getElementById('inspector-preview');
         if (closest) {
             selectedNode = closest;
-            const style = CATEGORY_STYLES[closest.category];
-            
-            if (document.getElementById('obj-name')) document.getElementById('obj-name').innerText = closest.designation;
-            if (document.getElementById('inspect-title')) document.getElementById('inspect-title').innerText = closest.designation;
-            if (document.getElementById('obj-sub')) document.getElementById('obj-sub').innerText = style.name;
-            
-            const specHTML = `
-                <div class="spec-row"><span class="spec-label">Designation</span><span class="spec-value">${closest.designation}</span></div>
-                <div class="spec-row"><span class="spec-label">Classification</span><span class="spec-value">${style.name}</span></div>
-                <div class="spec-row"><span class="spec-label">Status</span><span class="spec-value">Active Entity</span></div>
-                <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Local Age</span><span class="spec-value">${(cameraState.currentAge || 0).toFixed(2)} Myr</span></div>
-            `;
-            if (document.getElementById('spec-name')) document.getElementById('spec-name').innerHTML = specHTML;
-            if (document.getElementById('inspector-preview')) document.getElementById('inspector-preview').classList.add('active');
+            document.getElementById('obj-name').innerText = closest.designation;
+            document.getElementById('obj-sub').innerText = CATEGORY_STYLES[closest.category].name;
+            preview.classList.add('active');
+        } else {
+            // DESELECT IF TAPPING EMPTY SPACE
+            selectedNode = null;
+            preview.classList.remove('active');
         }
     };
 }
