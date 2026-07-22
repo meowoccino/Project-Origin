@@ -1,29 +1,41 @@
-import { PhysicsEngine } from './physics.js';
-
 export const cameraState = { rotX: 0, rotY: 0, zoom: 1.0, currentAge: 0.0 };
 
 let canvas, ctx;
 let cosmicNodes = [];
 let selectedNode = null;
 
+const CREATIVE_NAME_PREFIXES = ["Aetheria", "Vespera", "Erebus", "Hyperion", "Chronos", "Ignis", "Thalassa", "Zephyrus", "Kaelum", "Onyx"];
+const CREATIVE_NAME_SUFFIXES = ["Core", "Singularity", "Halo", "Filament", "Cluster", "Nebula", "Lobe", "Vortex", "Node", "Nursery"];
+
 function getRealisticNodeStats(nodeIndex, currentAgeMyr) {
-    let stats = { designation: `OBJ-${nodeIndex}`, classification: "Unknown", temp: "0 K", mass: "0 M☉", radius: "0 km", distOrigin: "0 ly", age: "0 Yrs" };
-    
-    const distCalc = Math.floor(Math.random() * currentAgeMyr * 800) + 120;
-    stats.distOrigin = `${distCalc.toLocaleString()} ly`;
-    stats.age = `${Math.floor((currentAgeMyr * 0.8) * 1000000).toLocaleString()} Yrs`;
+    const prefix = CREATIVE_NAME_PREFIXES[nodeIndex % CREATIVE_NAME_PREFIXES.length];
+    const suffix = CREATIVE_NAME_SUFFIXES[(nodeIndex * 3) % CREATIVE_NAME_SUFFIXES.length];
+    const designation = `${prefix} ${suffix} ${nodeIndex}`;
+
+    let classification = "Dark Matter Halo Node";
+    let temp = "15 K";
+    let mass = "10^5 M_sun";
+    let radius = "350 ly";
 
     if (currentAgeMyr < 0.38) {
-        stats.designation = `PLASMA-${nodeIndex}`; stats.classification = "Primordial Plasma Perturbation"; stats.temp = "10,000+ K"; stats.mass = "Fluid State"; stats.radius = "Sub-atomic";
-    } else if (currentAgeMyr < 100.0) {
-        const isDarkMatter = nodeIndex % 3 === 0;
-        stats.designation = isDarkMatter ? `DM-HALO-${nodeIndex}` : `H1-CLOUD-${nodeIndex}`; stats.classification = isDarkMatter ? "Dark Matter Halo Node" : "Neutral Hydrogen Cloud"; stats.temp = "10 - 300 K"; stats.mass = "10^5 M☉"; stats.radius = "400 ly";
-    } else if (currentAgeMyr < 500.0) {
-        stats.designation = `POP-III-${nodeIndex}`; stats.classification = "Population III Protostar"; stats.temp = "100,000 K"; stats.mass = "300 M☉"; stats.radius = "4.5 R☉";
-    } else {
-        stats.designation = `SEQ-A-${nodeIndex}`; stats.classification = "Main Sequence Star System"; stats.temp = "5,780 K"; stats.mass = "1.0 M☉"; stats.radius = "1.0 R☉";
+        classification = "Primordial Plasma Fluctuation"; temp = "12,000 K"; mass = "Fluid Mass"; radius = "0.05 ly";
+    } else if (currentAgeMyr >= 100.0 && currentAgeMyr < 500.0) {
+        classification = "Population III Protostar Core"; temp = "85,000 K"; mass = "250 M_sun"; radius = "3.2 R_sun";
+    } else if (currentAgeMyr >= 500.0) {
+        classification = "Stellar System Node"; temp = "5,800 K"; mass = "1.2 M_sun"; radius = "1.0 R_sun";
     }
-    return stats;
+
+    const distCalc = Math.floor((nodeIndex * 17) % Math.max(500, currentAgeMyr * 600)) + 45;
+
+    return {
+        designation: designation,
+        classification: classification,
+        temp: temp,
+        mass: mass,
+        radius: radius,
+        distOrigin: `${distCalc.toLocaleString()} ly`,
+        age: `${Math.floor(currentAgeMyr * 0.85 * 1000000).toLocaleString()} Yrs`
+    };
 }
 
 export async function initWebGPU() {
@@ -37,6 +49,8 @@ export async function initWebGPU() {
     canvas.style.display = 'block';
     container.appendChild(canvas);
 
+    ctx = canvas.getContext('2d');
+
     function resize() {
         canvas.width = window.innerWidth * window.devicePixelRatio;
         canvas.height = window.innerHeight * window.devicePixelRatio;
@@ -44,115 +58,113 @@ export async function initWebGPU() {
     window.addEventListener('resize', resize);
     resize();
 
+    // Generate procedural particle nodes
     cosmicNodes = [];
-    const colors = ['#ffffff', '#FF8C00', '#ffffff', '#FFD700', '#FF8C00', '#9932CC'];
-    for (let i = 0; i < 2000; i++) {
-        const t = (Math.random() - 0.5) * 350;
+    const colors = ['#ffffff', '#FF8C00', '#00E5FF', '#FFD700', '#9932CC', '#8A2BE2'];
+    for (let i = 0; i < 600; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.pow(Math.random(), 1.8) * 280;
         cosmicNodes.push({
             id: i,
-            initX: Math.sin(i % 12) * t + (Math.random() - 0.5) * 30,
-            initY: Math.cos(i % 12) * t + (Math.random() - 0.5) * 30,
-            initZ: t + (Math.random() - 0.5) * 20,
-            size: Math.random() * 3.0 + 1.5,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            ignitionAge: Math.random() * 0.1,
-            screenX: -999, screenY: -999
+            baseX: Math.cos(angle) * radius,
+            baseY: Math.sin(angle) * radius,
+            size: Math.random() * 3.5 + 1.5,
+            color: colors[i % colors.length],
+            pulseSpeed: 0.02 + Math.random() * 0.03,
+            pulsePhase: Math.random() * Math.PI * 2,
+            screenX: 0, screenY: 0
         });
     }
 
-    let autoRot = 0;
-    function updateScreenCoordinates() {
-        const w = canvas.width, h = canvas.height, cx = w / 2, cy = h / 2;
+    let animTime = 0;
+
+    function render2DHQ() {
+        requestAnimationFrame(render2DHQ);
+        animTime += 0.015;
+
+        if (!ctx || !canvas) return;
+
+        const w = canvas.width;
+        const h = canvas.height;
+        const cx = w / 2;
+        const cy = h / 2;
         const age = cameraState.currentAge || 0.0;
-        
-        // Controlled expansion keeping particles visible on mobile
-        const exp = Math.max(0.15, Math.min(1.0, 0.15 + (age * 0.005)));
-        autoRot += 0.0006;
-        
-        const zoomScale = Math.min(w, h) * 0.0045 * cameraState.zoom;
-        const cosY = Math.cos(cameraState.rotY + autoRot), sinY = Math.sin(cameraState.rotY + autoRot);
-        const cosX = Math.cos(cameraState.rotX + 0.3), sinX = Math.sin(cameraState.rotX + 0.3);
+
+        // Clear Background with Deep Cosmic Gradient
+        const bgGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, Math.max(w, h) * 0.7);
+        bgGrad.addColorStop(0, '#121426');
+        bgGrad.addColorStop(0.5, '#0A0B14');
+        bgGrad.addColorStop(1, '#05050A');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Core Cosmic Glow
+        const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 180 * window.devicePixelRatio);
+        coreGrad.addColorStop(0, 'rgba(255, 140, 0, 0.15)');
+        coreGrad.addColorStop(0.5, 'rgba(138, 43, 226, 0.08)');
+        coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = coreGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 180 * window.devicePixelRatio, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Responsive Scale Factor so objects NEVER leave viewport
+        const maxExtent = 320;
+        const targetScale = (Math.min(w, h) * 0.38) / maxExtent;
+        const viewScale = targetScale * cameraState.zoom;
+
+        const cosR = Math.cos(cameraState.rotY);
+        const sinR = Math.sin(cameraState.rotY);
 
         for (let i = 0; i < cosmicNodes.length; i++) {
             const p = cosmicNodes[i];
-            if (age < p.ignitionAge) { p.screenX = -999; continue; }
-            let x1 = (p.initX * exp) * cosY - (p.initZ * exp) * sinY;
-            let z1 = (p.initX * exp) * sinY + (p.initZ * exp) * cosY;
-            let y1 = (p.initY * exp) * cosX - z1 * sinX;
-            let z2 = (p.initY * exp) * sinX + z1 * cosX;
-
-            const persp = 380 / (380 + z2);
-            if (persp > 0) {
-                p.screenX = cx + x1 * zoomScale * persp;
-                p.screenY = cy + y1 * zoomScale * persp;
-                p.drawSize = p.size * persp * window.devicePixelRatio;
-            } else { p.screenX = -999; }
-        }
-    }
-
-    const gpuEngine = new PhysicsEngine(canvas, cosmicNodes);
-    const isGpuActive = await gpuEngine.init();
-
-    if (isGpuActive) {
-        console.log("⚡ [ORIGIN]: WebGPU Active.");
-        function renderGPU() {
-            requestAnimationFrame(renderGPU);
-            updateScreenCoordinates(); 
-            gpuEngine.step(cameraState);
-        }
-        renderGPU();
-    } else {
-        console.warn("⚠️ [ORIGIN]: WebGPU fallback to 2D Canvas.");
-        ctx = canvas.getContext('2d');
-        function render2D() {
-            requestAnimationFrame(render2D);
-            updateScreenCoordinates();
             
-            ctx.fillStyle = '#0A0B14';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            const age = cameraState.currentAge || 0.0;
-            for (let i = 0; i < cosmicNodes.length; i++) {
-                const p = cosmicNodes[i];
-                if (p.screenX < 0 || p.screenX > canvas.width || p.screenY < 0 || p.screenY > canvas.height) continue;
-                
-                let clr = p.color;
-                let ds = Math.max(2.5, p.drawSize);
+            // Slow cosmic rotation
+            const rx = p.baseX * cosR - p.baseY * sinR;
+            const ry = p.baseX * sinR + p.baseY * cosR;
 
-                if (age < 0.38) { 
-                    clr = 'rgba(255, 140, 0, 0.9)'; 
-                    ds *= 2.5; 
-                } else if (age < 100.0) { 
-                    clr = p.id % 3 === 0 ? 'rgba(180, 80, 255, 0.75)' : 'rgba(255, 180, 100, 0.8)'; 
-                    ds *= 2.0; 
-                }
+            p.screenX = cx + rx * viewScale;
+            p.screenY = cy + ry * viewScale;
 
-                ctx.beginPath(); 
-                ctx.arc(p.screenX, p.screenY, ds, 0, Math.PI * 2);
-                ctx.fillStyle = clr; 
-                ctx.fill();
+            const pulse = Math.sin(animTime * p.pulseSpeed * 100 + p.pulsePhase) * 0.3 + 1.0;
+            const drawRadius = p.size * window.devicePixelRatio * pulse * cameraState.zoom;
 
-                if (selectedNode === p) {
-                    ctx.strokeStyle = '#FF8C00'; 
-                    ctx.lineWidth = 2; 
-                    ctx.beginPath(); 
-                    ctx.arc(p.screenX, p.screenY, ds * 2 + 6, 0, Math.PI * 2); 
-                    ctx.stroke();
-                }
+            // Outer Radial Halo
+            ctx.beginPath();
+            ctx.arc(p.screenX, p.screenY, drawRadius * 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = 0.25;
+            ctx.fill();
+
+            // Core Solid Particle
+            ctx.beginPath();
+            ctx.arc(p.screenX, p.screenY, drawRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.globalAlpha = 0.95;
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+
+            // Selection Indicator
+            if (selectedNode === p) {
+                ctx.strokeStyle = '#FF8C00';
+                ctx.lineWidth = 2 * window.devicePixelRatio;
+                ctx.beginPath();
+                ctx.arc(p.screenX, p.screenY, drawRadius * 3 + 6, 0, Math.PI * 2);
+                ctx.stroke();
             }
         }
-        render2D();
     }
+
+    render2DHQ();
 
     window.selectParticleAt = function(clientX, clientY) {
         const rect = canvas.getBoundingClientRect();
         const tapX = (clientX - rect.left) * window.devicePixelRatio;
         const tapY = (clientY - rect.top) * window.devicePixelRatio;
 
-        let closest = null, minDist = 45 * window.devicePixelRatio;
+        let closest = null, minDist = 50 * window.devicePixelRatio;
         for (let i = 0; i < cosmicNodes.length; i++) {
             const p = cosmicNodes[i];
-            if (p.screenX < 0) continue;
             const dist = Math.hypot(tapX - p.screenX, tapY - p.screenY);
             if (dist < minDist) { minDist = dist; closest = p; }
         }
@@ -166,6 +178,7 @@ export async function initWebGPU() {
             if (document.getElementById('obj-sub')) document.getElementById('obj-sub').innerText = stats.classification;
             
             const specHTML = `
+                <div class="spec-row"><span class="spec-label">Designation</span><span class="spec-value">${stats.designation}</span></div>
                 <div class="spec-row"><span class="spec-label">Type</span><span class="spec-value">${stats.classification}</span></div>
                 <div class="spec-row"><span class="spec-label">Mass</span><span class="spec-value">${stats.mass}</span></div>
                 <div class="spec-row"><span class="spec-label">Radius</span><span class="spec-value">${stats.radius}</span></div>
