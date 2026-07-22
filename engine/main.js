@@ -6,17 +6,24 @@ let canvas, ctx;
 let cosmicNodes = [];
 let selectedNode = null;
 
+// Earth is gone. Telemetry is purely scientific.
 function getRealisticNodeStats(nodeIndex, currentAgeMyr) {
-    let stats = { designation: `Object-${nodeIndex}`, classification: "Unknown", temp: "0 K", mass: "0 M☉" };
+    let stats = { designation: `OBJ-${nodeIndex}`, classification: "Unknown", temp: "0 K", mass: "0 M☉", radius: "0 km", distOrigin: "0 ly", age: "0 Yrs" };
+    
+    // Distance from the initial Singularity
+    const distCalc = Math.floor(Math.random() * currentAgeMyr * 1000);
+    stats.distOrigin = `${distCalc.toLocaleString()} ly`;
+    stats.age = `${Math.floor((currentAgeMyr * 0.8) * 1000000).toLocaleString()} Yrs`;
+
     if (currentAgeMyr < 0.38) {
-        stats.designation = `Plasma-Wave-${nodeIndex}`; stats.classification = "Primordial Plasma Perturbation"; stats.temp = "4,000 - 10,000+ K"; stats.mass = "Fluid State";
+        stats.designation = `PLASMA-${nodeIndex}`; stats.classification = "Primordial Plasma Perturbation"; stats.temp = "10,000+ K"; stats.mass = "Fluid State"; stats.radius = "Sub-atomic";
     } else if (currentAgeMyr < 100.0) {
         const isDarkMatter = nodeIndex % 3 === 0;
-        stats.designation = isDarkMatter ? `DM-Halo-${nodeIndex}` : `H1-Region-${nodeIndex}`; stats.classification = isDarkMatter ? "Dark Matter Halo" : "Neutral Hydrogen Cloud"; stats.temp = "10 - 300 K"; stats.mass = "10^5 - 10^6 M☉"; 
+        stats.designation = isDarkMatter ? `DM-HALO-${nodeIndex}` : `H1-CLOUD-${nodeIndex}`; stats.classification = isDarkMatter ? "Dark Matter Halo" : "Neutral Hydrogen Cloud"; stats.temp = "10 - 300 K"; stats.mass = "10^6 M☉"; stats.radius = "400 ly";
     } else if (currentAgeMyr < 500.0) {
-        stats.designation = `PopIII-${nodeIndex}`; stats.classification = "Population III Hypermassive Star"; stats.temp = "100,000+ K"; stats.mass = "100 - 1000 M☉";
+        stats.designation = `POP-III-${nodeIndex}`; stats.classification = "Population III Protostar"; stats.temp = "100,000 K"; stats.mass = "300 M☉"; stats.radius = "4.5 R☉";
     } else {
-        stats.designation = `Star-${nodeIndex}`; stats.classification = "Main Sequence Star System"; stats.temp = "3,000 - 30,000 K"; stats.mass = "0.1 - 50 M☉";
+        stats.designation = `SEQ-A-${nodeIndex}`; stats.classification = "Main Sequence Star"; stats.temp = "5,780 K"; stats.mass = "1.0 M☉"; stats.radius = "1.0 R☉";
     }
     return stats;
 }
@@ -39,9 +46,8 @@ export async function initWebGPU() {
     window.addEventListener('resize', resize);
     resize();
 
-    // Generate Nodes
     cosmicNodes = [];
-    const colors = ['#ffffff', '#80d4ff', '#ffffff', '#ffd280', '#00e5ff'];
+    const colors = ['#ffffff', '#FF8C00', '#ffffff', '#FFD700', '#FF8C00']; // Updated to Solar Flare colors
     for (let i = 0; i < 2500; i++) {
         const t = (Math.random() - 0.5) * 500;
         cosmicNodes.push({
@@ -56,12 +62,13 @@ export async function initWebGPU() {
         });
     }
 
-    // Calculate invisible touch math for JS picking
     let autoRot = 0;
     function updateScreenCoordinates() {
         const w = canvas.width, h = canvas.height, cx = w / 2, cy = h / 2;
         const age = cameraState.currentAge || 0.0;
-        const exp = Math.max(0.05, Math.min(2.5, 0.05 + (age * 0.12)));
+        
+        // FIXED EXPANSION MATH: Capped so nodes don't fly off screen on mobile
+        const exp = Math.max(0.05, Math.min(1.2, 0.05 + (age * 0.01)));
         autoRot += 0.0006;
         
         const zoomScale = Math.min(w, h) * 0.0035 * cameraState.zoom;
@@ -85,16 +92,15 @@ export async function initWebGPU() {
         }
     }
 
-    // Init Engine
     const gpuEngine = new PhysicsEngine(canvas, cosmicNodes);
     const isGpuActive = await gpuEngine.init();
 
     if (isGpuActive) {
-        console.log("⚡ [ORIGIN]: WebGPU Active (Dumb Renderer Mode).");
+        console.log("⚡ [ORIGIN]: WebGPU Active.");
         function renderGPU() {
             requestAnimationFrame(renderGPU);
-            updateScreenCoordinates(); // JS calculates where nodes are for touch!
-            gpuEngine.step(cameraState); // GPU handles all the heavy drawing!
+            updateScreenCoordinates(); 
+            gpuEngine.step(cameraState);
         }
         renderGPU();
     } else {
@@ -103,7 +109,7 @@ export async function initWebGPU() {
         function render2D() {
             requestAnimationFrame(render2D);
             updateScreenCoordinates();
-            ctx.fillStyle = '#030308';
+            ctx.fillStyle = '#0A0B14';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             const age = cameraState.currentAge || 0.0;
@@ -112,14 +118,14 @@ export async function initWebGPU() {
                 if (p.screenX < 0) continue;
                 
                 let clr = p.color, blur = 0, ds = p.drawSize;
-                if (age < 0.38) { clr = 'rgba(255, 120, 50, 0.4)'; ds *= 3; blur = 15; }
+                if (age < 0.38) { clr = 'rgba(255, 140, 0, 0.4)'; ds *= 3; blur = 15; }
                 else if (age < 100.0) { clr = p.id % 3 === 0 ? 'rgba(40, 10, 60, 0.15)' : 'rgba(90, 20, 130, 0.2)'; ds *= 4; blur = 12; }
 
                 ctx.beginPath(); ctx.arc(p.screenX, p.screenY, Math.max(0.6, ds), 0, Math.PI * 2);
                 ctx.fillStyle = clr; ctx.shadowColor = clr; ctx.shadowBlur = blur; ctx.fill();
 
                 if (selectedNode === p) {
-                    ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 1.5; ctx.shadowBlur = 0;
+                    ctx.strokeStyle = '#FF8C00'; ctx.lineWidth = 1.5; ctx.shadowBlur = 0;
                     ctx.beginPath(); ctx.arc(p.screenX, p.screenY, ds * 2 + 6, 0, Math.PI * 2); ctx.stroke();
                 }
             }
@@ -127,7 +133,6 @@ export async function initWebGPU() {
         render2D();
     }
 
-    // Universal Touch Picking (Works for both GPU and 2D!)
     window.selectParticleAt = function(clientX, clientY) {
         const rect = canvas.getBoundingClientRect();
         const tapX = (clientX - rect.left) * window.devicePixelRatio;
@@ -144,10 +149,21 @@ export async function initWebGPU() {
         if (closest) {
             selectedNode = closest;
             const stats = getRealisticNodeStats(closest.id, cameraState.currentAge);
-            const titles = ['obj-name', 'inspect-title'];
-            titles.forEach(id => { if (document.getElementById(id)) document.getElementById(id).innerText = stats.designation; });
+            
+            // Format for Inspector
+            if (document.getElementById('obj-name')) document.getElementById('obj-name').innerText = stats.designation;
+            if (document.getElementById('inspect-title')) document.getElementById('inspect-title').innerText = stats.designation;
             if (document.getElementById('obj-sub')) document.getElementById('obj-sub').innerText = stats.classification;
-            if (document.getElementById('spec-name')) document.getElementById('spec-name').innerHTML = `${stats.classification}<br/>Temp: ${stats.temp}<br/>Mass: ${stats.mass}`;
+            
+            const specHTML = `
+                <div class="spec-row"><span class="spec-label">Type</span><span class="spec-value">${stats.classification}</span></div>
+                <div class="spec-row"><span class="spec-label">Mass</span><span class="spec-value">${stats.mass}</span></div>
+                <div class="spec-row"><span class="spec-label">Radius</span><span class="spec-value">${stats.radius}</span></div>
+                <div class="spec-row"><span class="spec-label">Temperature</span><span class="spec-value">${stats.temp}</span></div>
+                <div class="spec-row"><span class="spec-label">Dist. from Origin</span><span class="spec-value">${stats.distOrigin}</span></div>
+                <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Local Age</span><span class="spec-value">${stats.age}</span></div>
+            `;
+            if (document.getElementById('spec-name')) document.getElementById('spec-name').innerHTML = specHTML;
             if (document.getElementById('inspector-preview')) document.getElementById('inspector-preview').classList.add('active');
         }
     };
