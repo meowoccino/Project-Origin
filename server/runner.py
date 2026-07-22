@@ -17,7 +17,6 @@ HEADERS = {
     "Prefer": "return=representation"
 }
 
-# Cosmological Constants
 C_LIGHT = 299792.458
 H_0 = 67.4
 OMEGA_M_0 = 0.315
@@ -30,12 +29,6 @@ CATEGORY_MASS_WEIGHTS = {
     "quasars": 1000.0, "dark_matter_structures": 100000.0, "exotic_objects": 10.0
 }
 
-# Free Will Object Naming Arrays
-NAME_PREFIXES = ["Vespera", "Aetheria", "Erebus", "Hyperion", "Chronos", "Ignis", "Thalassa", "Zephyrus", "Kaelum", "Onyx", "Solaria", "Astraea"]
-NAME_SUFFIXES = ["Prime", "Core", "Singularity", "Halo", "Filament", "Cluster", "Nebula", "Vortex", "Node", "Nursery", "Nexus", "Relic"]
-
-LOGGED_MILESTONES = set()
-
 def calculate_cosmology(age_myr):
     age_gyr = max(0.0001, age_myr / 1000.0)
     scale_factor = math.pow(math.sinh(1.5 * math.sqrt(OMEGA_LAMBDA_0) * (age_gyr / 13.8)), 2.0 / 3.0) if age_gyr > 0 else 0.0001
@@ -43,18 +36,18 @@ def calculate_cosmology(age_myr):
     redshift = max(0.0, (1.0 / scale_factor) - 1.0)
     
     e_z_sq = OMEGA_M_0 * math.pow(1.0 + redshift, 3) + OMEGA_LAMBDA_0
-    de_pct = round((OMEGA_LAMBDA_0 / e_z_sq) * 100.0, 1)
+    de_pct = round((OMEGA_LAMBDA_0 / e_z_sq) * 100.0, 2)
     dm_pct = round(((OMEGA_DM_0 * math.pow(1.0 + redshift, 3)) / e_z_sq) * 100.0, 1)
     baryon_pct = round(max(0.1, 100.0 - de_pct - dm_pct), 1)
 
     if age_myr < 0.38:
-        epoch = "Primordial Inflation & Recombination"
+        epoch = "Primordial Recombination"
     elif age_myr < 100.0:
         epoch = "Cosmic Dark Ages"
     elif age_myr < 500.0:
-        epoch = "Population III First Stars Ignition"
+        epoch = "Population III Ignition"
     elif age_myr < 13800.0:
-        epoch = "Stelliferous Galaxy Era"
+        epoch = "Stelliferous Era"
     else:
         epoch = "Degenerate Stellar Era"
 
@@ -84,42 +77,35 @@ def fetch_latest_state():
         print(f"[DB FETCH WARNING]: {e}")
     return age, catalog
 
-def generate_creative_object_name(category):
-    prefix = random.choice(NAME_PREFIXES)
-    suffix = random.choice(NAME_SUFFIXES)
-    num = random.randint(1, 99)
-    return f"{prefix} {suffix} {num}"
-
-def sanitize_and_apply_lifecycle(mutations, age_myr, current_catalog):
-    sanitized = {k: int(v) for k, v in mutations.items()}
-
-    if age_myr < 100.0:
-        for k in ["stars", "black_holes", "neutron_stars", "planets", "moons", "asteroids_comets", "quasars", "exotic_objects"]:
-            sanitized[k] = 0
-    elif age_myr < 500.0:
-        for k in ["planets", "moons", "asteroids_comets"]:
-            sanitized[k] = 0
-
-    return sanitized
-
 def query_ai_decision(age_myr, cosmology, current_catalog):
+    """
+    TOTAL AI AGENCY: Generates unconstrained actions, creative object designations,
+    and physical catalysts via Groq LLM (or procedural free-form synthesis).
+    """
     goal, reasoning, raw_mutations = None, None, {}
-
-    target_name = generate_creative_object_name("stars")
 
     if GROQ_API_KEY:
         prompt = f"""
-        You are ORIGIN, an autonomous AI astrophysics engine with free will.
-        CURRENT UNIVERSE STATE:
-        - Age: {age_myr * 1000000:,.0f} Years
+        You are ORIGIN, an autonomous cosmic AI with free will directing physical evolution.
+        CURRENT STATE:
+        - Universe Age: {age_myr * 1000000:,.0f} Years ({age_myr:.2f} Myr)
         - Epoch: {cosmology['epoch']}
+        - Redshift z: {cosmology['redshift']:.2f}
 
-        Generate a scientific action naming specific cosmic objects (e.g., '{target_name}').
-        OUTPUT JSON ONLY:
+        Free Will Directives:
+        1. Invent an original, specific cosmic object designation (e.g. 'Aetheria Cluster 9', 'Ignis-7 Protostar', 'Erebus Singularity').
+        2. Describe the physical action/trajectory being performed on or by this object.
+        3. Formulate the precise astrophysical catalyst driving it.
+
+        RESPOND IN STRICT JSON ONLY:
         {{
-            "goal": "<Trajectory involving a named object, max 10 words>",
-            "reasoning": "<Physical catalyst, max 20 words>",
-            "mutations": {{ "stars": <int>, "black_holes": <int>, "dark_matter_structures": <int>, "nebulae": <int> }}
+            "goal": "<Action referencing your custom object name, max 10 words>",
+            "reasoning": "<Astrophysical catalyst, max 20 words>",
+            "mutations": {{
+                "stars": <int>, "black_holes": <int>, "neutron_stars": <int>,
+                "planets": <int>, "moons": <int>, "asteroids_comets": <int>,
+                "nebulae": <int>, "quasars": <int>, "dark_matter_structures": <int>, "exotic_objects": <int>
+            }}
         }}
         """
         try:
@@ -129,7 +115,7 @@ def query_ai_decision(age_myr, cosmology, current_catalog):
                 json={
                     "model": "llama3-8b-8192",
                     "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.4,
+                    "temperature": 0.7,
                     "response_format": {"type": "json_object"}
                 },
                 timeout=6
@@ -139,64 +125,42 @@ def query_ai_decision(age_myr, cosmology, current_catalog):
                 goal = data.get("goal")
                 reasoning = data.get("reasoning")
                 raw_mutations = data.get("mutations", {})
-        except Exception:
-            pass
-
-    if not goal or not reasoning:
-        if age_myr < 100.0:
-            goal = f"Condensing dark matter halo '{target_name}'."
-            reasoning = "Isotropic expansion stretching primordial plasma, initiating gravitational instability."
-            raw_mutations = {"dark_matter_structures": random.randint(10, 30), "nebulae": random.randint(1, 3)}
-        elif age_myr < 500.0:
-            goal = f"Igniting Population III star '{target_name}'."
-            reasoning = "Neutral hydrogen cooling within molecular cloud triggers rapid runaway core collapse."
-            raw_mutations = {"stars": random.randint(5, 20), "black_holes": random.randint(0, 1), "nebulae": random.randint(2, 6)}
-        else:
-            goal = f"Accreting disk mass around '{target_name}'."
-            reasoning = "Supernova nucleosynthesis enriching interstellar medium with heavy elements."
-            raw_mutations = {"stars": random.randint(10, 40), "planets": random.randint(5, 20)}
-
-    enforced_mutations = sanitize_and_apply_lifecycle(raw_mutations, age_myr, current_catalog)
-    return goal, reasoning, enforced_mutations
-
-def log_milestone_events_once(age_myr, epoch):
-    """
-    STRICT DEDUPLICATION: Logs each major cosmological milestone EXACTLY ONCE per universe run.
-    """
-    milestone_key = None
-    event_payload = None
-
-    if 0.35 <= age_myr <= 0.45 and "cmb" not in LOGGED_MILESTONES:
-        milestone_key = "cmb"
-        event_payload = {
-            "title": "Photon Decoupling & Cosmic Microwave Background",
-            "description": "Thermal baryonic plasma cools below 3,000 K, allowing free photon propagation across expanding space-time.",
-            "age": age_myr
-        }
-    elif 99.0 <= age_myr <= 102.0 and "dark_ages_end" not in LOGGED_MILESTONES:
-        milestone_key = "dark_ages_end"
-        halo_name = generate_creative_object_name("dark_matter")
-        event_payload = {
-            "title": f"First Halo Condensation: {halo_name}",
-            "description": f"Non-baryonic dark matter halo '{halo_name}' achieves gravitational collapse threshold, ending the Cosmic Dark Ages.",
-            "age": age_myr
-        }
-    elif 490.0 <= age_myr <= 510.0 and "pop3_peak" not in LOGGED_MILESTONES:
-        milestone_key = "pop3_peak"
-        star_name = generate_creative_object_name("stars")
-        event_payload = {
-            "title": f"Population III Ignition: {star_name}",
-            "description": f"Zero-metallicity hypermassive protostar '{star_name}' ignites, triggering universe-wide reionization.",
-            "age": age_myr
-        }
-
-    if milestone_key and event_payload:
-        try:
-            res = requests.post(f"{SUPABASE_URL}/rest/v1/events", json=event_payload, headers=HEADERS)
-            if res.status_code in [200, 201]:
-                LOGGED_MILESTONES.add(milestone_key)
         except Exception as e:
-            print(f"[EVENT LOG ERROR]: {e}")
+            print(f"[GROQ API WARNING]: {e}")
+
+    # Pure Procedural Fallback with AI-Style Naming Freedom
+    if not goal or not reasoning:
+        prefixes = ["Vespera", "Aetheria", "Erebus", "Hyperion", "Chronos", "Ignis", "Thalassa", "Zephyrus", "Kaelum", "Onyx"]
+        suffixes = ["Prime", "Core", "Singularity", "Halo", "Filament", "Cluster", "Nebula", "Vortex", "Node", "Nursery"]
+        custom_name = f"{random.choice(prefixes)} {random.choice(suffixes)} {random.randint(1, 999)}"
+
+        if age_myr < 100.0:
+            goal = f"Condensing primordial dark matter halo '{custom_name}'."
+            reasoning = "Isotropic space-time expansion stretching density perturbations into potential wells."
+            raw_mutations = {"dark_matter_structures": random.randint(10, 35), "nebulae": random.randint(1, 4)}
+        elif age_myr < 500.0:
+            goal = f"Triggering zero-metallicity ignition in '{custom_name}'."
+            reasoning = "Lyman-alpha cooling within molecular cloud induces rapid hydrostatic core collapse."
+            raw_mutations = {"stars": random.randint(5, 25), "black_holes": random.randint(0, 2), "nebulae": random.randint(2, 6)}
+        else:
+            goal = f"Accreting disk metallicity surrounding '{custom_name}'."
+            reasoning = "Supernova nucleosynthesis enriching interstellar medium with heavy elements."
+            raw_mutations = {"stars": random.randint(15, 50), "planets": random.randint(10, 40), "asteroids_comets": random.randint(50, 200)}
+
+    # Enforce non-negative counts
+    sanitized = {k: max(0, int(v)) for k, v in raw_mutations.items()}
+
+    # Log action to Events stream
+    try:
+        requests.post(f"{SUPABASE_URL}/rest/v1/events", json={
+            "title": goal,
+            "description": reasoning,
+            "age": age_myr
+        }, headers=HEADERS)
+    except Exception:
+        pass
+
+    return goal, reasoning, sanitized
 
 def sync_to_supabase(age, goal, reasoning, redshift, epoch, de_pct, dm_pct, baryon_pct):
     try:
@@ -228,12 +192,12 @@ def update_catalog_active_counts(current_catalog, mutations):
         return current_catalog
 
 def main():
-    print("⚡ [ORIGIN Engine] Dynamic Telemetry & Deduplicated Event Chronicle Active.")
+    print("⚡ [ORIGIN Engine] Unconstrained AI Free Will Engine Active.")
     current_age, current_catalog = fetch_latest_state()
 
     while True:
         try:
-            delta_age = max(0.05, current_age * 0.004)
+            delta_age = max(25.0, current_age * 0.08)
             current_age += delta_age
             
             cosmology = calculate_cosmology(current_age)
@@ -245,15 +209,15 @@ def main():
                 cosmology['de_pct'], cosmology['dm_pct'], cosmology['baryon_pct']
             )
             current_catalog = update_catalog_active_counts(current_catalog, enforced_mutations)
-            log_milestone_events_once(current_age, cosmology['epoch'])
 
             years = int(current_age * 1000000)
             print(f"🌌 Age: {years:,} Yrs | Action: {goal}")
 
-            time.sleep(4)
+            time.sleep(2.5)
 
         except Exception as e:
-            time.sleep(5)
+            print(f"[ENGINE LOOP ERROR]: {e}")
+            time.sleep(4)
 
 if __name__ == "__main__":
     main()
