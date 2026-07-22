@@ -29,14 +29,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         canvasContainer.addEventListener('touchmove', (e) => {
             if (e.touches.length === 1 && isDragging) {
-                cameraState.panX += (e.touches[0].clientX - lastX) * window.devicePixelRatio;
-                cameraState.panY += (e.touches[0].clientY - lastY) * window.devicePixelRatio;
+                const dpr = window.devicePixelRatio || 1;
+                cameraState.panX += (e.touches[0].clientX - lastX) * dpr;
+                cameraState.panY += (e.touches[0].clientY - lastY) * dpr;
                 lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
             } else if (e.touches.length === 2 && initialPinchDist) {
                 const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                const expansionFactor = Math.max(0.01, Math.min(1.0, localCurrentAge / 13800.0));
-                const minZoomAllowed = 0.8 * (1.05 - expansionFactor); 
-                cameraState.zoom = Math.max(minZoomAllowed, Math.min(25.0, initialZoom * (dist / initialPinchDist)));
+                
+                // Controlled Zoom Boundaries (Screen-filling bounds)
+                const minZoom = 0.35; 
+                const maxZoom = 12.0; 
+                cameraState.zoom = Math.max(minZoom, Math.min(maxZoom, initialZoom * (dist / initialPinchDist)));
             }
         }, { passive: true });
 
