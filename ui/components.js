@@ -1,6 +1,15 @@
 import { cameraState } from '../engine/main.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- 0. SPLASH SCREEN DISMISS ---
+    const splash = document.getElementById('splash-screen');
+    if (splash) {
+        // Will stay forever until the user taps anywhere on the screen
+        splash.addEventListener('click', () => {
+            splash.classList.add('hidden');
+        });
+    }
+
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
     const SUPABASE_KEY = "sb_publishable_O5qr-6UD-6wTzi51j3tYtw_00N9Q4ja";
 
@@ -95,7 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const isPassed = totalYears >= epoch.start;
             const isActive = totalYears >= epoch.start && totalYears < epoch.end;
             const markerColor = isActive ? '#00e5ff' : (isPassed ? '#4a4d66' : 'rgba(255,255,255,0.1)');
-            // Dim future epochs heavily
             const opacity = isActive ? '1' : (isPassed ? '0.7' : '0.2');
 
             return `
@@ -200,7 +208,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     setInterval(() => {
-        // ACCELERATED SPEED FOR 30-DAY EXPERIMENT
         localCurrentAge += 0.03875;
         cameraState.currentAge = localCurrentAge;
 
