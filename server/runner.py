@@ -1,4 +1,3 @@
-cd ~/Project-Origin && cat << 'EOF' > server/runner.py
 import os
 import time
 import math
@@ -221,9 +220,6 @@ def spawn_individual_objects(mutations, age_myr, goal, reasoning):
             print(f"[COSMIC OBJECTS WRITE ERROR]: {e}")
 
 def log_milestone_events(age_myr, epoch):
-    """
-    Automatic Historical Event Chronicles
-    """
     events = []
     if 0.35 <= age_myr <= 0.45:
         events.append({"title": "Photon Decoupling & CMB Release", "description": "Thermal baryonic plasma cools below 3,000 K, decoupling photons and producing the Cosmic Microwave Background.", "age": age_myr})
@@ -264,7 +260,6 @@ def main():
 
     while True:
         try:
-            # Adaptive Logarithmic Time Step
             delta_age = max(0.05, current_age * 0.004)
             current_age += delta_age
             
@@ -286,6 +281,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-EOF
-
-pkill -f runner.py ; nohup python3 -u server/runner.py > runner.log 2>&1 &
