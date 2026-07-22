@@ -1,11 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
 
 :root {
-    --accent: #FF8C00; /* Solar Flare Orange */
+    --accent: #FF8C00;
     --bg-deep: #0A0B14;
-    --glass-bg: rgba(20, 22, 35, 0.4);
+    --glass-bg: rgba(20, 22, 35, 0.5);
     --text-main: #ffffff;
-    --text-muted: #70748a;
+    --text-muted: #8c8f9f;
 }
 
 * {
@@ -85,7 +85,6 @@ body {
     text-transform: uppercase;
 }
 
-/* Fixed Splash Prompt: Slow Breathing White */
 .splash-prompt {
     position: absolute;
     bottom: 80px;
@@ -100,12 +99,12 @@ body {
     50% { opacity: 1; }
 }
 
-/* --- MAIN APP STYLES --- */
+/* --- MAIN APP UI --- */
 .glass-panel {
     background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 16px;
 }
 
@@ -115,38 +114,40 @@ body {
     z-index: 1;
 }
 
+/* HUD Universe Age: Persistent Layer (z-index: 60) */
 #hud-age-container {
-    position: absolute;
-    top: 24px;
+    position: fixed;
+    top: 20px;
     left: 20px;
-    z-index: 10;
-    padding: 14px 20px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    z-index: 60;
+    padding: 12px 18px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     border-left: 3px solid var(--accent);
+    pointer-events: none;
 }
 
 .hud-label {
     font-size: 10px;
     font-weight: 700;
-    color: #8c8f9f;
+    color: var(--text-muted);
     letter-spacing: 1px;
     text-transform: uppercase;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .hud-value {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 700;
     color: var(--text-main);
-    text-shadow: 0 0 10px rgba(255,255,255,0.1);
+    text-shadow: 0 0 10px rgba(255,140,0,0.2);
 }
 
 /* Bottom Navigation */
 #bottom-nav {
-    position: absolute;
+    position: fixed;
     bottom: 0; left: 0; right: 0;
     height: 70px;
-    background: rgba(10, 11, 20, 0.85);
+    background: rgba(10, 11, 20, 0.9);
     backdrop-filter: blur(20px);
     border-top: 1px solid rgba(255,255,255,0.05);
     display: flex;
@@ -183,18 +184,18 @@ body {
     filter: drop-shadow(0 0 8px rgba(255, 140, 0, 0.5));
 }
 
-/* Views */
+/* Tab Panels */
 .view-panel {
-    position: absolute;
+    position: fixed;
     top: 0; left: 0; right: 0; bottom: 70px;
     z-index: 20;
-    background: rgba(10, 11, 20, 0.8);
+    background: rgba(10, 11, 20, 0.82);
     backdrop-filter: blur(15px);
-    padding: 100px 20px 20px;
+    padding: 85px 20px 20px; /* Clear space for persistent HUD */
     overflow-y: auto;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.25s ease-out;
 }
 
 .view-panel.active {
@@ -202,80 +203,53 @@ body {
     pointer-events: auto;
 }
 
-/* Origin Actions */
+/* Origin Task Cards */
 .action-card {
     background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.05);
     border-radius: 12px;
     padding: 16px;
     margin-bottom: 12px;
-    border-left: 2px solid var(--text-muted);
-    transition: border-color 0.3s;
-}
-
-.action-card.active-action {
-    border-left: 2px solid var(--accent);
-}
-
-.action-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 8px;
+    border-left: 3px solid var(--accent);
 }
 
 .action-card-title {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--text-main);
-}
-
-.action-eta-badge {
-    background: rgba(255, 140, 0, 0.1);
-    color: var(--accent);
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: bold;
-}
-
-.action-body-text {
-    font-size: 13px;
-    color: #e0e0e0;
-    margin-bottom: 8px;
-    line-height: 1.4;
+    margin-bottom: 10px;
 }
 
 .action-meta-row {
-    font-size: 12px;
-    margin-bottom: 4px;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 6px;
 }
 
 .label-catalyst {
-    color: #d4af37; /* Soft gold */
-    font-weight: 600;
-    margin-right: 4px;
+    color: #FFD700; /* Soft Gold */
+    font-weight: 700;
 }
 
 .label-trajectory {
-    color: #ffffff; /* Pure white */
-    font-weight: 600;
-    margin-right: 4px;
+    color: #ffffff;
+    font-weight: 700;
 }
 
-/* Catalog Single Column List */
+/* Catalog Single-Column List (Top-Aligned) */
 .catalog-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-top: 10px;
+    gap: 10px;
+    margin-top: 0;
+    padding-top: 0;
 }
 
 .cat-list-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px;
+    padding: 14px 16px;
     background: rgba(255,255,255,0.02);
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.03);
@@ -300,29 +274,36 @@ body {
 }
 
 .cat-val {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--text-main);
 }
 
-/* Timeline Full Height & Brightness */
+/* Timeline (Bounded Vertical Line) */
 .timeline-wrapper {
     position: relative;
-    padding-left: 24px;
-    margin-left: 8px;
-    border-left: 2px solid rgba(255, 255, 255, 0.1);
-    padding-bottom: 40px;
-    min-height: 100%;
+    padding-left: 28px;
+    margin-left: 6px;
+}
+
+.timeline-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    bottom: 40px; /* Bounded line: stops precisely at center of last node */
+    left: 5px;
+    width: 2px;
+    background: rgba(255, 140, 0, 0.25);
 }
 
 .timeline-node {
     position: relative;
-    margin-bottom: 35px;
+    margin-bottom: 32px;
 }
 
 .node-marker {
     position: absolute;
-    left: -31px;
+    left: -28px;
     top: 4px;
     width: 12px;
     height: 12px;
@@ -337,10 +318,9 @@ body {
 }
 
 .node-title {
-    color: #8c8f9f;
+    color: #a0a0c0;
     font-weight: bold;
-    font-size: 16px;
-    transition: color 0.3s;
+    font-size: 15px;
 }
 
 .node-title.active {
@@ -348,9 +328,9 @@ body {
 }
 
 .node-time {
-    color: #50536b;
+    color: #60647a;
     font-size: 12px;
-    margin-top: 4px;
+    margin-top: 2px;
 }
 
 .node-time.active {
@@ -358,19 +338,19 @@ body {
 }
 
 .node-desc {
-    color: #50536b;
+    color: #70748a;
     font-size: 13px;
     margin-top: 6px;
     line-height: 1.5;
 }
 
 .node-desc.active {
-    color: #b0b0d0;
+    color: #d0d0e0;
 }
 
 /* Inspector */
 #inspector-preview {
-    position: absolute;
+    position: fixed;
     bottom: 85px; left: 20px; right: 20px;
     z-index: 30;
     padding: 16px;
@@ -387,7 +367,7 @@ body {
     opacity: 1; pointer-events: auto; transform: translateY(0);
 }
 
-#obj-name { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+#obj-name { font-weight: 700; font-size: 16px; margin-bottom: 2px; }
 #obj-sub { font-size: 12px; color: var(--accent); }
 
 #modal-object-detail {
@@ -398,7 +378,7 @@ body {
 .modal-header {
     display: flex;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .btn-back {
@@ -411,7 +391,6 @@ body {
     margin-right: 16px;
 }
 
-/* Clean Spec Rows for Analytics */
 .spec-row {
     display: flex;
     justify-content: space-between;
