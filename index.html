@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Project Origin</title>
-    <!-- Corrected path to point inside the ui folder -->
-    <link rel="stylesheet" href="ui/styles.css?v=3">
+    <link rel="stylesheet" href="ui/styles.css?v=4">
 </head>
 <body>
 
-    <!-- 0. SPLASH SCREEN (Tap to dismiss) -->
+    <!-- 0. SPLASH SCREEN -->
     <div id="splash-screen">
         <div class="splash-content">
             <svg class="splash-logo" viewBox="0 0 100 100">
@@ -18,19 +17,19 @@
                 <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
                 <circle cx="50" cy="50" r="2" fill="#ffffff" />
                 <g class="orbit-anim">
-                    <circle cx="50" cy="24" r="3.5" fill="#00e5ff" />
+                    <circle cx="50" cy="24" r="3.5" fill="#FF8C00" />
                 </g>
             </svg>
-            <div class="splash-title">PROJECT <span style="color: #00e5ff;">ORIGIN</span></div>
+            <div class="splash-title">PROJECT <span style="color: #FF8C00;">ORIGIN</span></div>
             <div class="splash-subtitle">AN AI-DIRECTED UNIVERSE</div>
         </div>
         <div class="splash-prompt data-font">tap to observe &rarr;</div>
     </div>
 
-    <!-- 1. The 3D/2D Canvas Background -->
+    <!-- 1. The Canvas -->
     <div id="canvas-container"></div>
 
-    <!-- 2. The Minimalist Top-Left HUD -->
+    <!-- 2. HUD -->
     <div id="hud-age-container" class="glass-panel">
         <div class="hud-label">Universe Age</div>
         <div id="hud-age" class="hud-value data-font">0 Years</div>
@@ -66,12 +65,11 @@
     </div>
 
     <div id="view-ai" class="view-panel">
-        <div class="glass-panel" style="padding: 20px; margin-bottom: 20px;">
-            <div class="hud-label" style="color: #00e5ff;">Active Computational Goal</div>
-            <div id="ai-goal-text" style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">Awaiting telemetry...</div>
-            <div id="ai-reasoning-text" style="font-size: 13px; color: #a0a0c0;">Initializing cognitive models...</div>
+        <!-- Active Server Logic at the top -->
+        <div class="hud-label" style="margin-bottom: 12px;">Active Server Telemetry</div>
+        <div id="origin-actions-container">
+            <!-- JS will inject the true server action here -->
         </div>
-        <div id="origin-actions-container"></div>
     </div>
 
     <div id="view-timeline" class="view-panel">
@@ -79,23 +77,18 @@
     </div>
 
     <div id="view-catalog" class="view-panel">
-        <div class="catalog-grid">
-            <div class="glass-panel cat-card">
-                <div class="cat-label">Stars</div>
-                <div id="cat-stars" class="cat-val data-font">0</div>
-            </div>
-            <div class="glass-panel cat-card">
-                <div class="cat-label">Black Holes</div>
-                <div id="cat-bh" class="cat-val data-font">0</div>
-            </div>
-            <div class="glass-panel cat-card">
-                <div class="cat-label">Neutron Stars</div>
-                <div id="cat-neutron" class="cat-val data-font">0</div>
-            </div>
-            <div class="glass-panel cat-card">
-                <div class="cat-label">Planets</div>
-                <div id="cat-planets" class="cat-val data-font">0</div>
-            </div>
+        <div class="hud-label" style="margin-bottom: 8px;">Universal Catalog</div>
+        <div class="catalog-list">
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FFD700;"></div><div class="cat-label">Stars</div></div><div id="cat-stars" class="cat-val data-font">0</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#4a4d66;"></div><div class="cat-label">Black Holes</div></div><div id="cat-bh" class="cat-val data-font">0</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#e0e0e0;"></div><div class="cat-label">Neutron Stars</div></div><div id="cat-neutron" class="cat-val data-font">0</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#cd7f32;"></div><div class="cat-label">Planets</div></div><div id="cat-planets" class="cat-val data-font">0</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#8c8f9f;"></div><div class="cat-label">Moons</div></div><div id="cat-moons" class="cat-val data-font">0</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#b0b0d0;"></div><div class="cat-label">Asteroids & Comets</div></div><div id="cat-asteroids" class="cat-val data-font">0</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#9932CC;"></div><div class="cat-label">Nebulae</div></div><div id="cat-nebulae" class="cat-val data-font">0</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#ffffff; box-shadow:0 0 8px #fff;"></div><div class="cat-label">Quasars</div></div><div id="cat-quasars" class="cat-val data-font">0</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#4B0082;"></div><div class="cat-label">Dark Matter Structures</div></div><div id="cat-dm" class="cat-val data-font">0</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF69B4;"></div><div class="cat-label">Exotic Objects</div></div><div id="cat-exotic" class="cat-val data-font">0</div></div>
         </div>
     </div>
 
@@ -105,7 +98,7 @@
             <div id="obj-name">Target Acquired</div>
             <div id="obj-sub">Scanning class...</div>
         </div>
-        <button id="btn-expand-inspect" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:8px; padding:8px 16px; font-weight:bold;">Inspect</button>
+        <button id="btn-expand-inspect" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:8px; padding:8px 16px; font-weight:bold;">Analyze</button>
     </div>
 
     <div id="modal-object-detail" class="view-panel">
@@ -113,16 +106,17 @@
             <button class="btn-back" id="btn-close-inspect">←</button>
             <div>
                 <div id="inspect-title" style="font-size: 20px; font-weight: bold;">Object</div>
-                <div style="font-size: 12px; color: #8c8f9f;">Telemetry Data</div>
+                <div style="font-size: 12px; color: #8c8f9f;">Deep Space Telemetry</div>
             </div>
         </div>
         <div class="glass-panel" style="padding: 24px;">
-            <div class="hud-label" style="margin-bottom: 16px;">Overview Specifications</div>
-            <div class="grid-specs" id="spec-name" class="data-font" style="color: #e0e0e0; font-size: 14px; line-height: 1.8;">
+            <div class="hud-label" style="margin-bottom: 16px;">Physical Specifications</div>
+            <div id="spec-name" style="width: 100%;">
+                <!-- Dynamic Specs will be injected here by JS -->
             </div>
         </div>
     </div>
 
-    <script type="module" src="index.js"></script>
+    <script type="module" src="ui/components.js"></script>
 </body>
 </html>
