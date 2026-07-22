@@ -114,7 +114,7 @@ body {
     z-index: 1;
 }
 
-/* HUD Universe Age: Persistent Layer (z-index: 60) */
+/* HUD Universe Age: Scoped to Explore Tab */
 #hud-age-container {
     position: fixed;
     top: 20px;
@@ -124,6 +124,7 @@ body {
     box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     border-left: 3px solid var(--accent);
     pointer-events: none;
+    transition: opacity 0.2s ease;
 }
 
 .hud-label {
@@ -184,14 +185,14 @@ body {
     filter: drop-shadow(0 0 8px rgba(255, 140, 0, 0.5));
 }
 
-/* Tab Panels */
+/* Tab Panels (Flush 20px top padding when HUD is hidden) */
 .view-panel {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 70px;
     z-index: 20;
-    background: rgba(10, 11, 20, 0.82);
+    background: rgba(10, 11, 20, 0.85);
     backdrop-filter: blur(15px);
-    padding: 85px 20px 20px; /* Clear space for persistent HUD */
+    padding: 24px 20px 20px;
     overflow-y: auto;
     opacity: 0;
     pointer-events: none;
@@ -203,7 +204,7 @@ body {
     pointer-events: auto;
 }
 
-/* Origin Task Cards */
+/* Origin Cards */
 .action-card {
     background: rgba(255,255,255,0.02);
     border: 1px solid rgba(255,255,255,0.05);
@@ -227,7 +228,7 @@ body {
 }
 
 .label-catalyst {
-    color: #FFD700; /* Soft Gold */
+    color: #FFD700;
     font-weight: 700;
 }
 
@@ -236,7 +237,7 @@ body {
     font-weight: 700;
 }
 
-/* Catalog Single-Column List (Top-Aligned) */
+/* Catalog Single-Column List (Flush Top) */
 .catalog-list {
     display: flex;
     flex-direction: column;
@@ -268,18 +269,18 @@ body {
 }
 
 .cat-label {
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 600;
     color: #e0e0e0;
 }
 
 .cat-val {
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 700;
     color: var(--text-main);
 }
 
-/* Timeline (Bounded Vertical Line) */
+/* Timeline (Line strictly bounded inside container) */
 .timeline-wrapper {
     position: relative;
     padding-left: 28px;
@@ -290,10 +291,10 @@ body {
     content: '';
     position: absolute;
     top: 10px;
-    bottom: 40px; /* Bounded line: stops precisely at center of last node */
+    bottom: 35px; /* Clamped strictly to the bottom node center */
     left: 5px;
     width: 2px;
-    background: rgba(255, 140, 0, 0.25);
+    background: rgba(255, 140, 0, 0.3);
 }
 
 .timeline-node {
@@ -372,7 +373,7 @@ body {
 
 #modal-object-detail {
     background: var(--bg-deep);
-    padding-top: 60px;
+    padding-top: 24px;
 }
 
 .modal-header {
