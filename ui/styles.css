@@ -1,6 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
 
-/* Global Reset & Fonts */
+:root {
+    --accent: #FF8C00; /* Solar Flare Orange */
+    --bg-deep: #0A0B14;
+    --glass-bg: rgba(20, 22, 35, 0.4);
+    --text-main: #ffffff;
+    --text-muted: #70748a;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -10,15 +17,14 @@
 }
 
 body {
-    background-color: #0A0B14;
-    color: #ffffff;
+    background-color: var(--bg-deep);
+    color: var(--text-main);
     font-family: 'Google Sans', 'Inter', -apple-system, sans-serif;
     overflow: hidden;
     width: 100vw;
     height: 100vh;
 }
 
-/* Data Font for Numbers */
 .data-font {
     font-family: 'Space Mono', monospace;
     letter-spacing: -0.5px;
@@ -28,7 +34,7 @@ body {
 #splash-screen {
     position: fixed;
     top: 0; left: 0; width: 100vw; height: 100vh;
-    background-color: #0A0B14;
+    background-color: var(--bg-deep);
     z-index: 9999;
     display: flex;
     flex-direction: column;
@@ -66,7 +72,7 @@ body {
     font-size: 24px;
     font-weight: 700;
     letter-spacing: 5px;
-    color: #ffffff;
+    color: var(--text-main);
     margin-bottom: 12px;
     text-transform: uppercase;
 }
@@ -74,28 +80,29 @@ body {
 .splash-subtitle {
     font-size: 11px;
     font-weight: 600;
-    color: #70748a;
+    color: var(--text-muted);
     letter-spacing: 2px;
     text-transform: uppercase;
 }
 
+/* Fixed Splash Prompt: Slow Breathing White */
 .splash-prompt {
     position: absolute;
     bottom: 80px;
     font-size: 14px;
-    color: #70748a;
+    color: #ffffff;
     letter-spacing: 1px;
-    animation: jumpPulse 1.2s infinite;
+    animation: breathePulse 3s ease-in-out infinite;
 }
 
-@keyframes jumpPulse {
-    0%, 100% { transform: translateY(0); opacity: 0.4; }
-    50% { transform: translateY(-6px); opacity: 1; color: #00e5ff; }
+@keyframes breathePulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
 }
 
 /* --- MAIN APP STYLES --- */
 .glass-panel {
-    background: rgba(20, 22, 35, 0.4);
+    background: var(--glass-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -115,6 +122,7 @@ body {
     z-index: 10;
     padding: 14px 20px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    border-left: 3px solid var(--accent);
 }
 
 .hud-label {
@@ -129,10 +137,11 @@ body {
 .hud-value {
     font-size: 24px;
     font-weight: 700;
-    color: #ffffff;
-    text-shadow: 0 0 10px rgba(255,255,255,0.2);
+    color: var(--text-main);
+    text-shadow: 0 0 10px rgba(255,255,255,0.1);
 }
 
+/* Bottom Navigation */
 #bottom-nav {
     position: absolute;
     bottom: 0; left: 0; right: 0;
@@ -151,7 +160,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    color: #60647a;
+    color: var(--text-muted);
     font-size: 11px;
     font-weight: 600;
     gap: 4px;
@@ -166,20 +175,21 @@ body {
 }
 
 .nav-btn.active {
-    color: #00e5ff;
+    color: var(--accent);
 }
 
 .nav-btn.active svg {
     opacity: 1;
-    filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.5));
+    filter: drop-shadow(0 0 8px rgba(255, 140, 0, 0.5));
 }
 
+/* Views */
 .view-panel {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 70px;
     z-index: 20;
-    background: rgba(10, 11, 20, 0.7);
-    backdrop-filter: blur(20px);
+    background: rgba(10, 11, 20, 0.8);
+    backdrop-filter: blur(15px);
     padding: 100px 20px 20px;
     overflow-y: auto;
     opacity: 0;
@@ -192,12 +202,19 @@ body {
     pointer-events: auto;
 }
 
+/* Origin Actions */
 .action-card {
     background: rgba(255,255,255,0.02);
     border: 1px solid rgba(255,255,255,0.04);
     border-radius: 12px;
     padding: 16px;
     margin-bottom: 12px;
+    border-left: 2px solid var(--text-muted);
+    transition: border-color 0.3s;
+}
+
+.action-card.active-action {
+    border-left: 2px solid var(--accent);
 }
 
 .action-card-header {
@@ -210,12 +227,12 @@ body {
 .action-card-title {
     font-size: 14px;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--text-main);
 }
 
 .action-eta-badge {
-    background: rgba(0, 229, 255, 0.1);
-    color: #00e5ff;
+    background: rgba(255, 140, 0, 0.1);
+    color: var(--accent);
     padding: 4px 8px;
     border-radius: 6px;
     font-size: 11px;
@@ -226,65 +243,132 @@ body {
     font-size: 13px;
     color: #e0e0e0;
     margin-bottom: 8px;
+    line-height: 1.4;
 }
 
 .action-meta-row {
     font-size: 12px;
-    color: #70748a;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
 }
 
-.catalog-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+.label-catalyst {
+    color: #d4af37; /* Soft gold */
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+.label-trajectory {
+    color: #ffffff; /* Pure white */
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+/* Catalog Single Column List */
+.catalog-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     margin-top: 10px;
 }
 
-.cat-card {
-    padding: 24px 12px;
-    text-align: center;
+.cat-list-item {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.03);
+}
+
+.cat-list-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cat-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
 }
 
 .cat-label {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 600;
-    color: #8c8f9f;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
+    color: #e0e0e0;
 }
 
 .cat-val {
-    font-size: 26px;
+    font-size: 16px;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--text-main);
 }
 
+/* Timeline Full Height & Brightness */
 .timeline-wrapper {
     position: relative;
     padding-left: 24px;
     margin-left: 8px;
-    border-left: 2px solid rgba(112, 0, 255, 0.2);
+    border-left: 2px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 40px;
+    min-height: 100%;
 }
 
 .timeline-node {
     position: relative;
-    margin-bottom: 30px;
+    margin-bottom: 35px;
 }
 
 .node-marker {
     position: absolute;
     left: -31px;
-    top: 2px;
+    top: 4px;
     width: 12px;
     height: 12px;
     border-radius: 50%;
+    background: #2a2d3d;
+    border: 2px solid var(--bg-deep);
 }
 
+.node-marker.active {
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+}
+
+.node-title {
+    color: #8c8f9f;
+    font-weight: bold;
+    font-size: 16px;
+    transition: color 0.3s;
+}
+
+.node-title.active {
+    color: var(--text-main);
+}
+
+.node-time {
+    color: #50536b;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.node-time.active {
+    color: var(--accent);
+}
+
+.node-desc {
+    color: #50536b;
+    font-size: 13px;
+    margin-top: 6px;
+    line-height: 1.5;
+}
+
+.node-desc.active {
+    color: #b0b0d0;
+}
+
+/* Inspector */
 #inspector-preview {
     position: absolute;
     bottom: 85px; left: 20px; right: 20px;
@@ -296,6 +380,7 @@ body {
     opacity: 0; pointer-events: none;
     transform: translateY(20px);
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border-left: 3px solid var(--accent);
 }
 
 #inspector-preview.active {
@@ -303,10 +388,10 @@ body {
 }
 
 #obj-name { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
-#obj-sub { font-size: 12px; color: #00e5ff; }
+#obj-sub { font-size: 12px; color: var(--accent); }
 
 #modal-object-detail {
-    background: #0A0B14;
+    background: var(--bg-deep);
     padding-top: 60px;
 }
 
@@ -326,8 +411,22 @@ body {
     margin-right: 16px;
 }
 
-.grid-specs {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
+/* Clean Spec Rows for Analytics */
+.spec-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.spec-label {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.spec-value {
+    color: var(--text-main);
+    font-size: 13px;
+    text-align: right;
 }
