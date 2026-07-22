@@ -17,12 +17,13 @@ HEADERS = {
     "Prefer": "return=representation"
 }
 
+# Cosmological Constants (Lambda-CDM Model)
 C_LIGHT = 299792.458
 H_0 = 67.4
 OMEGA_M = 0.315
 OMEGA_LAMBDA = 0.685
 
-# Protogalactic Baryonic Mass Reservoir (100 Billion Solar Masses M☉)
+# Protogalactic Mass Reservoir (100 Billion Solar Masses M☉)
 TOTAL_BARYONIC_MASS = 100_000_000_000.0
 
 # Mass Equivalents per Category (M☉)
@@ -49,7 +50,7 @@ def calculate_cosmology(age_myr):
     entropy = 1.0 + math.log10(1.0 + age_myr * 1000.0)
 
     if age_myr < 0.38:
-        epoch = "Primordial Expansion Era"
+        epoch = "Primordial Inflation & Recombination"
     elif age_myr < 100.0:
         epoch = "Cosmic Dark Ages"
     elif age_myr < 500.0:
@@ -88,11 +89,11 @@ def fetch_latest_state():
 
 def sanitize_and_enforce_physics(mutations, age_myr, current_catalog):
     """
-    HARD CODE ENFORCER: Validates AI outputs against physical mass budgets and timeline boundaries.
+    HARD CODE ENFORCER: Enforces physical limits and prevents unphysical mass creation.
     """
     sanitized = {k: max(0, int(v)) for k, v in mutations.items()}
 
-    # 1. Timeline Gate Enforcements
+    # Timeline Gates
     if age_myr < 100.0: # Dark Ages
         for k in ["stars", "black_holes", "neutron_stars", "planets", "moons", "asteroids_comets", "quasars", "exotic_objects"]:
             sanitized[k] = 0
@@ -103,7 +104,7 @@ def sanitize_and_enforce_physics(mutations, age_myr, current_catalog):
         sanitized["stars"] = random.randint(0, 1) if random.random() < 0.05 else 0
         sanitized["quasars"] = 0
 
-    # 2. Airtight Mass Conservation across ALL 10 Categories
+    # Mass Budget Check across Baryonic Matter
     current_mass_used = sum(current_catalog.get(cat, 0) * weight for cat, weight in CATEGORY_MASS_WEIGHTS.items())
 
     if current_mass_used >= TOTAL_BARYONIC_MASS * 0.98:
@@ -117,7 +118,7 @@ def query_ai_decision(age_myr, cosmology, current_catalog):
 
     if GROQ_API_KEY:
         prompt = f"""
-        You are ORIGIN, an autonomous AI physics engine.
+        You are ORIGIN, an autonomous AI astrophysics engine.
         CURRENT STATE:
         - Age: {age_myr * 1000000:,.0f} Years
         - Epoch: {cosmology['epoch']}
@@ -180,9 +181,9 @@ def spawn_individual_objects(mutations, age_myr, goal, reasoning):
     """
     new_rows = []
     type_display_names = {
-        "stars": "Main Sequence Star",
+        "stars": "Main Sequence Star System",
         "black_holes": "Stellar Mass Black Hole",
-        "neutron_stars": "Neutron Star Core",
+        "neutron_stars": "Degenerate Neutron Core",
         "planets": "Terrestrial Exoplanet",
         "moons": "Natural Satellite",
         "asteroids_comets": "Accretion Fragment",
@@ -196,7 +197,6 @@ def spawn_individual_objects(mutations, age_myr, goal, reasoning):
         if count <= 0:
             continue
         
-        # Sample up to 3 individual object rows per category tick to prevent DB flooding
         sample_size = min(count, 3)
         for i in range(sample_size):
             obj_id = f"OBJ-{random.randint(10000, 99999)}"
@@ -247,13 +247,12 @@ def update_catalog_cumulative(current_catalog, mutations):
         return current_catalog
 
 def main():
-    print("⚡ [ORIGIN Engine] Per-Object Schema & Adaptive Logarithmic Time Active.")
+    print("⚡ [ORIGIN Engine] Full Physical Taxonomy & Per-Object Telemetry Online.")
     current_age, current_catalog = fetch_latest_state()
 
     while True:
         try:
-            # ADAPTIVE LOGARITHMIC TIME STEP:
-            # Step size scales naturally with age, covering 0 to 100,000+ Myr smoothly over 30 days
+            # Adaptive Logarithmic Step
             delta_age = max(0.05, current_age * 0.004)
             current_age += delta_age
             
