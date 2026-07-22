@@ -1,134 +1,121 @@
-import { initWebGPU, cameraState, updateCanvasFromCatalog } from '../engine/main.js';
+import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode } from '../engine/main.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("🚀 [ORIGIN UI] Bootstrapping interface...");
-
-    initWebGPU().then(() => {
-        console.log("✅ [ENGINE] Canvas successfully attached to Explore tab.");
-    }).catch(err => {
-        console.error("❌ [ENGINE INIT FAILED]:", err);
-    });
+    initWebGPU().catch(err => console.error("❌ [ENGINE INIT FAILED]:", err));
 
     const splash = document.getElementById('splash-screen');
-    if (splash) {
-        splash.addEventListener('click', () => {
-            splash.classList.add('hidden');
-            console.log("✨ Splash screen dismissed.");
-        });
-    }
+    if (splash) splash.addEventListener('click', () => splash.classList.add('hidden'));
 
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
     const SUPABASE_KEY = "sb_publishable_O5qr-6UD-6wTzi51j3tYtw_00N9Q4ja";
     const FETCH_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
 
-    // Touch Controls
+    // Canvas Touch & Pan Controls
     const canvasContainer = document.getElementById('canvas-container');
-    let isDragging = false, lastTouchX = 0, lastTouchY = 0, initialPinchDistance = null, initialZoom = 1.0, touchStartTime = 0, startX = 0, startY = 0;
-
-    function getTouchDistance(t1, t2) {
-        const dx = t1.clientX - t2.clientX, dy = t1.clientY - t2.clientY;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
+    let isDragging = false, lastX = 0, lastY = 0, initialPinchDist = null, initialZoom = 1.0, touchStart = 0;
 
     if (canvasContainer) {
         canvasContainer.addEventListener('touchstart', (e) => {
             if (e.touches.length === 1) {
-                isDragging = true; lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY;
-                touchStartTime = Date.now(); startX = lastTouchX; startY = lastTouchY;
+                isDragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+                touchStart = Date.now();
             } else if (e.touches.length === 2) {
-                isDragging = false; initialPinchDistance = getTouchDistance(e.touches[0], e.touches[1]); initialZoom = cameraState.zoom;
+                isDragging = false; 
+                initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                initialZoom = cameraState.zoom;
             }
         }, { passive: true });
 
         canvasContainer.addEventListener('touchmove', (e) => {
             if (e.touches.length === 1 && isDragging) {
-                cameraState.rotY += (e.touches[0].clientX - lastTouchX) * 0.005;
-                cameraState.rotX = Math.max(-1.4, Math.min(1.4, cameraState.rotX + (e.touches[0].clientY - lastTouchY) * 0.005));
-                lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY;
-            } else if (e.touches.length === 2 && initialPinchDistance) {
-                cameraState.zoom = Math.max(0.1, Math.min(15.0, initialZoom * (getTouchDistance(e.touches[0], e.touches[1]) / initialPinchDistance)));
+                cameraState.panX += (e.touches[0].clientX - lastX) * window.devicePixelRatio;
+                cameraState.panY += (e.touches[0].clientY - lastY) * window.devicePixelRatio;
+                lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+            } else if (e.touches.length === 2 && initialPinchDist) {
+                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                cameraState.zoom = Math.max(0.1, Math.min(25.0, initialZoom * (dist / initialPinchDist)));
             }
         }, { passive: true });
 
         canvasContainer.addEventListener('touchend', (e) => {
-            if (e.changedTouches.length === 1 && (Date.now() - touchStartTime < 300)) {
-                if (Math.hypot(e.changedTouches[0].clientX - startX, e.changedTouches[0].clientY - startY) < 15) {
-                    console.log("👆 [TOUCH] Tap detected on Explore canvas.");
-                    if (window.selectParticleAt) window.selectParticleAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-                }
+            if (e.changedTouches.length === 1 && (Date.now() - touchStart < 250)) {
+                if (window.selectParticleAt) window.selectParticleAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
             }
-            if (e.touches.length < 2) initialPinchDistance = null;
+            if (e.touches.length < 2) initialPinchDist = null;
             if (e.touches.length === 0) isDragging = false;
         }, { passive: true });
     }
 
-    // Navigation Views
-    const btnExplore = document.getElementById('btn-explore'), btnEvents = document.getElementById('btn-events'), btnAi = document.getElementById('btn-ai'), btnTimeline = document.getElementById('btn-timeline'), btnCatalog = document.getElementById('btn-catalog');
-    const viewEvents = document.getElementById('view-events'), viewAi = document.getElementById('view-ai'), viewTimeline = document.getElementById('view-timeline'), viewCatalog = document.getElementById('view-catalog'), inspectModal = document.getElementById('modal-object-detail');
+    // Tab Navigation
+    const allBtns = ['btn-explore', 'btn-events', 'btn-ai', 'btn-timeline', 'btn-catalog'].map(id => document.getElementById(id));
+    const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
     const hudContainer = document.getElementById('hud-age-container');
-    const allBtns = [btnExplore, btnEvents, btnAi, btnTimeline, btnCatalog], allViews = [viewEvents, viewAi, viewTimeline, viewCatalog, inspectModal];
+    const inspectModal = document.getElementById('modal-object-detail');
 
-    function resetTabs() { 
-        allBtns.forEach(b => b?.classList.remove('active')); 
-        allViews.forEach(v => v?.classList.remove('active')); 
+    function switchTab(btnId, viewId) {
+        allBtns.forEach(b => b?.classList.remove('active'));
+        allViews.forEach(v => v?.classList.remove('active'));
+        document.getElementById(btnId)?.classList.add('active');
+        if (viewId) document.getElementById(viewId)?.classList.add('active');
+        
+        hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
+        if (btnId !== 'btn-explore') document.getElementById('inspector-preview')?.classList.remove('active');
     }
 
-    function switchTab(btn, view, tabName) {
-        resetTabs(); 
-        btn?.classList.add('active'); 
-        if (view) view.classList.add('active');
+    document.getElementById('btn-explore')?.addEventListener('click', () => switchTab('btn-explore', null));
+    document.getElementById('btn-events')?.addEventListener('click', () => switchTab('btn-events', 'view-events'));
+    document.getElementById('btn-ai')?.addEventListener('click', () => switchTab('btn-ai', 'view-ai'));
+    document.getElementById('btn-timeline')?.addEventListener('click', () => switchTab('btn-timeline', 'view-timeline'));
+    document.getElementById('btn-catalog')?.addEventListener('click', () => switchTab('btn-catalog', 'view-catalog'));
 
-        console.log(`📱 [Tab Switch]: ${tabName}`);
-
-        if (btn === btnExplore) {
-            if (hudContainer) hudContainer.style.opacity = '1';
+    // Procedural Physics Generator for Analyze Button
+    function generatePhysics(node, age) {
+        let mass, radius, temp, extra;
+        const seed = node.id * 7;
+        
+        if (node.category === 'black_holes') {
+            mass = (seed % 50 + 10).toFixed(2) + " M_sun";
+            radius = ((seed % 50 + 10) * 3).toFixed(1) + " km (Event Horizon)";
+            temp = "2.7 K (Hawking Rad.)";
+            extra = `<div class="spec-row"><span class="spec-label">Accretion Rate</span><span class="spec-value">${(seed % 5 * 0.1 + 0.01).toFixed(3)} M_sun/yr</span></div>`;
+        } else if (node.category === 'inhabited') {
+            mass = "1.0" + (seed % 9) + " M_earth";
+            radius = "6,371 km";
+            temp = (seed % 40 + 5).toFixed(1) + " °C";
+            extra = `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">78% N2, 21% O2, 1% Ar</span></div>
+                     <div class="spec-row"><span class="spec-label">Biosignatures</span><span class="spec-value" style="color:#00E5FF">Confirmed</span></div>`;
+        } else if (node.category === 'stars') {
+            mass = (seed % 20 + 0.5).toFixed(2) + " M_sun";
+            radius = (seed % 10 + 0.8).toFixed(2) + " R_sun";
+            temp = (seed % 20000 + 3000).toLocaleString() + " K";
+            extra = `<div class="spec-row"><span class="spec-label">Luminosity</span><span class="spec-value">${(seed % 100 + 1).toFixed(1)} L_sun</span></div>`;
         } else {
-            if (hudContainer) hudContainer.style.opacity = '0';
+            mass = "Variable Density";
+            radius = (seed % 500 + 10).toLocaleString() + " lightyears";
+            temp = "15 K";
+            extra = `<div class="spec-row"><span class="spec-label">Composition</span><span class="spec-value">H II Region / Dark Matter</span></div>`;
         }
 
-        const inspectorPreview = document.getElementById('inspector-preview');
-        if (btn !== btnExplore && inspectorPreview) inspectorPreview.classList.remove('active');
+        return `
+            <div class="spec-row"><span class="spec-label">Designation</span><span class="spec-value" style="font-weight:bold; color:#fff;">${node.designation}</span></div>
+            <div class="spec-row"><span class="spec-label">Mass</span><span class="spec-value">${mass}</span></div>
+            <div class="spec-row"><span class="spec-label">Radius</span><span class="spec-value">${radius}</span></div>
+            <div class="spec-row"><span class="spec-label">Surface Temp</span><span class="spec-value">${temp}</span></div>
+            ${extra}
+            <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Local Time</span><span class="spec-value">${age.toFixed(2)} Myr</span></div>
+        `;
     }
 
-    btnExplore?.addEventListener('click', () => switchTab(btnExplore, null, "Explore"));
-    btnEvents?.addEventListener('click', () => switchTab(btnEvents, viewEvents, "Events"));
-    btnAi?.addEventListener('click', () => switchTab(btnAi, viewAi, "Origin"));
-    btnTimeline?.addEventListener('click', () => switchTab(btnTimeline, viewTimeline, "Timeline"));
-    btnCatalog?.addEventListener('click', () => switchTab(btnCatalog, viewCatalog, "Catalog"));
+    document.getElementById('btn-expand-inspect')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (selectedNode) {
+            document.getElementById('inspect-title').innerText = selectedNode.designation;
+            document.getElementById('spec-name').innerHTML = generatePhysics(selectedNode, localCurrentAge);
+            switchTab(null, 'modal-object-detail');
+        }
+    });
 
-    const inspectorPreview = document.getElementById('inspector-preview'), btnExpandInspect = document.getElementById('btn-expand-inspect'), btnCloseInspect = document.getElementById('btn-close-inspect');
-    function openInspectModal() { resetTabs(); inspectModal?.classList.add('active'); console.log("🔍 Inspector Modal opened."); }
-    inspectorPreview?.addEventListener('click', openInspectModal);
-    btnExpandInspect?.addEventListener('click', (e) => { e.stopPropagation(); openInspectModal(); });
-    btnCloseInspect?.addEventListener('click', () => { inspectModal?.classList.remove('active'); switchTab(btnExplore, null, "Explore"); });
-
-    // Timeline Engine
-    const TIMELINE_EPOCHS = [
-        { title: "Primordial Inflation", start: 0, end: 100000, desc: "Exponential space-time expansion driven by quantum vacuum inflaton field decay." },
-        { title: "Recombination & Decoupling", start: 100000, end: 100000000, desc: "Thermal baryonic gas cools below 3,000 K, releasing Cosmic Microwave Background radiation." },
-        { title: "Pop-III Star Reionization", start: 100000000, end: 1000000000, desc: "Zero-metallicity primordial gas collapses into hypermassive stars, ionising neutral hydrogen." },
-        { title: "Galactic Disk Accretion", start: 1000000000, end: 13800000000, desc: "Angular momentum conservation forms flat spinning galactic disks with MHD turbulence." },
-        { title: "Degenerate Stellar Era", start: 13800000000, end: 100000000000, desc: "Interstellar gas depletion halts main sequence star formation; white dwarfs & black holes dominate." }
-    ];
-
-    function updateTimelineUI(totalYears) {
-        const container = document.getElementById('timeline-container');
-        if (!container) return;
-
-        container.innerHTML = TIMELINE_EPOCHS.map(epoch => {
-            const isActive = totalYears >= epoch.start && totalYears < epoch.end;
-            const activeClass = isActive ? 'active' : '';
-
-            return `
-                <div class="timeline-node">
-                  <div class="node-marker ${activeClass}"></div>
-                  <div class="node-title ${activeClass}">${epoch.title}</div>
-                  <div class="node-time data-font ${activeClass}">${epoch.start.toLocaleString()} - ${epoch.end.toLocaleString()} Yrs</div>
-                  <div class="node-desc ${activeClass}">${epoch.desc}</div>
-                </div>
-            `;
-        }).join('');
-    }
+    document.getElementById('btn-close-inspect')?.addEventListener('click', () => switchTab('btn-explore', null));
 
     function formatAgeFormatted(ageMyr) {
         if (!ageMyr || ageMyr < 0.1) return "< 0.1 Myr";
@@ -136,99 +123,38 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${Number(ageMyr).toFixed(2)} Myr`;
     }
 
-    function computeLambdaCDMDensities(ageMyr) {
-        const ageGyr = Math.max(0.0001, ageMyr / 1000.0);
-        const scaleFactor = Math.pow(Math.sinh(1.5 * Math.sqrt(0.685) * (ageGyr / 13.8)), 2.0 / 3.0);
-        const redshift = Math.max(0.0, (1.0 / Math.max(0.0001, scaleFactor)) - 1.0);
-        const ezSq = 0.315 * Math.pow(1.0 + redshift, 3) + 0.685;
-        
-        const deRaw = (0.685 / ezSq) * 100.0;
-        const dePct = deRaw < 0.1 ? "< 0.1%" : `${deRaw.toFixed(1)}%`;
-        const dmPct = `${(((0.264 * Math.pow(1.0 + redshift, 3)) / ezSq) * 100.0).toFixed(1)}%`;
-        const baryonPct = `${Math.max(0.1, (100.0 - deRaw - parseFloat(dmPct))).toFixed(1)}%`;
-
-        return { dePct, dmPct, baryonPct };
-    }
-
     let localCurrentAge = 0.0;
 
+    // The Slick AI Origin Feed
     async function pollUniverseState() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const data = await res.json();
-                if (Array.isArray(data) && data.length > 0) {
-                    const latest = data[0];
-                    if (latest.age !== undefined && latest.age >= localCurrentAge) localCurrentAge = Number(latest.age);
-                    
-                    const computed = computeLambdaCDMDensities(localCurrentAge);
-                    const dePct = (latest.de_pct && latest.de_pct > 0.1) ? `${latest.de_pct}%` : computed.dePct;
-                    const dmPct = latest.dm_pct ? `${latest.dm_pct}%` : computed.dmPct;
-                    const baryonPct = latest.baryon_pct ? `${latest.baryon_pct}%` : computed.baryonPct;
+                if (data.length > 0) localCurrentAge = Math.max(localCurrentAge, Number(data[0].age));
 
-                    const barDe = document.getElementById('bar-de');
-                    const barDm = document.getElementById('bar-dm');
-                    const barBaryon = document.getElementById('bar-baryon');
-                    if (barDe) barDe.style.width = dePct.includes('<') ? '2%' : dePct;
-                    if (barDm) barDm.style.width = dmPct;
-                    if (barBaryon) barBaryon.style.width = baryonPct;
-
-                    if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = dePct;
-
-                    const container = document.getElementById('origin-actions-container');
-                    if (container) {
-                        container.innerHTML = data.map(state => {
-                            const formattedTime = formatAgeFormatted(state.age);
-                            return `
-                                <div class="action-card">
-                                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-                                        <div class="action-card-title" style="margin-bottom:0; flex:1; padding-right:8px;">${state.goal || 'Resolving Dynamic System'}</div>
-                                        <span class="data-font" style="font-size:11px; color:#FF8C00; font-weight:bold; white-space:nowrap;">${formattedTime}</span>
-                                    </div>
-                                    <div class="action-meta-row"><span class="label-catalyst">Catalyst:</span> ${state.reasoning || 'Gravitational instability.'}</div>
-                                    <div class="action-meta-row"><span class="label-trajectory">Trajectory:</span> ${state.epoch || 'Cosmological Sequence'}</div>
-                                </div>
-                            `;
-                        }).join('');
-                    }
-                }
-            }
-        } catch (err) {}
-    }
-
-    async function pollEvents() {
-        try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
-            if (res.ok) {
-                const events = await res.json();
-                const container = document.getElementById('events-container');
+                const container = document.getElementById('origin-actions-container');
                 if (container) {
-                    if (Array.isArray(events) && events.length > 0) {
-                        container.innerHTML = events.map(e => {
-                            const formattedTime = formatAgeFormatted(e.age);
-                            return `
-                                <div class="glass-panel" style="margin-bottom: 12px; padding: 16px;">
-                                  <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                    <span style="font-weight: bold; color: #fff; font-size: 14px; flex:1; padding-right:8px;">${e.title || 'Cosmic Event'}</span>
-                                    <span class="data-font" style="font-size: 11px; color: #FF8C00; font-weight: bold; white-space:nowrap;">${formattedTime}</span>
-                                  </div>
-                                  <div style="color: #b0b0d0; font-size: 13px; margin-top: 8px; line-height: 1.4;">${e.description || ''}</div>
+                    container.innerHTML = data.map(state => {
+                        return `
+                            <div class="glass-panel" style="margin-bottom:12px; padding:16px; border-left:3px solid #FF8C00;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                    <span style="font-size:9px; font-weight:bold; letter-spacing:1px; text-transform:uppercase; padding:3px 6px; border-radius:4px; background:rgba(255,140,0,0.15); color:#FF8C00;">Directive</span>
+                                    <span class="data-font" style="font-size:11px; color:#FF8C00; font-weight:bold;">${formatAgeFormatted(state.age)}</span>
                                 </div>
-                            `;
-                        }).join('');
-                    } else {
-                        container.innerHTML = `<div style="color: #8c8f9f; font-size: 13px; text-align: center; padding: 20px;">No events logged at current epoch.</div>`;
-                    }
+                                <div style="font-size:13.5px; font-weight:bold; color:#fff; margin-bottom:8px;">${state.goal || 'Resolving Dynamic System'}</div>
+                                <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.04); border-radius:8px; padding:8px; font-size:11.5px; color:#b0b5c0; font-style:italic; margin-bottom:8px;">
+                                    "Deliberation: ${state.reasoning || 'Executing optimal thermodynamic state.'}"
+                                </div>
+                                <div style="display:flex; justify-content:space-between; font-size:10.5px; color:#8c8f9f;">
+                                    <span>Trajectory: <span style="color:#fff; font-weight:bold;">${state.epoch}</span></span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
                 }
             }
         } catch (err) {}
-    }
-
-    function formatMass(solarMasses) {
-        if (solarMasses >= 1e9) return `${(solarMasses / 1e9).toFixed(2)}B M_sun`;
-        if (solarMasses >= 1e6) return `${(solarMasses / 1e6).toFixed(1)}M M_sun`;
-        if (solarMasses >= 1e3) return `${(solarMasses / 1e3).toFixed(1)}k M_sun`;
-        return `${solarMasses.toLocaleString()} M_sun`;
     }
 
     async function pollCatalog() {
@@ -236,38 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/catalog_stats?select=*&limit=1`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const data = await res.json();
-                if (Array.isArray(data) && data.length > 0) {
-                    const stats = data[0];
-                    
-                    updateCanvasFromCatalog(stats, localCurrentAge);
-
-                    if (document.getElementById('cat-dm-val')) {
-                        const dmMass = (stats.dark_matter_structures || 0) * 100000;
-                        const dmPct = document.getElementById('bar-dm')?.style.width || '0%';
-                        document.getElementById('cat-dm-val').innerText = `${dmPct} | ${formatMass(dmMass)}`;
-                    }
-                    if (document.getElementById('cat-baryon-val')) {
-                        const baryonicMass = (stats.stars || 0) * 1.0 + (stats.nebulae || 0) * 500.0 + (stats.planets || 0) * 0.001;
-                        const baryonPct = document.getElementById('bar-baryon')?.style.width || '0%';
-                        document.getElementById('cat-baryon-val').innerText = `${baryonPct} | ${formatMass(baryonicMass)}`;
-                    }
-
-                    if (document.getElementById('cat-nebulae-val')) document.getElementById('cat-nebulae-val').innerText = (stats.nebulae || 0).toLocaleString();
-                    if (document.getElementById('cat-stars-val')) document.getElementById('cat-stars-val').innerText = (stats.stars || 0).toLocaleString();
-                    if (document.getElementById('cat-bh-val')) document.getElementById('cat-bh-val').innerText = (stats.black_holes || 0).toLocaleString();
-                    if (document.getElementById('cat-degenerate-val')) document.getElementById('cat-degenerate-val').innerText = (stats.neutron_stars || 0).toLocaleString();
-                    if (document.getElementById('cat-planets-val')) document.getElementById('cat-planets-val').innerText = (stats.planets || 0).toLocaleString();
-                    if (document.getElementById('cat-moons-val')) document.getElementById('cat-moons-val').innerText = (stats.moons || 0).toLocaleString();
-                    if (document.getElementById('cat-asteroids-val')) document.getElementById('cat-asteroids-val').innerText = (stats.asteroids_comets || 0).toLocaleString();
-                    if (document.getElementById('cat-quasars-val')) document.getElementById('cat-quasars-val').innerText = (stats.quasars || 0).toLocaleString();
-                    if (document.getElementById('cat-exotic-val')) document.getElementById('cat-exotic-val').innerText = (stats.exotic_objects || 0).toLocaleString();
-                    
-                    if (document.getElementById('cat-inhabited-val')) {
-                        const planets = stats.planets || 0;
-                        const inhabited = (localCurrentAge > 500.0) ? Math.floor(planets * 0.012) : 0;
-                        document.getElementById('cat-inhabited-val').innerText = inhabited.toLocaleString();
-                    }
-                }
+                if (data.length > 0) updateCanvasFromCatalog(data[0], localCurrentAge);
             }
         } catch (err) {}
     }
@@ -275,17 +170,11 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => {
         localCurrentAge += 0.5;
         cameraState.currentAge = localCurrentAge;
-
         const totalYears = Math.floor(localCurrentAge * 1000000);
-        const formattedAge = totalYears >= 1000000000 ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` : `${totalYears.toLocaleString()} Years`;
-
         const hudAge = document.getElementById('hud-age');
-        if (hudAge) hudAge.innerText = formattedAge;
-
-        updateTimelineUI(totalYears);
+        if (hudAge) hudAge.innerText = totalYears >= 1000000000 ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` : `${totalYears.toLocaleString()} Years`;
     }, 1000);
 
-    function pollAll() { pollUniverseState(); pollEvents(); pollCatalog(); }
-    pollAll();
-    setInterval(pollAll, 2500);
+    function pollAll() { pollUniverseState(); pollCatalog(); }
+    pollAll(); setInterval(pollAll, 2500);
 });
