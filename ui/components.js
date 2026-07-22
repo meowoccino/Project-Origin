@@ -34,11 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
             } else if (e.touches.length === 2 && initialPinchDist) {
                 const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                
-                // PHYSICS: Calculate Scale Factor a(t). The younger the universe, the smaller the maximum zoom-out limit.
                 const expansionFactor = Math.max(0.01, Math.min(1.0, localCurrentAge / 13800.0));
                 const minZoomAllowed = 0.8 * (1.05 - expansionFactor); 
-                
                 cameraState.zoom = Math.max(minZoomAllowed, Math.min(25.0, initialZoom * (dist / initialPinchDist)));
             }
         }, { passive: true });
@@ -55,7 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const allBtns = ['btn-explore', 'btn-events', 'btn-ai', 'btn-timeline', 'btn-catalog'].map(id => document.getElementById(id));
     const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
     const hudContainer = document.getElementById('hud-age-container');
-    const inspectModal = document.getElementById('modal-object-detail');
 
     function switchTab(btnId, viewId) {
         allBtns.forEach(b => b?.classList.remove('active'));
@@ -64,10 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (viewId) document.getElementById(viewId)?.classList.add('active');
         
         hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
-        
-        // Pause Canvas rendering to fix visual glitching on other tabs
         MainEngine.isExploreActive = (btnId === 'btn-explore');
-
         if (btnId !== 'btn-explore') document.getElementById('inspector-preview')?.classList.remove('active');
     }
 
@@ -77,55 +70,66 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-timeline')?.addEventListener('click', () => switchTab('btn-timeline', 'view-timeline'));
     document.getElementById('btn-catalog')?.addEventListener('click', () => switchTab('btn-catalog', 'view-catalog'));
 
-    // Strict Procedural Physics Generation
+    const TIMELINE_EPOCHS = [
+        { title: "Primordial Inflation", start: 0, end: 100000, desc: "Exponential space-time expansion driven by quantum vacuum inflaton field decay." },
+        { title: "Recombination & Decoupling", start: 100000, end: 100000000, desc: "Thermal baryonic gas cools below 3,000 K, releasing Cosmic Microwave Background radiation." },
+        { title: "Pop-III Star Reionization", start: 100000000, end: 1000000000, desc: "Zero-metallicity primordial gas collapses into hypermassive stars, ionising neutral hydrogen." },
+        { title: "Galactic Disk Accretion", start: 1000000000, end: 13800000000, desc: "Angular momentum conservation forms flat spinning galactic disks with MHD turbulence." },
+        { title: "Degenerate Stellar Era", start: 13800000000, end: 100000000000, desc: "Interstellar gas depletion halts main sequence star formation; white dwarfs & black holes dominate." }
+    ];
+
+    function updateTimelineUI(totalYears) {
+        const container = document.getElementById('timeline-container');
+        if (!container) return;
+        container.innerHTML = TIMELINE_EPOCHS.map(epoch => {
+            const isActive = totalYears >= epoch.start && totalYears < epoch.end;
+            const actClass = isActive ? 'active' : '';
+            return `
+                <div class="timeline-node">
+                  <div class="node-marker ${actClass}"></div>
+                  <div class="node-title ${actClass}">${epoch.title}</div>
+                  <div class="node-time data-font ${actClass}">${epoch.start.toLocaleString()} - ${epoch.end.toLocaleString()} Yrs</div>
+                  <div class="node-desc ${actClass}">${epoch.desc}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
     function generatePhysics(node, age) {
         let mass, radius, temp, extra;
         const seed = node.id * 13;
         
         switch (node.category) {
             case 'asteroids_comets':
-                mass = (seed % 90 + 1) + " × 10^15 kg";
-                radius = (seed % 150 + 5) + " km";
-                temp = (seed % 100 + 40) + " K";
+                mass = (seed % 90 + 1) + " × 10^15 kg"; radius = (seed % 150 + 5) + " km"; temp = (seed % 100 + 40) + " K";
                 extra = `<div class="spec-row"><span class="spec-label">Composition</span><span class="spec-value">Silicates / Nickel-Iron</span></div>`;
                 break;
             case 'moons':
-                mass = "0." + (seed % 99 + 1) + " M_lunar";
-                radius = (seed % 2000 + 500) + " km";
-                temp = (seed % 150 + 50) + " K";
+                mass = "0." + (seed % 99 + 1) + " M_lunar"; radius = (seed % 2000 + 500) + " km"; temp = (seed % 150 + 50) + " K";
                 extra = `<div class="spec-row"><span class="spec-label">Tidal State</span><span class="spec-value">Tidally Locked</span></div>`;
                 break;
             case 'planets':
             case 'inhabited':
-                mass = (seed % 15 + 0.1).toFixed(2) + " M_earth";
-                radius = (seed % 20000 + 4000) + " km";
+                mass = (seed % 15 + 0.1).toFixed(2) + " M_earth"; radius = (seed % 20000 + 4000) + " km";
                 temp = node.category === 'inhabited' ? ((seed % 40) + 5) + " °C" : "-" + (seed % 150) + " °C";
                 extra = node.category === 'inhabited' 
                     ? `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">N2/O2 Rich</span></div><div class="spec-row"><span class="spec-label">Biosphere</span><span class="spec-value" style="color:#00E5FF">Confirmed</span></div>`
                     : `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">CO2 / Methane</span></div>`;
                 break;
             case 'stars':
-                mass = (seed % 25 + 0.5).toFixed(2) + " M_sun";
-                radius = (seed % 15 + 0.8).toFixed(2) + " R_sun";
-                temp = (seed % 30000 + 3000).toLocaleString() + " K";
+                mass = (seed % 25 + 0.5).toFixed(2) + " M_sun"; radius = (seed % 15 + 0.8).toFixed(2) + " R_sun"; temp = (seed % 30000 + 3000).toLocaleString() + " K";
                 extra = `<div class="spec-row"><span class="spec-label">Luminosity</span><span class="spec-value">${(seed % 1000 + 1).toFixed(1)} L_sun</span></div>`;
                 break;
             case 'black_holes':
-                mass = (seed % 50 + 5).toFixed(2) + " M_sun";
-                radius = ((seed % 50 + 5) * 2.95).toFixed(1) + " km (Schwarzschild)";
-                temp = "0.000" + (seed % 9 + 1) + " K (Hawking)";
+                mass = (seed % 50 + 5).toFixed(2) + " M_sun"; radius = ((seed % 50 + 5) * 2.95).toFixed(1) + " km (Schwarzschild)"; temp = "0.000" + (seed % 9 + 1) + " K (Hawking)";
                 extra = `<div class="spec-row"><span class="spec-label">Accretion</span><span class="spec-value">${(seed % 5 * 0.1).toFixed(3)} M_sun/yr</span></div>`;
                 break;
             case 'quasars':
-                mass = (seed % 500 + 100) + " Million M_sun";
-                radius = (seed % 50 + 10) + " AU (Accretion Disk)";
-                temp = "Millions of K";
+                mass = (seed % 500 + 100) + " Million M_sun"; radius = (seed % 50 + 10) + " AU (Accretion Disk)"; temp = "Millions of K";
                 extra = `<div class="spec-row"><span class="spec-label">Energy Output</span><span class="spec-value" style="color:#FFF066">10^40 Watts</span></div>`;
                 break;
-            default: // Nebulae & Dark Matter
-                mass = (seed % 5000 + 1000) + " M_sun";
-                radius = (seed % 150 + 10) + " Lightyears";
-                temp = "10 - 50 K";
+            default:
+                mass = (seed % 5000 + 1000) + " M_sun"; radius = (seed % 150 + 10) + " Lightyears"; temp = "10 - 50 K";
                 extra = `<div class="spec-row"><span class="spec-label">Composition</span><span class="spec-value">H II Region / Plasma</span></div>`;
                 break;
         }
@@ -145,11 +149,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedNode) {
             document.getElementById('inspect-title').innerText = selectedNode.designation;
             document.getElementById('spec-name').innerHTML = generatePhysics(selectedNode, localCurrentAge);
-            
-            // Clean up the modal header by hiding "Deep Space Telemetry"
-            const subTitle = document.querySelector('#modal-object-detail .modal-header div div:nth-child(2)');
-            if (subTitle) subTitle.style.display = 'none';
-            
             switchTab(null, 'modal-object-detail');
         }
     });
@@ -167,7 +166,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const data = await res.json();
-                if (data.length > 0) localCurrentAge = Math.max(localCurrentAge, Number(data[0].age));
+                if (data.length > 0) {
+                    localCurrentAge = Math.max(localCurrentAge, Number(data[0].age));
+                    
+                    if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = `${data[0].de_pct}%`;
+                    if (document.getElementById('cat-dm-val')) document.getElementById('cat-dm-val').innerText = `${data[0].dm_pct}%`;
+                    if (document.getElementById('cat-baryon-val')) document.getElementById('cat-baryon-val').innerText = `${data[0].baryon_pct}%`;
+                    
+                    const barDe = document.getElementById('bar-de'), barDm = document.getElementById('bar-dm'), barBaryon = document.getElementById('bar-baryon');
+                    if(barDe) barDe.style.width = `${data[0].de_pct}%`;
+                    if(barDm) barDm.style.width = `${data[0].dm_pct}%`;
+                    if(barBaryon) barBaryon.style.width = `${data[0].baryon_pct}%`;
+                }
 
                 const container = document.getElementById('origin-actions-container');
                 if (container) {
@@ -196,7 +206,45 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/catalog_stats?select=*&limit=1`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const data = await res.json();
-                if (data.length > 0) updateCanvasFromCatalog(data[0], localCurrentAge);
+                if (data.length > 0) {
+                    const stats = data[0];
+                    updateCanvasFromCatalog(stats, localCurrentAge);
+                    
+                    if (document.getElementById('cat-nebulae-val')) document.getElementById('cat-nebulae-val').innerText = (stats.nebulae || 0).toLocaleString();
+                    if (document.getElementById('cat-stars-val')) document.getElementById('cat-stars-val').innerText = (stats.stars || 0).toLocaleString();
+                    if (document.getElementById('cat-bh-val')) document.getElementById('cat-bh-val').innerText = (stats.black_holes || 0).toLocaleString();
+                    if (document.getElementById('cat-degenerate-val')) document.getElementById('cat-degenerate-val').innerText = (stats.neutron_stars || 0).toLocaleString();
+                    if (document.getElementById('cat-planets-val')) document.getElementById('cat-planets-val').innerText = (stats.planets || 0).toLocaleString();
+                    if (document.getElementById('cat-moons-val')) document.getElementById('cat-moons-val').innerText = (stats.moons || 0).toLocaleString();
+                    if (document.getElementById('cat-asteroids-val')) document.getElementById('cat-asteroids-val').innerText = (stats.asteroids_comets || 0).toLocaleString();
+                    if (document.getElementById('cat-quasars-val')) document.getElementById('cat-quasars-val').innerText = (stats.quasars || 0).toLocaleString();
+                    if (document.getElementById('cat-exotic-val')) document.getElementById('cat-exotic-val').innerText = (stats.exotic_objects || 0).toLocaleString();
+                    if (document.getElementById('cat-inhabited-val')) {
+                        const inhabited = (localCurrentAge > 500.0) ? Math.floor((stats.planets || 0) * 0.012) : 0;
+                        document.getElementById('cat-inhabited-val').innerText = inhabited.toLocaleString();
+                    }
+                }
+            }
+        } catch (err) {}
+    }
+
+    async function pollEvents() {
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
+            if (res.ok) {
+                const events = await res.json();
+                const container = document.getElementById('events-container');
+                if (container && events.length > 0) {
+                    container.innerHTML = events.map(e => `
+                        <div class="glass-panel" style="margin-bottom: 12px; padding: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <span style="font-weight: bold; color: #fff; font-size: 14px; flex:1; padding-right:8px;">${e.title || 'Cosmic Event'}</span>
+                            <span class="data-font" style="font-size: 11px; color: #FF8C00; font-weight: bold; white-space:nowrap;">${formatAgeFormatted(e.age)}</span>
+                            </div>
+                            <div style="color: #b0b0d0; font-size: 13px; margin-top: 8px; line-height: 1.4;">${e.description || ''}</div>
+                        </div>
+                    `).join('');
+                }
             }
         } catch (err) {}
     }
@@ -207,8 +255,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalYears = Math.floor(localCurrentAge * 1000000);
         const hudAge = document.getElementById('hud-age');
         if (hudAge) hudAge.innerText = totalYears >= 1000000000 ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` : `${totalYears.toLocaleString()} Years`;
+        updateTimelineUI(totalYears);
     }, 1000);
 
-    function pollAll() { pollUniverseState(); pollCatalog(); }
+    function pollAll() { pollUniverseState(); pollCatalog(); pollEvents(); }
     pollAll(); setInterval(pollAll, 2500);
 });
