@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (splash) splash.addEventListener('click', () => splash.classList.add('hidden'));
 
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_O5qr-6UD-6wTzi51j3tYtw_00N9Q4ja";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0";
     const FETCH_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
 
     const canvasContainer = document.getElementById('canvas-container');
@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-timeline')?.addEventListener('click', () => switchTab('btn-timeline', 'view-timeline'));
     document.getElementById('btn-catalog')?.addEventListener('click', () => switchTab('btn-catalog', 'view-catalog'));
 
-    // --- LIVE EARTH CLOCK ---
+    // --- LIVE UTC CLOCK ---
     function initEarthClock() {
         const clockEl = document.getElementById('earth-clock');
         if (!clockEl) return;
@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return card;
     }
 
-    // --- SEEK-BASED LOG PAGINATION ---
+    // --- LOG PAGINATION ---
     let oldestLoadedId = null;
     let isLoadingLogs = false;
 
@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById("btn-load-more")?.addEventListener("click", loadNextBatch);
     loadNextBatch();
 
-    // --- OPEN-ENDED TIMELINE ENGINE ---
+    // --- TIMELINE EPOCHS ---
     const TIMELINE_EPOCHS = [
         { title: "Primordial Inflation", start: 0, end: 100000, desc: "Exponential space-time expansion driven by quantum vacuum inflaton field decay." },
         { title: "Recombination & Decoupling", start: 100000, end: 100000000, desc: "Thermal baryonic gas cools below 3,000 K, releasing Cosmic Microwave Background radiation." },
@@ -239,6 +239,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let mass, radius, temp, extra;
         const seed = node.id * 13;
         
+        // Exact epoch formatting (Myr if under 0.1 Gyr, Gyr otherwise)
+        const epochLabel = age < 0.1 
+            ? `${(age * 1000).toFixed(2)} Myr` 
+            : `${age.toFixed(3)} Gyr`;
+
         switch (node.category) {
             case 'asteroids_comets':
                 mass = (seed % 90 + 1) + " × 10^15 kg"; radius = (seed % 150 + 5) + " km"; temp = (seed % 100 + 40) + " K";
@@ -280,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="spec-row"><span class="spec-label">Radius</span><span class="spec-value">${radius}</span></div>
             <div class="spec-row"><span class="spec-label">Surface Temp</span><span class="spec-value">${temp}</span></div>
             ${extra}
-            <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Formation Epoch</span><span class="spec-value">${age.toFixed(2)} Gyr</span></div>
+            <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Formation Epoch</span><span class="spec-value">${epochLabel}</span></div>
         `;
     }
 
@@ -307,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.ok) {
                 const data = await res.json();
                 if (data.length > 0) {
-                    localCurrentAge = Number(data[0].age_gyr || data[0].age || 0.0);
+                    localCurrentAge = Number(data[0].age || data[0].age_gyr || 0.0);
                     renderAgeHUD(localCurrentAge);
                     
                     if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = `${data[0].de_pct || 68.5}%`;
