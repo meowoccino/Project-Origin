@@ -1,234 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Project Origin | Cosmological Simulation</title>
-  <link rel="stylesheet" href="./ui/styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Project Origin</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <!-- 3D Cosmic Web / Expanding Universe Canvas -->
-  <div id="canvas-container"></div>
+    <!-- 1. The 3D/2D Canvas Background -->
+    <div id="canvas-container"></div>
 
-  <!-- Main Viewport HUD -->
-  <div class="ui-layer">
-    
-    <!-- Top Bar Header -->
-    <header class="top-header">
-      <button class="icon-btn" id="btn-open-menu" aria-label="Menu">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-      </button>
-      <div class="header-title">
-        <span class="title-text">Project Origin</span>
-        <span class="badge-live-dot">● LIVE</span>
-      </div>
-      <button class="icon-btn" id="btn-header-search" aria-label="Search">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </button>
-    </header>
-
-    <!-- Universe Age Top Floating Card -->
-    <div class="top-hud-card">
-      <div class="hud-label">UNIVERSE AGE</div>
-      <div class="universe-age-value" id="hud-age">0 Years</div>
-      <div class="hud-speed-row">
-        <span class="speed-label">SPEED</span>
-        <span class="speed-val">Real-time Continuum <span class="badge-tag">1x</span></span>
-      </div>
+    <!-- 2. The Minimalist Top-Left HUD -->
+    <div id="hud-age-container" class="glass-panel">
+        <div class="hud-label">Universe Age</div>
+        <div id="hud-age" class="hud-value data-font">0 Years</div>
     </div>
 
-    <!-- Right Side Floating Tools -->
-    <div class="right-hud-tools">
-      <button class="tool-btn" id="tool-center" aria-label="Center Origin"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></button>
-      <button class="tool-btn" id="tool-view" aria-label="View Mode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-      <button class="tool-btn" id="tool-filter" aria-label="Filters"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></button>
-    </div>
-
-    <!-- Bottom Floating Object Inspector Preview -->
-    <div class="floating-inspector" id="inspector-preview">
-      <div class="inspector-thumb-container">
-        <canvas id="thumb-star-canvas" width="48" height="48"></canvas>
-      </div>
-      <div class="inspector-info">
-        <h3 id="obj-name">OBJECT 0</h3>
-        <p id="obj-sub">Type: Primordial Core | Barycentric Origin</p>
-      </div>
-      <button class="expand-btn" id="btn-expand-inspect" aria-label="Expand">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
-      </button>
-    </div>
-
-  </div>
-
-  <!-- Left Slide-Out Navigation Drawer -->
-  <aside id="side-drawer" class="side-drawer">
-    <div class="drawer-header">
-      <div class="drawer-brand">
-        <span class="dot-live">●</span> Project Origin <span class="badge-sub">LIVE</span>
-      </div>
-      <button class="icon-btn" id="btn-close-drawer" aria-label="Close">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-
-    <div class="drawer-age-box">
-      <span class="lbl">UNIVERSE AGE</span>
-      <div class="val" id="drawer-hud-age">0 Years</div>
-      <span class="sub">SPEED: Real-time Continuum</span>
-    </div>
-
-    <div class="drawer-menu">
-      <button class="drawer-item active" id="dmenu-explore"><span class="icon">🌌</span> Explore Universe</button>
-      <button class="drawer-item" id="dmenu-events"><span class="icon">📅</span> Events Feed</button>
-      <button class="drawer-item" id="dmenu-ai"><span class="icon">🔮</span> Origin</button>
-      <button class="drawer-item" id="dmenu-timeline"><span class="icon">⏱️</span> Timeline</button>
-      <button class="drawer-item" id="dmenu-catalog"><span class="icon">📊</span> Catalog & Filters</button>
-    </div>
-  </aside>
-
-  <!-- Full Screen Navigation Views -->
-
-  <!-- 1. EVENTS FEED -->
-  <div id="view-events" class="view-screen">
-    <div class="view-header-title">
-      <h2>EVENTS FEED</h2>
-      <span class="status-live">● LIVE</span>
-    </div>
-
-    <div class="filter-pills">
-      <button class="pill active">All</button>
-      <button class="pill">Cosmic</button>
-      <button class="pill">Stellar</button>
-      <button class="pill">Planetary</button>
-      <button class="pill">Biologic</button>
-    </div>
-
-    <div id="events-container" class="events-list">
-      <!-- Populated dynamically from Supabase database -->
-    </div>
-  </div>
-
-  <!-- 2. ORIGIN TAB VIEW -->
-  <div id="view-ai" class="view-screen">
-    
-    <!-- Top: Prominent Current Goal Card with Animated Pulse Glow -->
-    <div class="goal-card-animated">
-      <div class="panel-label-row">
-        <span class="panel-label">ACTIVE COMPUTATIONAL GOAL</span>
-        <span class="pulse-indicator">● RUNNING</span>
-      </div>
-      <div class="panel-goal-title" id="ai-goal-text">Simulating Quantum Inflation & Metric Expansion</div>
-      
-      <div class="panel-divider"></div>
-
-      <div class="panel-label">PHYSICAL REASONING</div>
-      <div class="panel-desc" id="ai-reasoning-text">Initial cosmological singularity transitioning into hot Big Bang nucleosynthesis.</div>
-    </div>
-
-    <!-- Active Physical Actions Below Goal -->
-    <div class="glass-panel" style="margin-top: 14px;">
-      <div class="panel-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <span class="panel-label">ACTIVE ACTIONS</span>
-        <span class="action-count-badge" id="ai-action-badge">--</span>
-      </div>
-
-      <div class="action-timeline-list" id="origin-actions-container">
-        <!-- Dynamic Actions Injected Here -->
-      </div>
-    </div>
-
-    <!-- Bottom: Subtle Animated Constellation Node Sphere -->
-    <div class="ai-sphere-wrapper" style="margin-top: 16px; text-align: center;">
-      <canvas id="ai-constellation-canvas" width="180" height="180"></canvas>
-    </div>
-
-  </div>
-
-  <!-- 3. COSMIC TIMELINE -->
-  <div id="view-timeline" class="view-screen">
-    <div class="view-header-title">
-      <h2>COSMIC TIMELINE</h2>
-    </div>
-    <div class="timeline-container">
-      <!-- Dynamic Epoch Nodes -->
-    </div>
-  </div>
-
-  <!-- 4. CATALOG & FILTERS -->
-  <div id="view-catalog" class="view-screen">
-    <div class="view-header-title">
-      <h2>CATALOG & FILTERS</h2>
-      <button class="btn-text-reset">Reset</button>
-    </div>
-
-    <div class="search-bar-box">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" placeholder="Search objects..." class="search-input">
-    </div>
-
-    <div class="section-label">OBJECT TYPE</div>
-    <div class="catalog-list">
-      <div class="catalog-item"><span class="cat-type"><span class="dot gold">●</span> Stars</span><span class="cat-num" id="cat-stars">0</span></div>
-      <div class="catalog-item"><span class="cat-type"><span class="dot violet">●</span> Black Holes</span><span class="cat-num" id="cat-bh">0</span></div>
-      <div class="catalog-item"><span class="cat-type"><span class="dot cyan">●</span> Neutron Stars</span><span class="cat-num" id="cat-neutron">0</span></div>
-      <div class="catalog-item"><span class="cat-type"><span class="dot blue">●</span> Planets</span><span class="cat-num" id="cat-planets">0</span></div>
-    </div>
-  </div>
-
-  <!-- 5. DETAILED CELESTIAL INSPECTOR MODAL -->
-  <div id="modal-object-detail" class="inspect-modal">
-    <div class="modal-header">
-      <button class="icon-btn" id="btn-close-inspect" aria-label="Back">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-      </button>
-      <div class="modal-title-group">
-        <h2 id="inspect-title">OBJECT 0</h2>
-        <span class="subtitle" id="inspect-sub">Primordial Core</span>
-      </div>
-      <button class="icon-btn" aria-label="Favorite"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
-    </div>
-
-    <div class="modal-scroll-content">
-      <div class="glass-panel">
-        <div class="panel-header-row">
-          <span class="panel-title">OVERVIEW</span>
+    <!-- 3. Bottom Navigation (Sleek, strictly icons) -->
+    <div id="bottom-nav">
+        <div class="nav-btn active" id="btn-explore">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><circle cx="12" cy="12" r="3"/></svg>
+            Explore
         </div>
-        <div class="data-grid">
-          <div class="data-row"><span class="lbl">Designation</span><span class="val" id="spec-name">Primordial Node</span></div>
-          <div class="data-row"><span class="lbl">Classification</span><span class="val" id="spec-type">Cosmic Filament Core</span></div>
-          <div class="data-row"><span class="lbl">Mass</span><span class="val" id="spec-mass">10^12 M☉</span></div>
-          <div class="data-row"><span class="lbl">Effective Temp</span><span class="val" id="spec-temp">10^32 K</span></div>
-          <div class="data-row"><span class="lbl">Barycentric Distance</span><span class="val" id="spec-dist">0 ly</span></div>
+        <div class="nav-btn" id="btn-events">
+            <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+            Events
         </div>
-      </div>
+        <div class="nav-btn" id="btn-ai">
+            <svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+            Origin
+        </div>
+        <div class="nav-btn" id="btn-timeline">
+            <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+            Timeline
+        </div>
+        <div class="nav-btn" id="btn-catalog">
+            <svg viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h-5v6zm6 0h5v-6h-5v6zm-6-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>
+            Catalog
+        </div>
     </div>
-  </div>
 
-  <!-- Bottom Navigation Bar -->
-  <nav class="navbar">
-    <button class="nav-item active" id="btn-explore">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"/></svg>
-      <span>Explore</span>
-    </button>
-    <button class="nav-item" id="btn-events">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      <span>Events</span>
-    </button>
-    <button class="nav-item" id="btn-ai">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 17 22 12"/></svg>
-      <span>Origin</span>
-    </button>
-    <button class="nav-item" id="btn-timeline">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      <span>Timeline</span>
-    </button>
-    <button class="nav-item" id="btn-catalog">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-      <span>Catalog</span>
-    </button>
-  </nav>
+    <!-- 4. Tab Views -->
+    <!-- Events Tab -->
+    <div id="view-events" class="view-panel">
+        <div id="events-container"></div>
+    </div>
 
-  <script type="module" src="./index.js"></script>
+    <!-- Origin AI Tab -->
+    <div id="view-ai" class="view-panel">
+        <div class="glass-panel" style="padding: 20px; margin-bottom: 20px;">
+            <div class="hud-label" style="color: #00e5ff;">Active Computational Goal</div>
+            <div id="ai-goal-text" style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">Awaiting telemtry...</div>
+            <div id="ai-reasoning-text" style="font-size: 13px; color: #a0a0c0;">Initializing cognitive models...</div>
+        </div>
+        <div id="origin-actions-container"></div>
+    </div>
+
+    <!-- Timeline Tab -->
+    <div id="view-timeline" class="view-panel">
+        <div class="timeline-wrapper" id="timeline-container"></div>
+    </div>
+
+    <!-- Catalog Tab -->
+    <div id="view-catalog" class="view-panel">
+        <div class="catalog-grid">
+            <div class="glass-panel cat-card">
+                <div class="cat-label">Stars</div>
+                <div id="cat-stars" class="cat-val data-font">0</div>
+            </div>
+            <div class="glass-panel cat-card">
+                <div class="cat-label">Black Holes</div>
+                <div id="cat-bh" class="cat-val data-font">0</div>
+            </div>
+            <div class="glass-panel cat-card">
+                <div class="cat-label">Neutron Stars</div>
+                <div id="cat-neutron" class="cat-val data-font">0</div>
+            </div>
+            <div class="glass-panel cat-card">
+                <div class="cat-label">Planets</div>
+                <div id="cat-planets" class="cat-val data-font">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Object Inspector UI -->
+    <!-- Quick Preview Bubble -->
+    <div id="inspector-preview" class="glass-panel">
+        <div>
+            <div id="obj-name">Target Acquired</div>
+            <div id="obj-sub">Scanning class...</div>
+        </div>
+        <button id="btn-expand-inspect" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:8px; padding:8px 16px; font-weight:bold;">Inspect</button>
+    </div>
+
+    <!-- Full Screen Details -->
+    <div id="modal-object-detail" class="view-panel">
+        <div class="modal-header">
+            <button class="btn-back" id="btn-close-inspect">←</button>
+            <div>
+                <div id="inspect-title" style="font-size: 20px; font-weight: bold;">Object</div>
+                <div style="font-size: 12px; color: #8c8f9f;">Telemetry Data</div>
+            </div>
+        </div>
+        <div class="glass-panel" style="padding: 24px;">
+            <div class="hud-label" style="margin-bottom: 16px;">Overview Specifications</div>
+            <div class="grid-specs" id="spec-name" class="data-font" style="color: #e0e0e0; font-size: 14px; line-height: 1.8;">
+                <!-- JS injects the clean Designation, Class, Temp, and Mass here -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="index.js"></script>
 </body>
 </html>
