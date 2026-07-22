@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
     }
 
-    // Navigation & Scoping
+    // Navigation Views
     const btnExplore = document.getElementById('btn-explore'), btnEvents = document.getElementById('btn-events'), btnAi = document.getElementById('btn-ai'), btnTimeline = document.getElementById('btn-timeline'), btnCatalog = document.getElementById('btn-catalog');
     const viewEvents = document.getElementById('view-events'), viewAi = document.getElementById('view-ai'), viewTimeline = document.getElementById('view-timeline'), viewCatalog = document.getElementById('view-catalog'), inspectModal = document.getElementById('modal-object-detail');
     const hudContainer = document.getElementById('hud-age-container');
@@ -116,22 +116,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     }
 
-    // Dynamic Telemetry Sync
+    // Dynamic Cosmology Helper
+    function computeLambdaCDMDensities(ageMyr) {
+        const ageGyr = Math.max(0.0001, ageMyr / 1000.0);
+        const scaleFactor = Math.pow(Math.sinh(1.5 * Math.sqrt(0.685) * (ageGyr / 13.8)), 2.0 / 3.0);
+        const redshift = Math.max(0.0, (1.0 / Math.max(0.0001, scaleFactor)) - 1.0);
+        const ezSq = 0.315 * Math.pow(1.0 + redshift, 3) + 0.685;
+        
+        const dePct = ((0.685 / ezSq) * 100.0).toFixed(1);
+        const dmPct = (((0.264 * Math.pow(1.0 + redshift, 3)) / ezSq) * 100.0).toFixed(1);
+        const baryonPct = Math.max(0.1, (100.0 - parseFloat(dePct) - parseFloat(dmPct))).toFixed(1);
+
+        return { dePct, dmPct, baryonPct };
+    }
+
     let localCurrentAge = 0.0;
 
     async function pollUniverseState() {
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=5`, { headers: FETCH_HEADERS });
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=10`, { headers: FETCH_HEADERS });
             if (res.ok) {
-                const data = await res.json();
-                if (Array.isArray(data) && data.length > 0) {
-                    const latest = data[0];
+                const rawData = await res.json();
+                if (Array.isArray(rawData) && rawData.length > 0) {
+                    const latest = rawData[0];
                     if (latest.age !== undefined && latest.age >= localCurrentAge) localCurrentAge = Number(latest.age);
                     
-                    // Dynamic Cosmological Shares
-                    const dePct = latest.de_pct !== undefined ? latest.de_pct : 0.0;
-                    const dmPct = latest.dm_pct !== undefined ? latest.dm_pct : 0.0;
-                    const baryonPct = latest.baryon_pct !== undefined ? latest.baryon_pct : 0.0;
+                    // Fallback to client-side cosmological math if database columns are unpopulated
+                    const computed = computeLambdaCDMDensities(localCurrentAge);
+                    const dePct = latest.de_pct ?? computed.dePct;
+                    const dmPct = latest.dm_pct ?? computed.dmPct;
+                    const baryonPct = latest.baryon_pct ?? computed.baryonPct;
 
                     const barDe = document.getElementById('bar-de');
                     const barDm = document.getElementById('bar-dm');
@@ -142,10 +156,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = `${dePct}%`;
 
-                    // Origin Feed with Timestamps
+                    // Deduplicate Origin actions by goal
+                    const uniqueActions = [];
+                    const seenGoals = new Set();
+                    for (const item of rawData) {
+                        const key = `${item.goal}_${item.reasoning}`;
+                        if (!seenGoals.has(key)) {
+                            seenGoals.add(key);
+                            uniqueActions.push(item);
+                        }
+                    }
+
                     const container = document.getElementById('origin-actions-container');
                     if (container) {
-                        container.innerHTML = data.map(state => {
+                        container.innerHTML = uniqueActions.map(state => {
                             const stepYears = state.age ? Math.floor(state.age * 1000000).toLocaleString() + ' Yrs' : 'LIVE';
                             return `
                                 <div class="action-card">
@@ -166,13 +190,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function pollEvents() {
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=10`, { headers: FETCH_HEADERS });
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const events = await res.json();
                 const container = document.getElementById('events-container');
                 if (container) {
                     if (Array.isArray(events) && events.length > 0) {
-                        container.innerHTML = events.map(e => {
+                        // Deduplicate events by title
+                        const uniqueEvents = [];
+                        const seenTitles = new Set();
+                        for (const evt of events) {
+                            if (!seenTitles.has(evt.title)) {
+                                seenTitles.add(evt.title);
+                                uniqueEvents.push(evt);
+                            }
+                        }
+
+                        container.innerHTML = uniqueEvents.map(e => {
                             const eventYears = e.age ? Math.floor(e.age * 1000000).toLocaleString() + ' Yrs' : 'LIVE';
                             return `
                                 <div class="glass-panel" style="margin-bottom: 12px; padding: 16px;">
@@ -218,7 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         document.getElementById('cat-baryon-val').innerText = `${baryonPct} | ${formatMass(baryonicMass)}`;
                     }
 
-                    // Active Discrete Counts
                     if (document.getElementById('cat-nebulae-val')) document.getElementById('cat-nebulae-val').innerText = (stats.nebulae || 0).toLocaleString();
                     if (document.getElementById('cat-stars-val')) document.getElementById('cat-stars-val').innerText = (stats.stars || 0).toLocaleString();
                     if (document.getElementById('cat-bh-val')) document.getElementById('cat-bh-val').innerText = (stats.black_holes || 0).toLocaleString();
