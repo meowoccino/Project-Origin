@@ -5,7 +5,6 @@ let cosmicNodes = [];
 let selectedNode = null;
 let currentCatalogData = null;
 
-// Category Visual Definitions
 const CATEGORY_STYLES = {
     nebulae: { color: '#9932CC', name: 'Nebula Gas Cloud', size: 4.5 },
     stars: { color: '#FFD700', name: 'Stellar Core', size: 2.5 },
@@ -23,7 +22,6 @@ export function updateCanvasFromCatalog(stats, ageMyr) {
     currentCatalogData = stats;
     if (!ctx) return;
 
-    // Calculate Inhabited Worlds
     const planets = stats.planets || 0;
     const inhabitedCount = (ageMyr > 500.0) ? Math.floor(planets * 0.012) : 0;
 
@@ -40,10 +38,8 @@ export function updateCanvasFromCatalog(stats, ageMyr) {
         inhabited: inhabitedCount
     };
 
-    // Calculate total objects in universe
     let totalObjects = Object.values(counts).reduce((a, b) => a + b, 0);
     
-    // Cap visual particle pool for mobile rendering stability (up to 500,000 density scale)
     const MAX_VISUAL_NODES = 1200;
     const scaleFactor = totalObjects > 0 ? Math.min(1.0, MAX_VISUAL_NODES / Math.min(500000, totalObjects)) : 0;
 
@@ -113,7 +109,6 @@ export async function initWebGPU() {
         const cx = w / 2;
         const cy = h / 2;
 
-        // Background Gradient
         const bgGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, Math.max(w, h) * 0.7);
         bgGrad.addColorStop(0, '#121426');
         bgGrad.addColorStop(0.5, '#0A0B14');
@@ -127,7 +122,6 @@ export async function initWebGPU() {
         const cosR = Math.cos(cameraState.rotY);
         const sinR = Math.sin(cameraState.rotY);
 
-        // Draw State-Driven Nodes
         for (let i = 0; i < cosmicNodes.length; i++) {
             const p = cosmicNodes[i];
             
@@ -140,14 +134,12 @@ export async function initWebGPU() {
             const pulse = Math.sin(animTime * p.pulseSpeed * 100 + p.pulsePhase) * 0.2 + 1.0;
             const drawRadius = p.size * window.devicePixelRatio * pulse * cameraState.zoom;
 
-            // Halo / Glow
             ctx.beginPath();
             ctx.arc(p.screenX, p.screenY, drawRadius * (p.glow ? 3.5 : 2.0), 0, Math.PI * 2);
             ctx.fillStyle = p.color;
             ctx.globalAlpha = p.glow ? 0.45 : 0.2;
             ctx.fill();
 
-            // Core
             ctx.beginPath();
             ctx.arc(p.screenX, p.screenY, drawRadius, 0, Math.PI * 2);
             ctx.fillStyle = p.color;
@@ -155,7 +147,6 @@ export async function initWebGPU() {
             ctx.fill();
             ctx.globalAlpha = 1.0;
 
-            // Selection Circle
             if (selectedNode === p) {
                 ctx.strokeStyle = '#FF8C00';
                 ctx.lineWidth = 2.5 * window.devicePixelRatio;
