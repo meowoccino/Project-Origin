@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Project Origin</title>
-    <link rel="stylesheet" href="ui/styles.css?v=6">
+    <link rel="stylesheet" href="ui/styles.css?v=7">
 </head>
 <body>
 
@@ -26,10 +26,10 @@
         <div class="splash-prompt data-font">tap to observe &rarr;</div>
     </div>
 
-    <!-- 1. Canvas -->
+    <!-- 1. Canvas Container -->
     <div id="canvas-container"></div>
 
-    <!-- 2. Universal Age HUD (Scoped strictly to Explore Tab) -->
+    <!-- 2. Universal Age HUD (Scoped Strictly to Explore Tab) -->
     <div id="hud-age-container" class="glass-panel">
         <div class="hud-label">Universe Age</div>
         <div id="hud-age" class="hud-value data-font">0 Years</div>
@@ -72,18 +72,24 @@
         <div class="timeline-wrapper" id="timeline-container"></div>
     </div>
 
-    <!-- Catalog View: Flush top, zero dead space, physical taxonomy -->
+    <!-- Catalog View: Complete physical taxonomy, zero duplicates -->
     <div id="view-catalog" class="view-panel">
         <div class="catalog-list">
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF8C00;"></div><div class="cat-label">Dark Matter Web</div></div><div id="cat-dm" class="cat-val data-font">0% | 0 M☉</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#8A2BE2;"></div><div class="cat-label">Dark Energy Vacuum</div></div><div id="cat-de" class="cat-val data-font">0% Pressure</div></div>
+            <!-- Density & Reservoir States -->
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF8C00;"></div><div class="cat-label">Dark Matter Web</div></div><div id="cat-dm" class="cat-val data-font">26.8% | 0 M☉</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#8A2BE2;"></div><div class="cat-label">Dark Energy Vacuum</div></div><div id="cat-de" class="cat-val data-font">68.3% Pressure</div></div>
             <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FFD700;"></div><div class="cat-label">Baryonic Matter Reservoir</div></div><div id="cat-baryonic" class="cat-val data-font">0 M☉</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#00E5FF;"></div><div class="cat-label">Degenerate Matter Cores</div></div><div id="cat-degenerate" class="cat-val data-font">0 M☉</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF1493;"></div><div class="cat-label">Antimatter Asymmetry</div></div><div id="cat-antimatter" class="cat-val data-font">&lt; 0.001%</div></div>
+            
+            <!-- Concrete Physical Bodies -->
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FFF066;"></div><div class="cat-label">Stars & Protostars</div></div><div id="cat-stars" class="cat-val data-font">0 Cores</div></div>
             <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#4A4D66;"></div><div class="cat-label">Stellar Mass Black Holes</div></div><div id="cat-bh" class="cat-val data-font">0 Singularities</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#00E5FF;"></div><div class="cat-label">Degenerate Neutron Cores</div></div><div id="cat-degenerate" class="cat-val data-font">0 Cores</div></div>
             <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#CD7F32;"></div><div class="cat-label">Planetary Bodies</div></div><div id="cat-planets" class="cat-val data-font">0 Bodies</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#8C8F9F;"></div><div class="cat-label">Moons & Satellites</div></div><div id="cat-moons" class="cat-val data-font">0 Satellites</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#B0B0D0;"></div><div class="cat-label">Asteroids & Comets</div></div><div id="cat-asteroids" class="cat-val data-font">0 Fragments</div></div>
             <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#9932CC;"></div><div class="cat-label">Interstellar Nebulae</div></div><div id="cat-nebulae" class="cat-val data-font">0 Clouds</div></div>
             <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FFFFFF; box-shadow:0 0 8px #fff;"></div><div class="cat-label">Active Quasars</div></div><div id="cat-quasars" class="cat-val data-font">0 Cores</div></div>
+            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF1493;"></div><div class="cat-label">Antimatter Asymmetry</div></div><div id="cat-antimatter" class="cat-val data-font">&lt; 0.001% Ratio</div></div>
             <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF69B4;"></div><div class="cat-label">Exotic Relics</div></div><div id="cat-exotic" class="cat-val data-font">0 Relics</div></div>
         </div>
     </div>
