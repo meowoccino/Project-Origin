@@ -39,8 +39,13 @@ function getRealisticNodeStats(nodeIndex, currentAgeMyr) {
 }
 
 export async function initWebGPU() {
+    console.log("🌌 [ENGINE] Initializing 2D Canvas Engine...");
     const container = document.getElementById('canvas-container');
-    if (!container) return;
+    if (!container) {
+        console.error("❌ [ENGINE] #canvas-container element not found in DOM!");
+        return;
+    }
+    
     container.innerHTML = '';
     
     canvas = document.createElement('canvas');
@@ -54,11 +59,12 @@ export async function initWebGPU() {
     function resize() {
         canvas.width = window.innerWidth * window.devicePixelRatio;
         canvas.height = window.innerHeight * window.devicePixelRatio;
+        console.log(`📐 [ENGINE] Canvas resized to ${canvas.width}x${canvas.height}`);
     }
     window.addEventListener('resize', resize);
     resize();
 
-    // Generate procedural particle nodes
+    // Generate 600 centered particles
     cosmicNodes = [];
     const colors = ['#ffffff', '#FF8C00', '#00E5FF', '#FFD700', '#9932CC', '#8A2BE2'];
     for (let i = 0; i < 600; i++) {
@@ -76,6 +82,8 @@ export async function initWebGPU() {
         });
     }
 
+    console.log("✨ [ENGINE] Generated 600 cosmic particle nodes.");
+
     let animTime = 0;
 
     function render2DHQ() {
@@ -88,9 +96,8 @@ export async function initWebGPU() {
         const h = canvas.height;
         const cx = w / 2;
         const cy = h / 2;
-        const age = cameraState.currentAge || 0.0;
 
-        // Clear Background with Deep Cosmic Gradient
+        // Background
         const bgGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, Math.max(w, h) * 0.7);
         bgGrad.addColorStop(0, '#121426');
         bgGrad.addColorStop(0.5, '#0A0B14');
@@ -98,9 +105,9 @@ export async function initWebGPU() {
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, w, h);
 
-        // Core Cosmic Glow
+        // Core Ambient Glow
         const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 180 * window.devicePixelRatio);
-        coreGrad.addColorStop(0, 'rgba(255, 140, 0, 0.15)');
+        coreGrad.addColorStop(0, 'rgba(255, 140, 0, 0.22)');
         coreGrad.addColorStop(0.5, 'rgba(138, 43, 226, 0.08)');
         coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = coreGrad;
@@ -108,7 +115,6 @@ export async function initWebGPU() {
         ctx.arc(cx, cy, 180 * window.devicePixelRatio, 0, Math.PI * 2);
         ctx.fill();
 
-        // Responsive Scale Factor so objects NEVER leave viewport
         const maxExtent = 320;
         const targetScale = (Math.min(w, h) * 0.38) / maxExtent;
         const viewScale = targetScale * cameraState.zoom;
@@ -119,7 +125,6 @@ export async function initWebGPU() {
         for (let i = 0; i < cosmicNodes.length; i++) {
             const p = cosmicNodes[i];
             
-            // Slow cosmic rotation
             const rx = p.baseX * cosR - p.baseY * sinR;
             const ry = p.baseX * sinR + p.baseY * cosR;
 
@@ -129,14 +134,14 @@ export async function initWebGPU() {
             const pulse = Math.sin(animTime * p.pulseSpeed * 100 + p.pulsePhase) * 0.3 + 1.0;
             const drawRadius = p.size * window.devicePixelRatio * pulse * cameraState.zoom;
 
-            // Outer Radial Halo
+            // Halo
             ctx.beginPath();
             ctx.arc(p.screenX, p.screenY, drawRadius * 2.5, 0, Math.PI * 2);
             ctx.fillStyle = p.color;
-            ctx.globalAlpha = 0.25;
+            ctx.globalAlpha = 0.3;
             ctx.fill();
 
-            // Core Solid Particle
+            // Core Particle
             ctx.beginPath();
             ctx.arc(p.screenX, p.screenY, drawRadius, 0, Math.PI * 2);
             ctx.fillStyle = '#ffffff';
@@ -144,12 +149,12 @@ export async function initWebGPU() {
             ctx.fill();
             ctx.globalAlpha = 1.0;
 
-            // Selection Indicator
+            // Selection Circle
             if (selectedNode === p) {
                 ctx.strokeStyle = '#FF8C00';
-                ctx.lineWidth = 2 * window.devicePixelRatio;
+                ctx.lineWidth = 3 * window.devicePixelRatio;
                 ctx.beginPath();
-                ctx.arc(p.screenX, p.screenY, drawRadius * 3 + 6, 0, Math.PI * 2);
+                ctx.arc(p.screenX, p.screenY, drawRadius * 3 + 8, 0, Math.PI * 2);
                 ctx.stroke();
             }
         }
@@ -158,11 +163,12 @@ export async function initWebGPU() {
     render2DHQ();
 
     window.selectParticleAt = function(clientX, clientY) {
+        console.log(`🎯 [ENGINE] Canvas hit detection at (${clientX}, ${clientY})`);
         const rect = canvas.getBoundingClientRect();
         const tapX = (clientX - rect.left) * window.devicePixelRatio;
         const tapY = (clientY - rect.top) * window.devicePixelRatio;
 
-        let closest = null, minDist = 50 * window.devicePixelRatio;
+        let closest = null, minDist = 60 * window.devicePixelRatio;
         for (let i = 0; i < cosmicNodes.length; i++) {
             const p = cosmicNodes[i];
             const dist = Math.hypot(tapX - p.screenX, tapY - p.screenY);
@@ -170,6 +176,7 @@ export async function initWebGPU() {
         }
 
         if (closest) {
+            console.log(`⭐ [ENGINE] Target Acquired: Node #${closest.id}`);
             selectedNode = closest;
             const stats = getRealisticNodeStats(closest.id, cameraState.currentAge);
             
@@ -188,6 +195,8 @@ export async function initWebGPU() {
             `;
             if (document.getElementById('spec-name')) document.getElementById('spec-name').innerHTML = specHTML;
             if (document.getElementById('inspector-preview')) document.getElementById('inspector-preview').classList.add('active');
+        } else {
+            console.log("🌌 [ENGINE] Tap landed in empty space.");
         }
     };
 }
