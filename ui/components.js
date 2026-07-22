@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
     }
 
-    // --- 2. BOTTOM NAVIGATION ---
+    // --- 2. NAVIGATION VIEWS ---
     const btnExplore = document.getElementById('btn-explore'), btnEvents = document.getElementById('btn-events'), btnAi = document.getElementById('btn-ai'), btnTimeline = document.getElementById('btn-timeline'), btnCatalog = document.getElementById('btn-catalog');
     const viewEvents = document.getElementById('view-events'), viewAi = document.getElementById('view-ai'), viewTimeline = document.getElementById('view-timeline'), viewCatalog = document.getElementById('view-catalog'), inspectModal = document.getElementById('modal-object-detail');
     const allBtns = [btnExplore, btnEvents, btnAi, btnTimeline, btnCatalog], allViews = [viewEvents, viewAi, viewTimeline, viewCatalog, inspectModal];
@@ -81,12 +81,13 @@ document.addEventListener('DOMContentLoaded', () => {
     btnExpandInspect?.addEventListener('click', (e) => { e.stopPropagation(); openInspectModal(); });
     btnCloseInspect?.addEventListener('click', () => { inspectModal?.classList.remove('active'); btnExplore?.classList.add('active'); });
 
-    // --- 3. TIMELINE ENGINE (WITH ACTIVE CSS CLASSES) ---
+    // --- 3. TIMELINE ENGINE (Rich Astrophysics Terminology) ---
     const TIMELINE_EPOCHS = [
-        { title: "Primordial Inflation", start: 0, end: 100000, desc: "Exponential space expansion driven by quantum vacuum density fluctuations." },
-        { title: "Cosmic Dark Ages", start: 100000, end: 100000000, desc: "Neutral gas cools and collapses into early dark matter halos." },
-        { title: "First Stars & Reionization", start: 100000000, end: 1000000000, desc: "Population III supermassive stars ignite, reionizing neutral hydrogen." },
-        { title: "Galactic Disk Accretion", start: 1000000000, end: 10000000000, desc: "Flat spinning galaxy disks form with heavy metal nucleosynthesis." }
+        { title: "Primordial Inflation", start: 0, end: 100000, desc: "Exponential space-time expansion driven by quantum vacuum inflaton field decay." },
+        { title: "Recombination & Decoupling", start: 100000, end: 100000000, desc: "Thermal baryonic gas cools below 3,000 K, releasing Cosmic Microwave Background radiation." },
+        { title: "Pop-III Star Reionization", start: 100000000, end: 1000000000, desc: "Zero-metallicity primordial gas collapses into hypermassive stars, ionising neutral hydrogen." },
+        { title: "Galactic Disk Accretion", start: 1000000000, end: 13800000000, desc: "Angular momentum conservation forms flat spinning galactic disks with MHD turbulence." },
+        { title: "Degenerate Stellar Era", start: 13800000000, end: 100000000000, desc: "Interstellar gas depletion halts main sequence star formation; white dwarfs & black holes dominate." }
     ];
 
     function updateTimelineUI(totalYears) {
@@ -120,17 +121,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const state = data[0];
                     if (state.age !== undefined && state.age >= localCurrentAge) localCurrentAge = Number(state.age);
                     
-                    // Inject true server data into Origin tab (NO FAKE ILLUSIONS)
                     const container = document.getElementById('origin-actions-container');
                     if (container) {
                         container.innerHTML = `
-                            <div class="action-card active-action">
-                                <div class="action-card-header">
-                                    <span class="action-card-title">${state.goal || 'Establishing Initial Physics Parameters'}</span>
-                                    <span class="action-eta-badge data-font">Active</span>
-                                </div>
-                                <div class="action-meta-row"><span class="label-catalyst">Catalyst:</span> ${state.reasoning || 'Awaiting thermodynamic threshold...'}</div>
-                                <div class="action-meta-row"><span class="label-trajectory">Trajectory:</span> Proceeding to next epochal transition constraint.</div>
+                            <div class="action-card">
+                                <div class="action-card-title">${state.goal || 'Resolving Hydrodynamic Equations'}</div>
+                                <div class="action-meta-row"><span class="label-catalyst">Catalyst:</span> ${state.reasoning || 'Calculating Jeans mass instability thresholds.'}</div>
+                                <div class="action-meta-row"><span class="label-trajectory">Trajectory:</span> ${state.epoch || 'Standard Cosmological Sequence'}</div>
                             </div>
                         `;
                     }
@@ -160,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             `;
                         }).join('');
                     } else {
-                        container.innerHTML = `<div style="color: #70748a; font-size: 13px; text-align: center; padding: 20px;">No events logged at current epoch.</div>`;
+                        container.innerHTML = `<div style="color: #8c8f9f; font-size: 13px; text-align: center; padding: 20px;">No events logged at current epoch.</div>`;
                     }
                 }
             }
@@ -174,11 +171,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (Array.isArray(data) && data.length > 0) {
                     const stats = data[0];
-                    if (document.getElementById('cat-stars') && stats.stars !== undefined) document.getElementById('cat-stars').innerText = Number(stats.stars).toLocaleString();
-                    if (document.getElementById('cat-bh') && stats.black_holes !== undefined) document.getElementById('cat-bh').innerText = Number(stats.black_holes).toLocaleString();
-                    if (document.getElementById('cat-neutron') && stats.neutron_stars !== undefined) document.getElementById('cat-neutron').innerText = Number(stats.neutron_stars).toLocaleString();
-                    if (document.getElementById('cat-planets') && stats.planets !== undefined) document.getElementById('cat-planets').innerText = Number(stats.planets).toLocaleString();
-                    // The other 6 categories stay at 0 until the Python backend is upgraded
+                    const mappings = [
+                        ['cat-stars', 'stars'], ['cat-bh', 'black_holes'], ['cat-neutron', 'neutron_stars'],
+                        ['cat-planets', 'planets'], ['cat-moons', 'moons'], ['cat-asteroids', 'asteroids_comets'],
+                        ['cat-nebulae', 'nebulae'], ['cat-quasars', 'quasars'], ['cat-dm', 'dark_matter_structures'],
+                        ['cat-exotic', 'exotic_objects']
+                    ];
+                    mappings.forEach(([elementId, apiKey]) => {
+                        const el = document.getElementById(elementId);
+                        if (el && stats[apiKey] !== undefined) el.innerText = Number(stats[apiKey]).toLocaleString();
+                    });
                 }
             }
         } catch (err) {}
