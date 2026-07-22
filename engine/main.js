@@ -17,7 +17,7 @@ function getRealisticNodeStats(nodeIndex, currentAgeMyr) {
         stats.designation = `PLASMA-${nodeIndex}`; stats.classification = "Primordial Plasma Perturbation"; stats.temp = "10,000+ K"; stats.mass = "Fluid State"; stats.radius = "Sub-atomic";
     } else if (currentAgeMyr < 100.0) {
         const isDarkMatter = nodeIndex % 3 === 0;
-        stats.designation = isDarkMatter ? `DM-HALO-${nodeIndex}` : `H1-CLOUD-${nodeIndex}`; stats.classification = isDarkMatter ? "Dark Matter Halo" : "Neutral Hydrogen Cloud"; stats.temp = "10 - 300 K"; stats.mass = "10^6 M☉"; stats.radius = "400 ly";
+        stats.designation = isDarkMatter ? `DM-HALO-${nodeIndex}` : `H1-CLOUD-${nodeIndex}`; stats.classification = isDarkMatter ? "Dark Matter Halo Node" : "Neutral Hydrogen Cloud"; stats.temp = "10 - 300 K"; stats.mass = "10^5 M☉"; stats.radius = "400 ly";
     } else if (currentAgeMyr < 500.0) {
         stats.designation = `POP-III-${nodeIndex}`; stats.classification = "Population III Protostar"; stats.temp = "100,000 K"; stats.mass = "300 M☉"; stats.radius = "4.5 R☉";
     } else {
@@ -47,15 +47,15 @@ export async function initWebGPU() {
     cosmicNodes = [];
     const colors = ['#ffffff', '#FF8C00', '#ffffff', '#FFD700', '#FF8C00', '#9932CC'];
     for (let i = 0; i < 2000; i++) {
-        const t = (Math.random() - 0.5) * 400;
+        const t = (Math.random() - 0.5) * 350;
         cosmicNodes.push({
             id: i,
             initX: Math.sin(i % 12) * t + (Math.random() - 0.5) * 30,
             initY: Math.cos(i % 12) * t + (Math.random() - 0.5) * 30,
             initZ: t + (Math.random() - 0.5) * 20,
-            size: Math.random() * 2.5 + 1.2,
+            size: Math.random() * 3.0 + 1.5,
             color: colors[Math.floor(Math.random() * colors.length)],
-            ignitionAge: Math.random() * 0.2,
+            ignitionAge: Math.random() * 0.1,
             screenX: -999, screenY: -999
         });
     }
@@ -65,11 +65,11 @@ export async function initWebGPU() {
         const w = canvas.width, h = canvas.height, cx = w / 2, cy = h / 2;
         const age = cameraState.currentAge || 0.0;
         
-        // Controlled expansion bounds so nodes remain centered on screen
-        const exp = Math.max(0.1, Math.min(1.0, 0.1 + (age * 0.005)));
+        // Controlled expansion keeping particles visible on mobile
+        const exp = Math.max(0.15, Math.min(1.0, 0.15 + (age * 0.005)));
         autoRot += 0.0006;
         
-        const zoomScale = Math.min(w, h) * 0.004 * cameraState.zoom;
+        const zoomScale = Math.min(w, h) * 0.0045 * cameraState.zoom;
         const cosY = Math.cos(cameraState.rotY + autoRot), sinY = Math.sin(cameraState.rotY + autoRot);
         const cosX = Math.cos(cameraState.rotX + 0.3), sinX = Math.sin(cameraState.rotX + 0.3);
 
@@ -108,7 +108,6 @@ export async function initWebGPU() {
             requestAnimationFrame(render2D);
             updateScreenCoordinates();
             
-            // Deep space background
             ctx.fillStyle = '#0A0B14';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
@@ -117,26 +116,21 @@ export async function initWebGPU() {
                 const p = cosmicNodes[i];
                 if (p.screenX < 0 || p.screenX > canvas.width || p.screenY < 0 || p.screenY > canvas.height) continue;
                 
-                let clr = p.color, blur = 10;
-                let ds = Math.max(2.0, p.drawSize);
+                let clr = p.color;
+                let ds = Math.max(2.5, p.drawSize);
 
                 if (age < 0.38) { 
-                    clr = 'rgba(255, 140, 0, 0.8)'; 
+                    clr = 'rgba(255, 140, 0, 0.9)'; 
                     ds *= 2.5; 
-                    blur = 16; 
                 } else if (age < 100.0) { 
-                    clr = p.id % 3 === 0 ? 'rgba(180, 80, 255, 0.6)' : 'rgba(255, 180, 100, 0.7)'; 
+                    clr = p.id % 3 === 0 ? 'rgba(180, 80, 255, 0.75)' : 'rgba(255, 180, 100, 0.8)'; 
                     ds *= 2.0; 
-                    blur = 12; 
                 }
 
                 ctx.beginPath(); 
                 ctx.arc(p.screenX, p.screenY, ds, 0, Math.PI * 2);
                 ctx.fillStyle = clr; 
-                ctx.shadowColor = clr; 
-                ctx.shadowBlur = blur; 
                 ctx.fill();
-                ctx.shadowBlur = 0; // Reset for performance
 
                 if (selectedNode === p) {
                     ctx.strokeStyle = '#FF8C00'; 
