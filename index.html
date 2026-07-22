@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Project Origin</title>
-    <link rel="stylesheet" href="ui/styles.css?v=7">
+    <link rel="stylesheet" href="ui/styles.css?v=9">
 </head>
 <body>
 
@@ -72,25 +72,92 @@
         <div class="timeline-wrapper" id="timeline-container"></div>
     </div>
 
-    <!-- Catalog View: Complete physical taxonomy, zero duplicates -->
+    <!-- Catalog View: Compact Full-Screen 2-Column Layout -->
     <div id="view-catalog" class="view-panel">
-        <div class="catalog-list">
-            <!-- Density & Reservoir States -->
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF8C00;"></div><div class="cat-label">Dark Matter Web</div></div><div id="cat-dm" class="cat-val data-font">26.8% | 0 M☉</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#8A2BE2;"></div><div class="cat-label">Dark Energy Vacuum</div></div><div id="cat-de" class="cat-val data-font">68.3% Pressure</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FFD700;"></div><div class="cat-label">Baryonic Matter Reservoir</div></div><div id="cat-baryonic" class="cat-val data-font">0 M☉</div></div>
-            
-            <!-- Concrete Physical Bodies -->
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FFF066;"></div><div class="cat-label">Stars & Protostars</div></div><div id="cat-stars" class="cat-val data-font">0 Cores</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#4A4D66;"></div><div class="cat-label">Stellar Mass Black Holes</div></div><div id="cat-bh" class="cat-val data-font">0 Singularities</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#00E5FF;"></div><div class="cat-label">Degenerate Neutron Cores</div></div><div id="cat-degenerate" class="cat-val data-font">0 Cores</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#CD7F32;"></div><div class="cat-label">Planetary Bodies</div></div><div id="cat-planets" class="cat-val data-font">0 Bodies</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#8C8F9F;"></div><div class="cat-label">Moons & Satellites</div></div><div id="cat-moons" class="cat-val data-font">0 Satellites</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#B0B0D0;"></div><div class="cat-label">Asteroids & Comets</div></div><div id="cat-asteroids" class="cat-val data-font">0 Fragments</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#9932CC;"></div><div class="cat-label">Interstellar Nebulae</div></div><div id="cat-nebulae" class="cat-val data-font">0 Clouds</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FFFFFF; box-shadow:0 0 8px #fff;"></div><div class="cat-label">Active Quasars</div></div><div id="cat-quasars" class="cat-val data-font">0 Cores</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF1493;"></div><div class="cat-label">Antimatter Asymmetry</div></div><div id="cat-antimatter" class="cat-val data-font">&lt; 0.001% Ratio</div></div>
-            <div class="cat-list-item"><div class="cat-list-left"><div class="cat-dot" style="background:#FF69B4;"></div><div class="cat-label">Exotic Relics</div></div><div id="cat-exotic" class="cat-val data-font">0 Relics</div></div>
+        <div class="catalog-viewport">
+            <!-- Dynamic Cosmological Mass-Energy Bar -->
+            <div class="macro-container">
+                <div class="macro-bar-visual">
+                    <div id="bar-de" class="bar-de"></div>
+                    <div id="bar-dm" class="bar-dm"></div>
+                    <div id="bar-baryon" class="bar-baryonic"></div>
+                </div>
+
+                <div class="macro-grid">
+                    <div class="macro-item">
+                        <div class="dot" style="background: #8A2BE2;"></div>
+                        <div>
+                            <div class="macro-label">Dark Energy</div>
+                            <div id="cat-de-val" class="macro-val data-font">0%</div>
+                        </div>
+                    </div>
+                    <div class="macro-item">
+                        <div class="dot" style="background: #FF8C00;"></div>
+                        <div>
+                            <div class="macro-label">Dark Matter</div>
+                            <div id="cat-dm-val" class="macro-val data-font">0% | 0 M_sun</div>
+                        </div>
+                    </div>
+                    <div class="macro-item">
+                        <div class="dot" style="background: #FFD700;"></div>
+                        <div>
+                            <div class="macro-label">Baryonic Reservoir</div>
+                            <div id="cat-baryon-val" class="macro-val data-font">0% | 0 M_sun</div>
+                        </div>
+                    </div>
+                    <div class="macro-item">
+                        <div class="dot" style="background: #FF1493;"></div>
+                        <div>
+                            <div class="macro-label">Antimatter Asymmetry</div>
+                            <div class="macro-val data-font">&lt; 10⁻⁹</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Inventory Grid -->
+            <div class="inventory-grid">
+                <div class="inv-card">
+                    <div class="inv-header"><div class="dot" style="background: #9932CC;"></div><div class="inv-title">Nebulae</div></div>
+                    <div id="cat-nebulae-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header"><div class="dot" style="background: #FFF066;"></div><div class="inv-title">Stars & Protostars</div></div>
+                    <div id="cat-stars-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header"><div class="dot" style="background: #4A4D66;"></div><div class="inv-title">Black Holes</div></div>
+                    <div id="cat-bh-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header"><div class="dot" style="background: #00E5FF;"></div><div class="inv-title">Neutron Cores</div></div>
+                    <div id="cat-degenerate-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header"><div class="dot" style="background: #CD7F32;"></div><div class="inv-title">Planetary Bodies</div></div>
+                    <div id="cat-planets-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header"><div class="dot" style="background: #8C8F9F;"></div><div class="inv-title">Moons & Satellites</div></div>
+                    <div id="cat-moons-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header"><div class="dot" style="background: #B0B0D0;"></div><div class="inv-title">Asteroids & Comets</div></div>
+                    <div id="cat-asteroids-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header"><div class="dot" style="background: #FFFFFF; box-shadow: 0 0 6px #fff;"></div><div class="inv-title">Active Quasars</div></div>
+                    <div id="cat-quasars-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header"><div class="dot" style="background: #FF69B4;"></div><div class="inv-title">Exotic Relics</div></div>
+                    <div id="cat-exotic-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header"><div class="dot" style="background: #20B2AA;"></div><div class="inv-title">Dark Matter Structures</div></div>
+                    <div id="cat-structures-val" class="inv-val data-font">0</div>
+                </div>
+            </div>
         </div>
     </div>
 
