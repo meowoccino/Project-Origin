@@ -1,19 +1,16 @@
 import { cameraState } from '../engine/main.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 0. SPLASH SCREEN DISMISS ---
     const splash = document.getElementById('splash-screen');
     if (splash) {
-        splash.addEventListener('click', () => {
-            splash.classList.add('hidden');
-        });
+        splash.addEventListener('click', () => splash.classList.add('hidden'));
     }
 
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
     const SUPABASE_KEY = "sb_publishable_O5qr-6UD-6wTzi51j3tYtw_00N9Q4ja";
     const FETCH_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
 
-    // --- 1. TOUCH CONTROLS ---
+    // Touch Controls
     const canvasContainer = document.getElementById('canvas-container');
     let isDragging = false, lastTouchX = 0, lastTouchY = 0, initialPinchDistance = null, initialZoom = 1.0, touchStartTime = 0, startX = 0, startY = 0;
 
@@ -53,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
     }
 
-    // --- 2. NAVIGATION VIEWS WITH HUD TAB-SCOPING ---
+    // Navigation & Scoping
     const btnExplore = document.getElementById('btn-explore'), btnEvents = document.getElementById('btn-events'), btnAi = document.getElementById('btn-ai'), btnTimeline = document.getElementById('btn-timeline'), btnCatalog = document.getElementById('btn-catalog');
     const viewEvents = document.getElementById('view-events'), viewAi = document.getElementById('view-ai'), viewTimeline = document.getElementById('view-timeline'), viewCatalog = document.getElementById('view-catalog'), inspectModal = document.getElementById('modal-object-detail');
     const hudContainer = document.getElementById('hud-age-container');
@@ -69,7 +66,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btn?.classList.add('active'); 
         if (view) view.classList.add('active');
 
-        // Scope HUD strictly to Explore Tab to prevent glitches across swipes
         if (btn === btnExplore) {
             if (hudContainer) hudContainer.style.opacity = '1';
         } else {
@@ -92,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnExpandInspect?.addEventListener('click', (e) => { e.stopPropagation(); openInspectModal(); });
     btnCloseInspect?.addEventListener('click', () => { inspectModal?.classList.remove('active'); btnExplore?.classList.add('active'); switchTab(btnExplore, null); });
 
-    // --- 3. TIMELINE ENGINE ---
+    // Timeline Engine
     const TIMELINE_EPOCHS = [
         { title: "Primordial Inflation", start: 0, end: 100000, desc: "Exponential space-time expansion driven by quantum vacuum inflaton field decay." },
         { title: "Recombination & Decoupling", start: 100000, end: 100000000, desc: "Thermal baryonic gas cools below 3,000 K, releasing Cosmic Microwave Background radiation." },
@@ -120,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     }
 
-    // --- 4. REAL TELEMETRY SYNC ---
+    // Dynamic Telemetry Sync
     let localCurrentAge = 0.0;
 
     async function pollUniverseState() {
@@ -132,15 +128,36 @@ document.addEventListener('DOMContentLoaded', () => {
                     const latest = data[0];
                     if (latest.age !== undefined && latest.age >= localCurrentAge) localCurrentAge = Number(latest.age);
                     
+                    // Dynamic Cosmological Shares
+                    const dePct = latest.de_pct !== undefined ? latest.de_pct : 0.0;
+                    const dmPct = latest.dm_pct !== undefined ? latest.dm_pct : 0.0;
+                    const baryonPct = latest.baryon_pct !== undefined ? latest.baryon_pct : 0.0;
+
+                    const barDe = document.getElementById('bar-de');
+                    const barDm = document.getElementById('bar-dm');
+                    const barBaryon = document.getElementById('bar-baryon');
+                    if (barDe) barDe.style.width = `${dePct}%`;
+                    if (barDm) barDm.style.width = `${dmPct}%`;
+                    if (barBaryon) barBaryon.style.width = `${baryonPct}%`;
+
+                    if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = `${dePct}%`;
+
+                    // Origin Feed with Timestamps
                     const container = document.getElementById('origin-actions-container');
                     if (container) {
-                        container.innerHTML = data.map(state => `
-                            <div class="action-card">
-                                <div class="action-card-title">${state.goal || 'Resolving Hydrodynamic Equations'}</div>
-                                <div class="action-meta-row"><span class="label-catalyst">Catalyst:</span> ${state.reasoning || 'Calculating Jeans mass instability thresholds.'}</div>
-                                <div class="action-meta-row"><span class="label-trajectory">Trajectory:</span> ${state.epoch || 'Standard Cosmological Sequence'}</div>
-                            </div>
-                        `).join('');
+                        container.innerHTML = data.map(state => {
+                            const stepYears = state.age ? Math.floor(state.age * 1000000).toLocaleString() + ' Yrs' : 'LIVE';
+                            return `
+                                <div class="action-card">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                        <div class="action-card-title" style="margin-bottom:0;">${state.goal || 'Resolving Hydrodynamic Equations'}</div>
+                                        <span class="data-font" style="font-size:11px; color:#FF8C00; font-weight:bold;">${stepYears}</span>
+                                    </div>
+                                    <div class="action-meta-row"><span class="label-catalyst">Catalyst:</span> ${state.reasoning || 'Calculating Jeans mass instability thresholds.'}</div>
+                                    <div class="action-meta-row"><span class="label-trajectory">Trajectory:</span> ${state.epoch || 'Standard Cosmological Sequence'}</div>
+                                </div>
+                            `;
+                        }).join('');
                     }
                 }
             }
@@ -175,6 +192,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {}
     }
 
+    function formatMass(solarMasses) {
+        if (solarMasses >= 1e9) return `${(solarMasses / 1e9).toFixed(2)}B M_sun`;
+        if (solarMasses >= 1e6) return `${(solarMasses / 1e6).toFixed(1)}M M_sun`;
+        if (solarMasses >= 1e3) return `${(solarMasses / 1e3).toFixed(1)}k M_sun`;
+        return `${solarMasses.toLocaleString()} M_sun`;
+    }
+
     async function pollCatalog() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/catalog_stats?select=*&limit=1`, { headers: FETCH_HEADERS });
@@ -183,51 +207,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (Array.isArray(data) && data.length > 0) {
                     const stats = data[0];
                     
-                    // 1. Density & Energy States
-                    if (document.getElementById('cat-dm')) {
+                    if (document.getElementById('cat-dm-val')) {
                         const dmMass = (stats.dark_matter_structures || 0) * 100000;
-                        document.getElementById('cat-dm').innerText = `26.8% | ${dmMass.toLocaleString()} M☉`;
+                        const dmPct = document.getElementById('bar-dm')?.style.width || '0%';
+                        document.getElementById('cat-dm-val').innerText = `${dmPct} | ${formatMass(dmMass)}`;
                     }
-                    if (document.getElementById('cat-de')) {
-                        document.getElementById('cat-de').innerText = `68.3% Pressure`;
-                    }
-                    if (document.getElementById('cat-baryonic')) {
+                    if (document.getElementById('cat-baryon-val')) {
                         const baryonicMass = (stats.stars || 0) * 1.0 + (stats.nebulae || 0) * 500.0 + (stats.planets || 0) * 0.001;
-                        document.getElementById('cat-baryonic').innerText = `${baryonicMass.toLocaleString()} M☉`;
-                    }
-                    if (document.getElementById('cat-antimatter')) {
-                        document.getElementById('cat-antimatter').innerText = `< 0.001% Ratio`;
+                        const baryonPct = document.getElementById('bar-baryon')?.style.width || '0%';
+                        document.getElementById('cat-baryon-val').innerText = `${baryonPct} | ${formatMass(baryonicMass)}`;
                     }
 
-                    // 2. Concrete Physical Bodies
-                    if (document.getElementById('cat-stars')) {
-                        document.getElementById('cat-stars').innerText = `${(stats.stars || 0).toLocaleString()} Cores`;
-                    }
-                    if (document.getElementById('cat-bh')) {
-                        document.getElementById('cat-bh').innerText = `${(stats.black_holes || 0).toLocaleString()} Singularities`;
-                    }
-                    if (document.getElementById('cat-degenerate')) {
-                        const degenCount = (stats.neutron_stars || 0);
-                        document.getElementById('cat-degenerate').innerText = `${degenCount.toLocaleString()} Cores`;
-                    }
-                    if (document.getElementById('cat-planets')) {
-                        document.getElementById('cat-planets').innerText = `${(stats.planets || 0).toLocaleString()} Bodies`;
-                    }
-                    if (document.getElementById('cat-moons')) {
-                        document.getElementById('cat-moons').innerText = `${(stats.moons || 0).toLocaleString()} Satellites`;
-                    }
-                    if (document.getElementById('cat-asteroids')) {
-                        document.getElementById('cat-asteroids').innerText = `${(stats.asteroids_comets || 0).toLocaleString()} Fragments`;
-                    }
-                    if (document.getElementById('cat-nebulae')) {
-                        document.getElementById('cat-nebulae').innerText = `${(stats.nebulae || 0).toLocaleString()} Clouds`;
-                    }
-                    if (document.getElementById('cat-quasars')) {
-                        document.getElementById('cat-quasars').innerText = `${(stats.quasars || 0).toLocaleString()} Cores`;
-                    }
-                    if (document.getElementById('cat-exotic')) {
-                        document.getElementById('cat-exotic').innerText = `${(stats.exotic_objects || 0).toLocaleString()} Relics`;
-                    }
+                    // Active Discrete Counts
+                    if (document.getElementById('cat-nebulae-val')) document.getElementById('cat-nebulae-val').innerText = (stats.nebulae || 0).toLocaleString();
+                    if (document.getElementById('cat-stars-val')) document.getElementById('cat-stars-val').innerText = (stats.stars || 0).toLocaleString();
+                    if (document.getElementById('cat-bh-val')) document.getElementById('cat-bh-val').innerText = (stats.black_holes || 0).toLocaleString();
+                    if (document.getElementById('cat-degenerate-val')) document.getElementById('cat-degenerate-val').innerText = (stats.neutron_stars || 0).toLocaleString();
+                    if (document.getElementById('cat-planets-val')) document.getElementById('cat-planets-val').innerText = (stats.planets || 0).toLocaleString();
+                    if (document.getElementById('cat-moons-val')) document.getElementById('cat-moons-val').innerText = (stats.moons || 0).toLocaleString();
+                    if (document.getElementById('cat-asteroids-val')) document.getElementById('cat-asteroids-val').innerText = (stats.asteroids_comets || 0).toLocaleString();
+                    if (document.getElementById('cat-quasars-val')) document.getElementById('cat-quasars-val').innerText = (stats.quasars || 0).toLocaleString();
+                    if (document.getElementById('cat-exotic-val')) document.getElementById('cat-exotic-val').innerText = (stats.exotic_objects || 0).toLocaleString();
+                    if (document.getElementById('cat-structures-val')) document.getElementById('cat-structures-val').innerText = (stats.dark_matter_structures || 0).toLocaleString();
                 }
             }
         } catch (err) {}
