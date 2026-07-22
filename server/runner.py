@@ -59,6 +59,7 @@ def fetch_latest_age():
         print(f"[DB FETCH WARNING]: {e}")
     return 0.0
 
+# --- GROQ AI DECISION ENGINE ---
 def query_ai_decision(age_myr, cosmology):
     if GROQ_API_KEY:
         prompt = f"""
@@ -91,7 +92,7 @@ def query_ai_decision(age_myr, cosmology):
         except Exception as e:
             print(f"[GROQ AI FALLBACK]: {e}")
 
-    # Dynamic Physics Decision Solver (Fallback)
+    # Dynamic Physics Fallback Solver (used if GROQ_API_KEY is unset or fails)
     if age_myr < 0.1:
         goals = [
             ("Simulating Quantum Inflation & Metric Expansion", "Hot Big Bang nucleosynthesis synthesizing Hydrogen and Helium isotopes."),
