@@ -10,7 +10,7 @@
 }
 
 body {
-    background-color: #0A0B14; /* Deep rich midnight space */
+    background-color: #0A0B14;
     color: #ffffff;
     font-family: 'Google Sans', 'Inter', -apple-system, sans-serif;
     overflow: hidden;
@@ -24,7 +24,76 @@ body {
     letter-spacing: -0.5px;
 }
 
-/* Glassmorphism Panel Base */
+/* --- SPLASH SCREEN --- */
+#splash-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background-color: #0A0B14;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.6s ease-out, visibility 0.6s ease-out;
+}
+
+#splash-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.splash-content {
+    text-align: center;
+    margin-top: -60px; /* Slightly offset upward for visual balance */
+}
+
+.splash-logo {
+    width: 130px;
+    height: 130px;
+    margin: 0 auto 30px;
+}
+
+.orbit-anim {
+    transform-origin: 50px 50px;
+    animation: spinOrbit 10s linear infinite;
+}
+
+@keyframes spinOrbit {
+    100% { transform: rotate(360deg); }
+}
+
+.splash-title {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 5px;
+    color: #ffffff;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+}
+
+.splash-subtitle {
+    font-size: 11px;
+    font-weight: 600;
+    color: #70748a;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.splash-prompt {
+    position: absolute;
+    bottom: 80px;
+    font-size: 14px;
+    color: #70748a;
+    letter-spacing: 1px;
+    animation: jumpPulse 1.2s infinite;
+}
+
+@keyframes jumpPulse {
+    0%, 100% { transform: translateY(0); opacity: 0.4; }
+    50% { transform: translateY(-6px); opacity: 1; color: #00e5ff; }
+}
+
+/* --- MAIN APP STYLES --- */
 .glass-panel {
     background: rgba(20, 22, 35, 0.4);
     backdrop-filter: blur(12px);
@@ -39,7 +108,6 @@ body {
     z-index: 1;
 }
 
-/* Top Left HUD (Age) */
 #hud-age-container {
     position: absolute;
     top: 24px;
@@ -65,7 +133,6 @@ body {
     text-shadow: 0 0 10px rgba(255,255,255,0.2);
 }
 
-/* Bottom Navigation */
 #bottom-nav {
     position: absolute;
     bottom: 0; left: 0; right: 0;
@@ -107,14 +174,13 @@ body {
     filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.5));
 }
 
-/* Tab Views Container */
 .view-panel {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 70px;
     z-index: 20;
     background: rgba(10, 11, 20, 0.7);
     backdrop-filter: blur(20px);
-    padding: 100px 20px 20px; /* Padding top clears the age HUD */
+    padding: 100px 20px 20px;
     overflow-y: auto;
     opacity: 0;
     pointer-events: none;
@@ -126,7 +192,6 @@ body {
     pointer-events: auto;
 }
 
-/* Origin Actions Grid */
 .action-card {
     background: rgba(255,255,255,0.02);
     border: 1px solid rgba(255,255,255,0.04);
@@ -165,11 +230,10 @@ body {
 
 .action-meta-row {
     font-size: 12px;
-    color: #70748a; /* Muted secondary text */
+    color: #70748a;
     margin-bottom: 2px;
 }
 
-/* Catalog 2x2 Grid */
 .catalog-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -200,7 +264,6 @@ body {
     color: #ffffff;
 }
 
-/* Timeline specific styles */
 .timeline-wrapper {
     position: relative;
     padding-left: 24px;
@@ -215,14 +278,13 @@ body {
 
 .node-marker {
     position: absolute;
-    left: -31px; /* Align with border */
+    left: -31px;
     top: 2px;
     width: 12px;
     height: 12px;
     border-radius: 50%;
 }
 
-/* Inspector Preview (Bottom pop-up) */
 #inspector-preview {
     position: absolute;
     bottom: 85px; left: 20px; right: 20px;
@@ -243,7 +305,6 @@ body {
 #obj-name { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
 #obj-sub { font-size: 12px; color: #00e5ff; }
 
-/* Full Inspector Modal */
 #modal-object-detail {
     background: #0A0B14;
     padding-top: 60px;
