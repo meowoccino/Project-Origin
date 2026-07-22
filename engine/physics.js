@@ -1,93 +1,147 @@
-import { supabase } from '../services/supabase.js';
+import { shaderCode } from './shaders.js';
 
 export class PhysicsEngine {
-    constructor(particleCount = 500000) {
+    constructor(canvas, particleCount = 10000) { 
+        // 10,000 particles is the sweet spot for mobile WebGPU survival
+        this.canvas = canvas;
         this.particleCount = particleCount;
         this.device = null;
-        this.computePipeline = null;
-        this.particleBuffer = null;
-        this.paramsBuffer = null;
-        this.bindGroup = null;
-        this.cosmicAge = 0.0; // In Million Years (Myr)
+        this.context = null;
     }
 
     async init() {
         if (!navigator.gpu) {
-            console.warn("WebGPU not supported on this browser. Falling back to passive viewing mode.");
+            console.warn("WebGPU not supported on this browser.");
             return false;
         }
 
-        const adapter = await navigator.gpu.requestAdapter();
-        this.device = await adapter.requestDevice();
+        try {
+            const adapter = await navigator.gpu.requestAdapter();
+            if (!adapter) return false;
+            this.device = await adapter.requestDevice();
+            this.context = this.canvas.getContext('webgpu');
+            this.format = navigator.gpu.getPreferredCanvasFormat();
+            
+            this.context.configure({
+                device: this.device,
+                format: this.format,
+                alphaMode: 'premultiplied'
+            });
 
-        // Fetch shader code
-        const shaderResponse = await fetch('./engine/shaders.wgsl');
-        const shaderCode = await shaderResponse.text();
+            const module = this.device.createShaderModule({ code: shaderCode });
 
-        const shaderModule = this.device.createShaderModule({ code: shaderCode });
+            // 64 Bytes per particle = 16 floats (Fixed memory alignment mismatch)
+            const particleData = new Float32Array(this.particleCount * 16);
+            
+            this.particleBuffer = this.device.createBuffer({
+                size: particleData.byteLength,
+                usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
+            });
 
-        // Initialize particle array (x, y, z, mass, vx, vy, vz, padding)
-        const particleData = new Float32Array(this.particleCount * 8);
-        for (let i = 0; i < this.particleCount; i++) {
-            const idx = i * 8;
-            particleData[idx]     = (Math.random() - 0.5) * 1000; // X
-            particleData[idx + 1] = (Math.random() - 0.5) * 1000; // Y
-            particleData[idx + 2] = (Math.random() - 0.5) * 1000; // Z
-            particleData[idx + 3] = 1.0;                          // Mass
-            particleData[idx + 4] = (Math.random() - 0.5) * 2.0;  // Vx
-            particleData[idx + 5] = (Math.random() - 0.5) * 2.0;  // Vy
-            particleData[idx + 6] = (Math.random() - 0.5) * 2.0;  // Vz
-            particleData[idx + 7] = 0.0;                          // Alignment padding
+            // Params Buffer (8 floats = 32 bytes)
+            this.paramsBuffer = this.device.createBuffer({
+                size: 32,
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+            });
+
+            this.bindGroupLayout = this.device.createBindGroupLayout({
+                entries: [
+                    { binding: 0, visibility: GPUShaderStage.COMPUTE | GPUShaderStage.VERTEX, buffer: { type: 'storage' } },
+                    { binding: 1, visibility: GPUShaderStage.COMPUTE | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } }
+                ]
+            });
+
+            this.bindGroup = this.device.createBindGroup({
+                layout: this.bindGroupLayout,
+                entries: [
+                    { binding: 0, resource: { buffer: this.particleBuffer } },
+                    { binding: 1, resource: { buffer: this.paramsBuffer } }
+                ]
+            });
+
+            // Compile the 3 pipelines from shaders.js
+            this.initPipeline = this.device.createComputePipeline({
+                layout: this.device.createPipelineLayout({ bindGroupLayouts: [this.bindGroupLayout] }),
+                compute: { module, entryPoint: 'init_big_bang' }
+            });
+
+            this.computePipeline = this.device.createComputePipeline({
+                layout: this.device.createPipelineLayout({ bindGroupLayouts: [this.bindGroupLayout] }),
+                compute: { module, entryPoint: 'update_physics' }
+            });
+
+            this.renderPipeline = this.device.createRenderPipeline({
+                layout: this.device.createPipelineLayout({ bindGroupLayouts: [this.bindGroupLayout] }),
+                vertex: { module, entryPoint: 'vs_main' },
+                fragment: {
+                    module, entryPoint: 'fs_main',
+                    targets: [{
+                        format: this.format,
+                        blend: {
+                            color: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
+                            alpha: { srcFactor: 'one', dstFactor: 'one', operation: 'add' }
+                        }
+                    }]
+                },
+                primitive: { topology: 'triangle-list' }
+            });
+
+            // Execute the Big Bang Initialization Compute Pass immediately
+            const encoder = this.device.createCommandEncoder();
+            const pass = encoder.beginComputePass();
+            pass.setPipeline(this.initPipeline);
+            pass.setBindGroup(0, this.bindGroup);
+            pass.dispatchWorkgroups(Math.ceil(this.particleCount / 256));
+            pass.end();
+            this.device.queue.submit([encoder.finish()]);
+
+            return true;
+        } catch (err) {
+            console.error("WebGPU Initialization failed:", err);
+            return false;
         }
+    }
 
-        // GPU Buffers
-        this.particleBuffer = this.device.createBuffer({
-            size: particleData.byteLength,
-            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-            mappedAtCreation: true
-        });
-        new Float32Array(this.particleBuffer.getMappedRange()).set(particleData);
-        this.particleBuffer.unmap();
+    step(cameraState) {
+        if (!this.device) return;
 
-        // Params Buffer: delta_time, gravity_const, expansion_rate, speed_of_light
-        const paramsData = new Float32Array([0.016, 0.5, 67.4, 299.7]);
-        this.paramsBuffer = this.device.createBuffer({
-            size: paramsData.byteLength,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-        });
+        // Push real-time telemetry from UI into the GPU shaders
+        const paramsData = new Float32Array([
+            cameraState.currentAge, 
+            67.4,                   
+            0.016,                  
+            this.particleCount,     
+            cameraState.zoom,       
+            cameraState.rotX,       
+            cameraState.rotY,       
+            this.canvas.width / this.canvas.height 
+        ]);
         this.device.queue.writeBuffer(this.paramsBuffer, 0, paramsData);
 
-        // Compute Pipeline
-        this.computePipeline = this.device.createComputePipeline({
-            layout: 'auto',
-            compute: { module: shaderModule, entryPoint: 'main' }
+        const encoder = this.device.createCommandEncoder();
+
+        // 1. Compute Pass (Gravity & Hydrodynamics)
+        const computePass = encoder.beginComputePass();
+        computePass.setPipeline(this.computePipeline);
+        computePass.setBindGroup(0, this.bindGroup);
+        computePass.dispatchWorkgroups(Math.ceil(this.particleCount / 256));
+        computePass.end();
+
+        // 2. Render Pass (Draw the instances)
+        const renderPass = encoder.beginRenderPass({
+            colorAttachments: [{
+                view: this.context.getCurrentTexture().createView(),
+                clearValue: { r: 0.01, g: 0.01, b: 0.03, a: 1.0 },
+                loadOp: 'clear',
+                storeOp: 'store'
+            }]
         });
+        renderPass.setPipeline(this.renderPipeline);
+        renderPass.setBindGroup(0, this.bindGroup);
+        // Draw 6 vertices per particle (a quad)
+        renderPass.draw(6, this.particleCount, 0, 0);
+        renderPass.end();
 
-        this.bindGroup = this.device.createBindGroup({
-            layout: this.computePipeline.getBindGroupLayout(0),
-            entries: [
-                { binding: 0, resource: { buffer: this.particleBuffer } },
-                { binding: 1, resource: { buffer: this.paramsBuffer } }
-            ]
-        });
-
-        return true;
-    }
-
-    step() {
-        if (!this.device || !this.computePipeline) return;
-
-        const commandEncoder = this.device.createCommandEncoder();
-        const passEncoder = commandEncoder.beginComputePass();
-        passEncoder.setPipeline(this.computePipeline);
-        passEncoder.setBindGroup(0, this.bindGroup);
-        passEncoder.dispatchWorkgroups(Math.ceil(this.particleCount / 64));
-        passEncoder.end();
-
-        this.device.queue.submit([commandEncoder.finish()]);
-
-        // Advance cosmic time
-        this.cosmicAge += 0.01;
+        this.device.queue.submit([encoder.finish()]);
     }
 }
-
