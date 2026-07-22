@@ -95,9 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 3. TIMELINE ENGINE ---
     const TIMELINE_EPOCHS = [
         { title: "🌌 Primordial Inflation", start: 0, end: 100000, desc: "Exponential space expansion driven by quantum vacuum density fluctuations." },
-        { title: "⭐ Cosmic Dark Ages", start: 100000, end: 100000000, desc: "Neutral gas cools and collapses into early dark matter halos." },
+        { title: "🌑 Cosmic Dark Ages", start: 100000, end: 100000000, desc: "Neutral gas cools and collapses into early dark matter halos." },
         { title: "✨ First Stars & Reionization", start: 100000000, end: 1000000000, desc: "Population III supermassive stars ignite, reionizing neutral hydrogen." },
-        { title: "🪐 Galactic Disk Accretion", start: 1000000000, end: 10000000000, desc: "Flat spinning galaxy disks form with heavy metal nucleosynthesis." }
+        { title: "🌀 Galactic Disk Accretion", start: 1000000000, end: 10000000000, desc: "Flat spinning galaxy disks form with heavy metal nucleosynthesis." }
     ];
 
     function updateTimelineUI(totalYears) {
@@ -133,7 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const totalYears = Math.floor(age * 1000000);
 
-        // Pool of potential physical actions
         const actionPool = [
             {
                 object: `Object-${Math.floor(100 + age * 12)} (Molecular Cloud)`,
@@ -172,9 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         ];
 
-        // Dynamic count (1 to 4 active items) based on age cycle
         const cycleStep = Math.floor(age * 100) % 4;
-        const count = 1 + cycleStep; // Dynamic count: 1, 2, 3, or 4 actions!
+        const count = 1 + cycleStep;
 
         const activeItems = actionPool.slice(0, count);
 
@@ -278,7 +276,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     setInterval(() => {
-        localCurrentAge += 0.0001;
+        // ACCELERATED SPEED FOR 30-DAY EXPERIMENT
+        localCurrentAge += 0.03875;
         cameraState.currentAge = localCurrentAge;
 
         const totalYears = Math.floor(localCurrentAge * 1000000);
