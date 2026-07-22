@@ -1,9 +1,14 @@
 import { cameraState } from '../engine/main.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("🚀 [ORIGIN UI] Bootstrapping interface and touch telemetry...");
+
     const splash = document.getElementById('splash-screen');
     if (splash) {
-        splash.addEventListener('click', () => splash.classList.add('hidden'));
+        splash.addEventListener('click', () => {
+            splash.classList.add('hidden');
+            console.log("✨ Splash screen dismissed.");
+        });
     }
 
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
@@ -50,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
     }
 
-    // Navigation Views
+    // Navigation Views with Verbose Console Hooks
     const btnExplore = document.getElementById('btn-explore'), btnEvents = document.getElementById('btn-events'), btnAi = document.getElementById('btn-ai'), btnTimeline = document.getElementById('btn-timeline'), btnCatalog = document.getElementById('btn-catalog');
     const viewEvents = document.getElementById('view-events'), viewAi = document.getElementById('view-ai'), viewTimeline = document.getElementById('view-timeline'), viewCatalog = document.getElementById('view-catalog'), inspectModal = document.getElementById('modal-object-detail');
     const hudContainer = document.getElementById('hud-age-container');
@@ -61,10 +66,12 @@ document.addEventListener('DOMContentLoaded', () => {
         allViews.forEach(v => v?.classList.remove('active')); 
     }
 
-    function switchTab(btn, view) {
+    function switchTab(btn, view, tabName) {
         resetTabs(); 
         btn?.classList.add('active'); 
         if (view) view.classList.add('active');
+
+        console.log(`📱 [Tab Navigated]: ${tabName}`);
 
         if (btn === btnExplore) {
             if (hudContainer) hudContainer.style.opacity = '1';
@@ -76,17 +83,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btn !== btnExplore && inspectorPreview) inspectorPreview.classList.remove('active');
     }
 
-    btnExplore?.addEventListener('click', () => switchTab(btnExplore, null));
-    btnEvents?.addEventListener('click', () => switchTab(btnEvents, viewEvents));
-    btnAi?.addEventListener('click', () => switchTab(btnAi, viewAi));
-    btnTimeline?.addEventListener('click', () => switchTab(btnTimeline, viewTimeline));
-    btnCatalog?.addEventListener('click', () => switchTab(btnCatalog, viewCatalog));
+    btnExplore?.addEventListener('click', () => switchTab(btnExplore, null, "Explore"));
+    btnEvents?.addEventListener('click', () => switchTab(btnEvents, viewEvents, "Events"));
+    btnAi?.addEventListener('click', () => switchTab(btnAi, viewAi, "Origin"));
+    btnTimeline?.addEventListener('click', () => switchTab(btnTimeline, viewTimeline, "Timeline"));
+    btnCatalog?.addEventListener('click', () => switchTab(btnCatalog, viewCatalog, "Catalog"));
 
     const inspectorPreview = document.getElementById('inspector-preview'), btnExpandInspect = document.getElementById('btn-expand-inspect'), btnCloseInspect = document.getElementById('btn-close-inspect');
-    function openInspectModal() { resetTabs(); inspectModal?.classList.add('active'); }
+    function openInspectModal() { resetTabs(); inspectModal?.classList.add('active'); console.log("🔍 Inspector Modal opened."); }
     inspectorPreview?.addEventListener('click', openInspectModal);
     btnExpandInspect?.addEventListener('click', (e) => { e.stopPropagation(); openInspectModal(); });
-    btnCloseInspect?.addEventListener('click', () => { inspectModal?.classList.remove('active'); btnExplore?.classList.add('active'); switchTab(btnExplore, null); });
+    btnCloseInspect?.addEventListener('click', () => { inspectModal?.classList.remove('active'); switchTab(btnExplore, null, "Explore"); });
 
     // Timeline Engine
     const TIMELINE_EPOCHS = [
@@ -116,16 +123,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     }
 
-    // Dynamic Cosmology Helper
+    function formatAgeFormatted(ageMyr) {
+        if (!ageMyr || ageMyr < 0.1) return "< 0.1 Myr";
+        if (ageMyr >= 1000.0) return `${(ageMyr / 1000.0).toFixed(2)} Gyr`;
+        return `${Number(ageMyr).toFixed(2)} Myr`;
+    }
+
     function computeLambdaCDMDensities(ageMyr) {
         const ageGyr = Math.max(0.0001, ageMyr / 1000.0);
         const scaleFactor = Math.pow(Math.sinh(1.5 * Math.sqrt(0.685) * (ageGyr / 13.8)), 2.0 / 3.0);
         const redshift = Math.max(0.0, (1.0 / Math.max(0.0001, scaleFactor)) - 1.0);
         const ezSq = 0.315 * Math.pow(1.0 + redshift, 3) + 0.685;
         
-        const dePct = ((0.685 / ezSq) * 100.0).toFixed(1);
-        const dmPct = (((0.264 * Math.pow(1.0 + redshift, 3)) / ezSq) * 100.0).toFixed(1);
-        const baryonPct = Math.max(0.1, (100.0 - parseFloat(dePct) - parseFloat(dmPct))).toFixed(1);
+        const deRaw = (0.685 / ezSq) * 100.0;
+        const dePct = deRaw < 0.1 ? "< 0.1%" : `${deRaw.toFixed(1)}%`;
+        const dmPct = `${(((0.264 * Math.pow(1.0 + redshift, 3)) / ezSq) * 100.0).toFixed(1)}%`;
+        const baryonPct = `${Math.max(0.1, (100.0 - deRaw - parseFloat(dmPct))).toFixed(1)}%`;
 
         return { dePct, dmPct, baryonPct };
     }
@@ -134,58 +147,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function pollUniverseState() {
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=10`, { headers: FETCH_HEADERS });
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
             if (res.ok) {
-                const rawData = await res.json();
-                if (Array.isArray(rawData) && rawData.length > 0) {
-                    const latest = rawData[0];
+                const data = await res.json();
+                console.log(`🌐 [DB Sync UniverseState]: Fetched ${data.length} records.`);
+                if (Array.isArray(data) && data.length > 0) {
+                    const latest = data[0];
                     if (latest.age !== undefined && latest.age >= localCurrentAge) localCurrentAge = Number(latest.age);
                     
-                    // Fallback to client-side cosmological math if database columns are unpopulated
                     const computed = computeLambdaCDMDensities(localCurrentAge);
-                    const dePct = latest.de_pct ?? computed.dePct;
-                    const dmPct = latest.dm_pct ?? computed.dmPct;
-                    const baryonPct = latest.baryon_pct ?? computed.baryonPct;
+                    const dePct = (latest.de_pct && latest.de_pct > 0.1) ? `${latest.de_pct}%` : computed.dePct;
+                    const dmPct = latest.dm_pct ? `${latest.dm_pct}%` : computed.dmPct;
+                    const baryonPct = latest.baryon_pct ? `${latest.baryon_pct}%` : computed.baryonPct;
 
                     const barDe = document.getElementById('bar-de');
                     const barDm = document.getElementById('bar-dm');
                     const barBaryon = document.getElementById('bar-baryon');
-                    if (barDe) barDe.style.width = `${dePct}%`;
-                    if (barDm) barDm.style.width = `${dmPct}%`;
-                    if (barBaryon) barBaryon.style.width = `${baryonPct}%`;
+                    if (barDe) barDe.style.width = dePct.includes('<') ? '2%' : dePct;
+                    if (barDm) barDm.style.width = dmPct;
+                    if (barBaryon) barBaryon.style.width = baryonPct;
 
-                    if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = `${dePct}%`;
-
-                    // Deduplicate Origin actions by goal
-                    const uniqueActions = [];
-                    const seenGoals = new Set();
-                    for (const item of rawData) {
-                        const key = `${item.goal}_${item.reasoning}`;
-                        if (!seenGoals.has(key)) {
-                            seenGoals.add(key);
-                            uniqueActions.push(item);
-                        }
-                    }
+                    if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = dePct;
 
                     const container = document.getElementById('origin-actions-container');
                     if (container) {
-                        container.innerHTML = uniqueActions.map(state => {
-                            const stepYears = state.age ? Math.floor(state.age * 1000000).toLocaleString() + ' Yrs' : 'LIVE';
+                        container.innerHTML = data.map(state => {
+                            const formattedTime = formatAgeFormatted(state.age);
                             return `
                                 <div class="action-card">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                        <div class="action-card-title" style="margin-bottom:0;">${state.goal || 'Resolving Hydrodynamic Equations'}</div>
-                                        <span class="data-font" style="font-size:11px; color:#FF8C00; font-weight:bold;">${stepYears}</span>
+                                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                                        <div class="action-card-title" style="margin-bottom:0; flex:1; padding-right:8px;">${state.goal || 'Resolving Dynamic System'}</div>
+                                        <span class="data-font" style="font-size:11px; color:#FF8C00; font-weight:bold; white-space:nowrap;">${formattedTime}</span>
                                     </div>
-                                    <div class="action-meta-row"><span class="label-catalyst">Catalyst:</span> ${state.reasoning || 'Calculating Jeans mass instability thresholds.'}</div>
-                                    <div class="action-meta-row"><span class="label-trajectory">Trajectory:</span> ${state.epoch || 'Standard Cosmological Sequence'}</div>
+                                    <div class="action-meta-row"><span class="label-catalyst">Catalyst:</span> ${state.reasoning || 'Gravitational instability.'}</div>
+                                    <div class="action-meta-row"><span class="label-trajectory">Trajectory:</span> ${state.epoch || 'Cosmological Sequence'}</div>
                                 </div>
                             `;
                         }).join('');
                     }
                 }
+            } else {
+                console.warn(`⚠️ [DB Fetch Warning]: Status ${res.status}`);
             }
-        } catch (err) {}
+        } catch (err) {
+            console.error(`❌ [DB Fetch Exception]:`, err);
+        }
     }
 
     async function pollEvents() {
@@ -193,26 +199,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const events = await res.json();
+                console.log(`📜 [DB Sync Events]: Fetched ${events.length} records.`);
                 const container = document.getElementById('events-container');
                 if (container) {
                     if (Array.isArray(events) && events.length > 0) {
-                        // Deduplicate events by title
-                        const uniqueEvents = [];
-                        const seenTitles = new Set();
-                        for (const evt of events) {
-                            if (!seenTitles.has(evt.title)) {
-                                seenTitles.add(evt.title);
-                                uniqueEvents.push(evt);
-                            }
-                        }
-
-                        container.innerHTML = uniqueEvents.map(e => {
-                            const eventYears = e.age ? Math.floor(e.age * 1000000).toLocaleString() + ' Yrs' : 'LIVE';
+                        container.innerHTML = events.map(e => {
+                            const formattedTime = formatAgeFormatted(e.age);
                             return `
                                 <div class="glass-panel" style="margin-bottom: 12px; padding: 16px;">
-                                  <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="font-weight: bold; color: #fff; font-size: 14px;">${e.title || 'Cosmic Event'}</span>
-                                    <span class="data-font" style="font-size: 11px; color: #FF8C00; font-weight: bold;">${eventYears}</span>
+                                  <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <span style="font-weight: bold; color: #fff; font-size: 14px; flex:1; padding-right:8px;">${e.title || 'Cosmic Event'}</span>
+                                    <span class="data-font" style="font-size: 11px; color: #FF8C00; font-weight: bold; white-space:nowrap;">${formattedTime}</span>
                                   </div>
                                   <div style="color: #b0b0d0; font-size: 13px; margin-top: 8px; line-height: 1.4;">${e.description || ''}</div>
                                 </div>
@@ -223,7 +220,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }
-        } catch (err) {}
+        } catch (err) {
+            console.error(`❌ [Events Fetch Error]:`, err);
+        }
     }
 
     function formatMass(solarMasses) {
@@ -264,11 +263,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (document.getElementById('cat-structures-val')) document.getElementById('cat-structures-val').innerText = (stats.dark_matter_structures || 0).toLocaleString();
                 }
             }
-        } catch (err) {}
+        } catch (err) {
+            console.error(`❌ [Catalog Fetch Error]:`, err);
+        }
     }
 
     setInterval(() => {
-        localCurrentAge += 0.03875;
+        localCurrentAge += 0.5;
         cameraState.currentAge = localCurrentAge;
 
         const totalYears = Math.floor(localCurrentAge * 1000000);
@@ -282,5 +283,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function pollAll() { pollUniverseState(); pollEvents(); pollCatalog(); }
     pollAll();
-    setInterval(pollAll, 3000);
+    setInterval(pollAll, 2500);
 });
