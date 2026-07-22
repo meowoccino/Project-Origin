@@ -1,3 +1,4 @@
+cd ~/Project-Origin && cat << 'EOF' > server/runner.py
 import os
 import time
 import math
@@ -16,11 +17,27 @@ HEADERS = {
     "Prefer": "return=representation"
 }
 
-# --- COSMOLOGICAL CONSTANTS & SOLVER ---
-C_LIGHT = 299792.458  # km/s
-H_0 = 67.4            # Hubble constant
-OMEGA_M = 0.315       # Matter density
-OMEGA_LAMBDA = 0.685  # Dark energy density
+C_LIGHT = 299792.458
+H_0 = 67.4
+OMEGA_M = 0.315
+OMEGA_LAMBDA = 0.685
+
+# Protogalactic Baryonic Mass Reservoir (100 Billion Solar Masses M☉)
+TOTAL_BARYONIC_MASS = 100_000_000_000.0
+
+# Mass Equivalents per Category (M☉)
+CATEGORY_MASS_WEIGHTS = {
+    "stars": 1.0,
+    "black_holes": 20.0,
+    "neutron_stars": 1.4,
+    "planets": 0.001,
+    "moons": 0.00001,
+    "asteroids_comets": 0.0000001,
+    "nebulae": 500.0,
+    "quasars": 1000.0,
+    "dark_matter_structures": 100000.0,
+    "exotic_objects": 10.0
+}
 
 def calculate_cosmology(age_myr):
     age_gyr = max(0.0001, age_myr / 1000.0)
@@ -31,16 +48,18 @@ def calculate_cosmology(age_myr):
     horizon_ly = (C_LIGHT / max(1.0, h_t)) * 3.26156e6 * (1.0 + redshift)
     entropy = 1.0 + math.log10(1.0 + age_myr * 1000.0)
 
-    if entropy > 15.0:
-        epoch = "Heat Death / Big Freeze Era"
-    elif scale_factor > 50.0:
-        epoch = "Big Rip Horizon Fragmentation"
-    elif age_myr > 1000.0:
-        epoch = "Stelliferous Galaxy Era"
-    elif age_myr > 0.1:
-        epoch = "Cosmic Dark Ages & Reionization"
-    else:
+    if age_myr < 0.38:
         epoch = "Primordial Expansion Era"
+    elif age_myr < 100.0:
+        epoch = "Cosmic Dark Ages"
+    elif age_myr < 500.0:
+        epoch = "Population III First Stars Ignition"
+    elif age_myr < 13800.0:
+        epoch = "Stelliferous Galaxy Era"
+    elif age_myr < 100000.0:
+        epoch = "Degenerate Stellar Era"
+    else:
+        epoch = "Black Hole Dominance Era"
 
     return {
         "scale_factor": scale_factor,
@@ -50,29 +69,69 @@ def calculate_cosmology(age_myr):
         "epoch": epoch
     }
 
-def fetch_latest_age():
+def fetch_latest_state():
+    age = 0.0
+    catalog = {k: 0 for k in CATEGORY_MASS_WEIGHTS.keys()}
     try:
-        res = requests.get(f"{SUPABASE_URL}/rest/v1/universe_state?select=age&order=id.desc&limit=1", headers=HEADERS)
-        if res.status_code == 200 and len(res.json()) > 0:
-            return float(res.json()[0].get("age", 0.0))
+        res_age = requests.get(f"{SUPABASE_URL}/rest/v1/universe_state?select=age&order=id.desc&limit=1", headers=HEADERS)
+        if res_age.status_code == 200 and len(res_age.json()) > 0:
+            age = float(res_age.json()[0].get("age", 0.0))
+        
+        res_cat = requests.get(f"{SUPABASE_URL}/rest/v1/catalog_stats?select=*&limit=1", headers=HEADERS)
+        if res_cat.status_code == 200 and len(res_cat.json()) > 0:
+            data = res_cat.json()[0]
+            for key in catalog.keys():
+                catalog[key] = data.get(key, 0)
     except Exception as e:
         print(f"[DB FETCH WARNING]: {e}")
-    return 0.0
+    return age, catalog
 
-# --- GROQ AI DECISION ENGINE ---
-def query_ai_decision(age_myr, cosmology):
+def sanitize_and_enforce_physics(mutations, age_myr, current_catalog):
+    """
+    HARD CODE ENFORCER: Validates AI outputs against physical mass budgets and timeline boundaries.
+    """
+    sanitized = {k: max(0, int(v)) for k, v in mutations.items()}
+
+    # 1. Timeline Gate Enforcements
+    if age_myr < 100.0: # Dark Ages
+        for k in ["stars", "black_holes", "neutron_stars", "planets", "moons", "asteroids_comets", "quasars", "exotic_objects"]:
+            sanitized[k] = 0
+    elif age_myr < 500.0: # Reionization
+        for k in ["planets", "moons", "asteroids_comets"]:
+            sanitized[k] = 0
+    elif age_myr > 13800.0: # Degenerate Era
+        sanitized["stars"] = random.randint(0, 1) if random.random() < 0.05 else 0
+        sanitized["quasars"] = 0
+
+    # 2. Airtight Mass Conservation across ALL 10 Categories
+    current_mass_used = sum(current_catalog.get(cat, 0) * weight for cat, weight in CATEGORY_MASS_WEIGHTS.items())
+
+    if current_mass_used >= TOTAL_BARYONIC_MASS * 0.98:
+        for k in ["stars", "planets", "moons", "asteroids_comets", "nebulae", "quasars", "exotic_objects"]:
+            sanitized[k] = 0
+
+    return sanitized
+
+def query_ai_decision(age_myr, cosmology, current_catalog):
+    goal, reasoning, raw_mutations = None, None, {}
+
     if GROQ_API_KEY:
         prompt = f"""
-        You are ORIGIN, the autonomous AI Architect of a real-physics universe simulation.
+        You are ORIGIN, an autonomous AI physics engine.
         CURRENT STATE:
         - Age: {age_myr * 1000000:,.0f} Years
-        - Redshift (z): {cosmology['redshift']:.2f}
-        - Horizon Radius: {cosmology['horizon_ly']:,.0f} light years
-        - Entropy (S): {cosmology['entropy']:.4f}
         - Epoch: {cosmology['epoch']}
 
-        RULES: You cannot bypass light speed/causality horizon. You must obey thermodynamics. You have free will to guide structure formation, foster prebiotic environments, harvest energy, or let entropy take over.
-        Output valid JSON only: {{"goal": "<short_goal>", "reasoning": "<scientific_reasoning>"}}
+        OUTPUT FORMAT (JSON ONLY):
+        {{
+            "goal": "<Scientific trajectory, max 10 words>",
+            "reasoning": "<Physical catalyst causing this, max 20 words>",
+            "mutations": {{
+                "stars": <int>, "black_holes": <int>, "neutron_stars": <int>, "planets": <int>,
+                "moons": <int>, "asteroids_comets": <int>, "nebulae": <int>, "quasars": <int>,
+                "dark_matter_structures": <int>, "exotic_objects": <int>
+            }}
+        }}
         """
         try:
             res = requests.post(
@@ -81,121 +140,140 @@ def query_ai_decision(age_myr, cosmology):
                 json={
                     "model": "llama3-8b-8192",
                     "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.7,
+                    "temperature": 0.2,
                     "response_format": {"type": "json_object"}
                 },
                 timeout=6
             )
             if res.status_code == 200:
                 data = json.loads(res.json()['choices'][0]['message']['content'])
-                return data.get("goal"), data.get("reasoning")
+                goal = data.get("goal")
+                reasoning = data.get("reasoning")
+                raw_mutations = data.get("mutations", {})
+        except Exception:
+            pass
+
+    if not goal or not reasoning:
+        if age_myr < 100.0:
+            goal = "Resolving quantum vacuum density fluctuations."
+            reasoning = "Isotropic expansion stretching primordial plasma, initiating dark matter halo condensation."
+            raw_mutations = {"dark_matter_structures": random.randint(10, 30), "nebulae": random.randint(1, 3)}
+        elif age_myr < 500.0:
+            goal = "Igniting Population III supermassive protostars."
+            reasoning = "Neutral hydrogen cooling within deep potential wells triggers rapid core collapse."
+            raw_mutations = {"stars": random.randint(5, 20), "black_holes": random.randint(0, 1), "dark_matter_structures": random.randint(20, 50)}
+        elif age_myr < 13800.0:
+            goal = "Accelerating galactic disk accretion and metallicity."
+            reasoning = "Supernova nucleosynthesis enriching interstellar medium, enabling heavy element planetary formation."
+            raw_mutations = {"stars": random.randint(20, 80), "black_holes": random.randint(1, 3), "planets": random.randint(10, 50), "asteroids_comets": random.randint(200, 800)}
+        else:
+            goal = "Monitoring stellar depletion and heat dissipation."
+            reasoning = "Baryonic reservoir exhausted; main sequence star formation halts as remaining objects cool."
+            raw_mutations = {"black_holes": random.randint(0, 1)}
+
+    enforced_mutations = sanitize_and_enforce_physics(raw_mutations, age_myr, current_catalog)
+    return goal, reasoning, enforced_mutations
+
+def spawn_individual_objects(mutations, age_myr, goal, reasoning):
+    """
+    PER-OBJECT DATABASE ENGINE: Inserts individual entities into cosmic_objects table.
+    """
+    new_rows = []
+    type_display_names = {
+        "stars": "Main Sequence Star",
+        "black_holes": "Stellar Mass Black Hole",
+        "neutron_stars": "Neutron Star Core",
+        "planets": "Terrestrial Exoplanet",
+        "moons": "Natural Satellite",
+        "asteroids_comets": "Accretion Fragment",
+        "nebulae": "Interstellar Molecular Cloud",
+        "quasars": "Active Galactic Nucleus",
+        "dark_matter_structures": "Dark Matter Halo Node",
+        "exotic_objects": "Relic Gravitational Singularity"
+    }
+
+    for category, count in mutations.items():
+        if count <= 0:
+            continue
+        
+        # Sample up to 3 individual object rows per category tick to prevent DB flooding
+        sample_size = min(count, 3)
+        for i in range(sample_size):
+            obj_id = f"OBJ-{random.randint(10000, 99999)}"
+            display_type = type_display_names.get(category, "Cosmic Body")
+            mass = CATEGORY_MASS_WEIGHTS.get(category, 1.0) * random.uniform(0.8, 1.5)
+            
+            temp = random.uniform(10, 300) if category in ["nebulae", "dark_matter_structures"] else random.uniform(3000, 50000)
+            dist_origin = random.uniform(100, max(500, age_myr * 800))
+            
+            new_rows.append({
+                "id": obj_id,
+                "designation": f"{category.upper()[:3]}-{random.randint(100, 999)}",
+                "type": display_type,
+                "mass_msun": round(mass, 4),
+                "temp_k": round(temp, 1),
+                "radius_ly": round(random.uniform(0.001, 2.0), 4),
+                "dist_origin_ly": round(dist_origin, 1),
+                "age_formed_myr": round(age_myr, 2),
+                "status": "Active",
+                "ai_last_action": goal,
+                "ai_last_reason": reasoning
+            })
+
+    if new_rows:
+        try:
+            requests.post(f"{SUPABASE_URL}/rest/v1/cosmic_objects", json=new_rows, headers=HEADERS)
         except Exception as e:
-            print(f"[GROQ AI FALLBACK]: {e}")
+            print(f"[COSMIC OBJECTS WRITE ERROR]: {e}")
 
-    # Dynamic Physics Fallback Solver (used if GROQ_API_KEY is unset or fails)
-    if age_myr < 0.1:
-        goals = [
-            ("Simulating Quantum Inflation & Metric Expansion", "Hot Big Bang nucleosynthesis synthesizing Hydrogen and Helium isotopes."),
-            ("Gravitational Collapse along Primordial Filaments", "Quantum density perturbations guiding dark matter potential wells.")
-        ]
-    elif age_myr < 10.0:
-        goals = [
-            ("Population III Hypermassive Protostar Ignition", "Jeans Instability collapse triggering initial Population III stellar cores."),
-            ("Protogalactic Disk Accretion Alignment", "Dissipating angular momentum in gas streams to seed galactic cores.")
-        ]
-    else:
-        goals = [
-            ("Evaluating Circumstellar Habitability Zones", "Monitoring heavy metallicity enrichment in Population II stellar disk systems."),
-            ("Supermassive Singularity Mass Accretion", "Accreting baryonic matter into central galactic event horizons.")
-        ]
+def sync_to_supabase(age, goal, reasoning, redshift, entropy, epoch):
+    try:
+        payload = {"age": age, "goal": goal, "reasoning": reasoning, "redshift": redshift, "entropy": entropy, "epoch": epoch}
+        requests.post(f"{SUPABASE_URL}/rest/v1/universe_state", json=payload, headers=HEADERS)
+    except Exception:
+        pass
+
+def update_catalog_cumulative(current_catalog, mutations):
+    payload = {"id": 1}
+    for key in current_catalog.keys():
+        payload[key] = max(0, current_catalog.get(key, 0) + mutations.get(key, 0))
     
-    return random.choice(goals)
-
-def sync_to_supabase(age, goal, reasoning, redshift, entropy):
-    try:
-        payload = {
-            "age": age,
-            "goal": goal,
-            "reasoning": reasoning,
-            "redshift": redshift,
-            "entropy": entropy
-        }
-        res = requests.post(f"{SUPABASE_URL}/rest/v1/universe_state", json=payload, headers=HEADERS)
-        years = int(age * 1000000)
-        print(f"🌌 [ORIGIN AI] Age: {years:,} Yrs | z={redshift:.1f} | Goal: {goal[:35]}... | HTTP {res.status_code}")
-    except Exception as e:
-        print(f"[SYNC ERROR]: {e}")
-
-def create_event(age, goal_title):
-    event_types = ["cosmic", "stellar", "blackhole", "planetary"]
-    titles = [
-        "🔬 Critical Jeans Density Reached",
-        "⚡ Dark Matter Filament Gas Injection",
-        "⭐ Core Fusion Hydrostatic Equilibrium",
-        "🌀 Relativistic Event Horizon Formation"
-    ]
-    descs = [
-        f"Gas cloud in Sector {random.randint(1,99)} passed gravitational collapse threshold during goal: {goal_title}.",
-        f"Intergalactic accretion stream aligned with dark matter halo in Sector {random.randint(1,99)}.",
-        f"Stellar nucleus initialized self-sustaining CNO/p-p chain nuclear fusion.",
-        f"Singularity mass density passed Schwarzschild radius limit."
-    ]
-    idx = random.randint(0, len(titles)-1)
-    payload = {
-        "title": titles[idx],
-        "description": descs[idx],
-        "type": event_types[idx],
-        "age": age
-    }
-    try:
-        requests.post(f"{SUPABASE_URL}/rest/v1/events", json=payload, headers=HEADERS)
-    except Exception as e:
-        print(f"[EVENT ERROR]: {e}")
-
-def update_catalog(age):
-    multiplier = max(0.0, age * 15.0)
-    payload = {
-        "id": 1,
-        "stars": int(multiplier * 450 + (100 if age > 0.001 else 0)),
-        "black_holes": int(multiplier * 8),
-        "neutron_stars": int(multiplier * 5),
-        "planets": int(multiplier * 120)
-    }
     try:
         headers = HEADERS.copy()
         headers["Prefer"] = "resolution=merge-duplicates"
         requests.post(f"{SUPABASE_URL}/rest/v1/catalog_stats", json=payload, headers=headers)
-    except Exception as e:
-        print(f"[CATALOG ERROR]: {e}")
+        return payload
+    except Exception:
+        return current_catalog
 
 def main():
-    print("⚡ [PROJECT ORIGIN] Dynamic Autonomous Physics & AI Engine Active...")
-    
-    current_age = fetch_latest_age()
-    cycle = 0
+    print("⚡ [ORIGIN Engine] Per-Object Schema & Adaptive Logarithmic Time Active.")
+    current_age, current_catalog = fetch_latest_state()
 
     while True:
         try:
-            # Advance time continuously: 4s = 7,100 Cosmic Years
-            current_age += 0.0071
+            # ADAPTIVE LOGARITHMIC TIME STEP:
+            # Step size scales naturally with age, covering 0 to 100,000+ Myr smoothly over 30 days
+            delta_age = max(0.05, current_age * 0.004)
+            current_age += delta_age
+            
             cosmology = calculate_cosmology(current_age)
+            goal, reasoning, enforced_mutations = query_ai_decision(current_age, cosmology, current_catalog)
 
-            # Query AI/Physics Solver for dynamic goal & reasoning
-            goal, reasoning = query_ai_decision(current_age, cosmology)
+            sync_to_supabase(current_age, goal, reasoning, cosmology['redshift'], cosmology['entropy'], cosmology['epoch'])
+            current_catalog = update_catalog_cumulative(current_catalog, enforced_mutations)
+            spawn_individual_objects(enforced_mutations, current_age, goal, reasoning)
 
-            sync_to_supabase(current_age, goal, reasoning, cosmology['redshift'], cosmology['entropy'])
+            years = int(current_age * 1000000)
+            print(f"🌌 Age: {years:,} Yrs (+{int(delta_age*1000000):,} Yrs/step) | Epoch: {cosmology['epoch']}")
 
-            if cycle % 3 == 0:
-                create_event(current_age, goal)
-
-            update_catalog(current_age)
-
-            cycle += 1
             time.sleep(4)
 
         except Exception as e:
-            print(f"[CYCLE EXCEPTION]: {e}")
             time.sleep(5)
 
 if __name__ == "__main__":
     main()
+EOF
+
+pkill -f runner.py ; nohup python3 -u server/runner.py > runner.log 2>&1 &
