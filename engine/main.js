@@ -1,12 +1,12 @@
 export const cameraState = { rotX: 0, rotY: 0, zoom: 1.0, currentAge: 0.0, panX: 0, panY: 0 };
+export let isExploreActive = true;
 
 let canvas, ctx;
 export let cosmicNodes = [];
 export let selectedNode = null;
 
-// Persistent Hubs for the Cosmic Web
 let webHubs = [];
-const NUM_HUBS = 25;
+const NUM_HUBS = 35;
 let globalNodeId = 0;
 
 const CATEGORY_STYLES = {
@@ -24,7 +24,8 @@ const CATEGORY_STYLES = {
 
 function initWebHubs() {
     webHubs = [];
-    const bounds = 800; // Size of the initial generative space
+    // Fullscreen expansion: Scale the bounds dynamically to fill the whole mobile screen
+    const bounds = Math.max(window.innerWidth, window.innerHeight) * 2.5; 
     for (let i = 0; i < NUM_HUBS; i++) {
         webHubs.push({
             x: (Math.random() - 0.5) * bounds,
@@ -38,24 +39,18 @@ function createWebNode(category, id) {
     const hubA = webHubs[Math.floor(Math.random() * webHubs.length)];
     const hubB = webHubs[Math.floor(Math.random() * webHubs.length)];
     
-    // Interpolate along the filament
     const t = Math.random();
     let x = hubA.x + (hubB.x - hubA.x) * t;
     let y = hubA.y + (hubB.y - hubA.y) * t;
 
-    // Scatter (tighter near hubs, looser in the void)
-    const scatter = (Math.random() > 0.7) ? 80 : 15;
+    const scatter = (Math.random() > 0.6) ? 120 : 20;
     x += (Math.random() - 0.5) * scatter;
     y += (Math.random() - 0.5) * scatter;
 
     return {
-        id: id,
-        category: category,
-        designation: `${style.name} #${id}`,
-        baseX: x, baseY: y,
-        size: style.size, color: style.color, glow: style.glow || false,
-        pulseSpeed: 0.02 + Math.random() * 0.03,
-        pulsePhase: Math.random() * Math.PI * 2,
+        id: id, category: category, designation: `${style.name} #${id}`,
+        baseX: x, baseY: y, size: style.size, color: style.color, glow: style.glow || false,
+        pulseSpeed: 0.02 + Math.random() * 0.03, pulsePhase: Math.random() * Math.PI * 2,
         screenX: 0, screenY: 0
     };
 }
@@ -77,7 +72,6 @@ export function updateCanvasFromCatalog(stats, ageMyr) {
     const MAX_VISUAL_NODES = 1500;
     const scaleFactor = totalObjects > 0 ? Math.min(1.0, MAX_VISUAL_NODES / Math.min(500000, totalObjects)) : 0;
 
-    // PERSISTENT MEMORY UPDATE: Only add/remove the difference
     Object.keys(counts).forEach(cat => {
         const targetVisualCount = Math.round(counts[cat] * scaleFactor);
         const currentVisualNodes = cosmicNodes.filter(n => n.category === cat);
@@ -102,7 +96,6 @@ export function updateCanvasFromCatalog(stats, ageMyr) {
 }
 
 export async function initWebGPU() {
-    console.log("🌌 [ENGINE] Initializing Cosmic Web Engine...");
     const container = document.getElementById('canvas-container');
     if (!container) return;
     
@@ -115,8 +108,10 @@ export async function initWebGPU() {
     function resize() {
         canvas.width = window.innerWidth * window.devicePixelRatio;
         canvas.height = window.innerHeight * window.devicePixelRatio;
-        cameraState.panX = canvas.width / 2;
-        cameraState.panY = canvas.height / 2;
+        if (!selectedNode) {
+            cameraState.panX = canvas.width / 2;
+            cameraState.panY = canvas.height / 2;
+        }
     }
     window.addEventListener('resize', resize);
     resize();
@@ -125,9 +120,11 @@ export async function initWebGPU() {
 
     function renderLoop() {
         requestAnimationFrame(renderLoop);
-        animTime += 0.015;
-        if (!ctx || !canvas) return;
+        
+        // Pause rendering completely if not on the Explore tab to prevent background glitches
+        if (!isExploreActive) return;
 
+        animTime += 0.015;
         ctx.fillStyle = '#0A0B14';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -137,20 +134,17 @@ export async function initWebGPU() {
             p.screenX = cameraState.panX + (p.baseX * cameraState.zoom);
             p.screenY = cameraState.panY + (p.baseY * cameraState.zoom);
 
-            // Culling (don't render objects off screen to save battery)
             if (p.screenX < -50 || p.screenX > canvas.width + 50 || p.screenY < -50 || p.screenY > canvas.height + 50) continue;
 
             const pulse = Math.sin(animTime * p.pulseSpeed * 100 + p.pulsePhase) * 0.2 + 1.0;
             const drawRadius = Math.max(0.5, p.size * window.devicePixelRatio * pulse * Math.sqrt(cameraState.zoom));
 
             if (p.glow) {
-                ctx.beginPath();
-                ctx.arc(p.screenX, p.screenY, drawRadius * 3.5, 0, Math.PI * 2);
+                ctx.beginPath(); ctx.arc(p.screenX, p.screenY, drawRadius * 3.5, 0, Math.PI * 2);
                 ctx.fillStyle = p.color; ctx.globalAlpha = 0.3; ctx.fill();
             }
 
-            ctx.beginPath();
-            ctx.arc(p.screenX, p.screenY, drawRadius, 0, Math.PI * 2);
+            ctx.beginPath(); ctx.arc(p.screenX, p.screenY, drawRadius, 0, Math.PI * 2);
             ctx.fillStyle = p.color; ctx.globalAlpha = 0.95; ctx.fill();
             
             if (selectedNode === p) {
@@ -164,9 +158,8 @@ export async function initWebGPU() {
     renderLoop();
 
     window.selectParticleAt = function(clientX, clientY) {
-        const rect = canvas.getBoundingClientRect();
-        const tapX = (clientX - rect.left) * window.devicePixelRatio;
-        const tapY = (clientY - rect.top) * window.devicePixelRatio;
+        const tapX = clientX * window.devicePixelRatio;
+        const tapY = clientY * window.devicePixelRatio;
 
         let closest = null, minDist = 40 * window.devicePixelRatio;
         for (let i = 0; i < cosmicNodes.length; i++) {
@@ -181,8 +174,12 @@ export async function initWebGPU() {
             document.getElementById('obj-name').innerText = closest.designation;
             document.getElementById('obj-sub').innerText = CATEGORY_STYLES[closest.category].name;
             preview.classList.add('active');
+
+            // AUTO-PAN LOGIC: Smoothly snap object to center, offset upward to clear the UI popup
+            cameraState.panX = (canvas.width / 2) - (closest.baseX * cameraState.zoom);
+            cameraState.panY = (canvas.height / 2) - (closest.baseY * cameraState.zoom) - (80 * window.devicePixelRatio);
+            
         } else {
-            // DESELECT IF TAPPING EMPTY SPACE
             selectedNode = null;
             preview.classList.remove('active');
         }
