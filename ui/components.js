@@ -53,9 +53,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
     }
 
-    // --- 2. NAVIGATION VIEWS ---
+    // --- 2. NAVIGATION VIEWS WITH HUD TAB-SCOPING ---
     const btnExplore = document.getElementById('btn-explore'), btnEvents = document.getElementById('btn-events'), btnAi = document.getElementById('btn-ai'), btnTimeline = document.getElementById('btn-timeline'), btnCatalog = document.getElementById('btn-catalog');
     const viewEvents = document.getElementById('view-events'), viewAi = document.getElementById('view-ai'), viewTimeline = document.getElementById('view-timeline'), viewCatalog = document.getElementById('view-catalog'), inspectModal = document.getElementById('modal-object-detail');
+    const hudContainer = document.getElementById('hud-age-container');
     const allBtns = [btnExplore, btnEvents, btnAi, btnTimeline, btnCatalog], allViews = [viewEvents, viewAi, viewTimeline, viewCatalog, inspectModal];
 
     function resetTabs() { 
@@ -64,7 +65,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function switchTab(btn, view) {
-        resetTabs(); btn?.classList.add('active'); if (view) view.classList.add('active');
+        resetTabs(); 
+        btn?.classList.add('active'); 
+        if (view) view.classList.add('active');
+
+        // Scope HUD strictly to Explore Tab to prevent glitches
+        if (btn === btnExplore) {
+            if (hudContainer) hudContainer.style.opacity = '1';
+        } else {
+            if (hudContainer) hudContainer.style.opacity = '0';
+        }
+
         const inspectorPreview = document.getElementById('inspector-preview');
         if (btn !== btnExplore && inspectorPreview) inspectorPreview.classList.remove('active');
     }
@@ -79,9 +90,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function openInspectModal() { resetTabs(); inspectModal?.classList.add('active'); }
     inspectorPreview?.addEventListener('click', openInspectModal);
     btnExpandInspect?.addEventListener('click', (e) => { e.stopPropagation(); openInspectModal(); });
-    btnCloseInspect?.addEventListener('click', () => { inspectModal?.classList.remove('active'); btnExplore?.classList.add('active'); });
+    btnCloseInspect?.addEventListener('click', () => { inspectModal?.classList.remove('active'); btnExplore?.classList.add('active'); switchTab(btnExplore, null); });
 
-    // --- 3. TIMELINE ENGINE (Rich Astrophysics Terminology) ---
+    // --- 3. TIMELINE ENGINE ---
     const TIMELINE_EPOCHS = [
         { title: "Primordial Inflation", start: 0, end: 100000, desc: "Exponential space-time expansion driven by quantum vacuum inflaton field decay." },
         { title: "Recombination & Decoupling", start: 100000, end: 100000000, desc: "Thermal baryonic gas cools below 3,000 K, releasing Cosmic Microwave Background radiation." },
@@ -171,16 +182,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (Array.isArray(data) && data.length > 0) {
                     const stats = data[0];
-                    const mappings = [
-                        ['cat-stars', 'stars'], ['cat-bh', 'black_holes'], ['cat-neutron', 'neutron_stars'],
-                        ['cat-planets', 'planets'], ['cat-moons', 'moons'], ['cat-asteroids', 'asteroids_comets'],
-                        ['cat-nebulae', 'nebulae'], ['cat-quasars', 'quasars'], ['cat-dm', 'dark_matter_structures'],
-                        ['cat-exotic', 'exotic_objects']
-                    ];
-                    mappings.forEach(([elementId, apiKey]) => {
-                        const el = document.getElementById(elementId);
-                        if (el && stats[apiKey] !== undefined) el.innerText = Number(stats[apiKey]).toLocaleString();
-                    });
+                    
+                    // Real Physical Unit Formatting
+                    if (document.getElementById('cat-dm')) {
+                        const dmMass = (stats.dark_matter_structures || 0) * 100000;
+                        document.getElementById('cat-dm').innerText = `26.8% | ${dmMass.toLocaleString()} M☉`;
+                    }
+                    if (document.getElementById('cat-de')) {
+                        document.getElementById('cat-de').innerText = `68.3% Pressure`;
+                    }
+                    if (document.getElementById('cat-baryonic')) {
+                        const baryonicMass = (stats.stars || 0) * 1.0 + (stats.nebulae || 0) * 500.0;
+                        document.getElementById('cat-baryonic').innerText = `${baryonicMass.toLocaleString()} M☉`;
+                    }
+                    if (document.getElementById('cat-degenerate')) {
+                        const degenMass = (stats.neutron_stars || 0) * 1.4;
+                        document.getElementById('cat-degenerate').innerText = `${degenMass.toLocaleString()} M☉`;
+                    }
+                    if (document.getElementById('cat-antimatter')) {
+                        document.getElementById('cat-antimatter').innerText = `< 0.001% Ratio`;
+                    }
+                    if (document.getElementById('cat-bh')) {
+                        document.getElementById('cat-bh').innerText = `${(stats.black_holes || 0).toLocaleString()} Singularities`;
+                    }
+                    if (document.getElementById('cat-planets')) {
+                        document.getElementById('cat-planets').innerText = `${(stats.planets || 0).toLocaleString()} Bodies`;
+                    }
+                    if (document.getElementById('cat-nebulae')) {
+                        document.getElementById('cat-nebulae').innerText = `${(stats.nebulae || 0).toLocaleString()} Clouds`;
+                    }
+                    if (document.getElementById('cat-quasars')) {
+                        document.getElementById('cat-quasars').innerText = `${(stats.quasars || 0).toLocaleString()} Cores`;
+                    }
+                    if (document.getElementById('cat-exotic')) {
+                        document.getElementById('cat-exotic').innerText = `${(stats.exotic_objects || 0).toLocaleString()} Relics`;
+                    }
                 }
             }
         } catch (err) {}
