@@ -62,7 +62,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
         MainEngine.isExploreActive = (btnId === 'btn-explore');
-        if (btnId !== 'btn-explore') document.getElementById('inspector-preview')?.classList.remove('active');
+
+        // Ensure inspector popout only shows in Explore tab
+        if (btnId !== 'btn-explore') {
+            document.getElementById('inspector-preview')?.classList.remove('active');
+        }
     }
 
     document.getElementById('btn-explore')?.addEventListener('click', () => switchTab('btn-explore', null));
@@ -112,14 +116,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const sector = log.sector || "Sector 04";
         const title = log.subject || "Cosmic System";
         const typeTag = log.type_tag || "Telemetry Event";
-        const timeLabel = log.time_label || `EXPECTED STABILIZATION: IN ${(Math.random() * 20 + 1).toFixed(1)} MYR`;
+        const timeLabel = log.time_label || `LATENCY: ${(log.latency_myr || 1.0).toFixed(1)} MYR`;
 
         const card = document.createElement("div");
         card.className = `log-card log-${mode}`;
         
         card.innerHTML = `
             <div class="breadcrumb-bar data-font">
-                <span class="bc-item">${sector}</span>
+                <span class="bc-item" style="flex-shrink: 0;">${sector}</span>
                 <span class="bc-sep">►</span>
                 <span class="bc-item">${title}</span>
                 <span class="bc-sep">►</span>
@@ -164,25 +168,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let logs = [];
             if (res.ok) logs = await res.json();
 
-            // Fallback to universe_state if origin_logs table is still initializing
-            if (logs.length === 0 && !oldestLoadedId) {
-                const altRes = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=4`, { headers: FETCH_HEADERS });
-                if (altRes.ok) {
-                    const rawData = await altRes.json();
-                    logs = rawData.map(d => ({
-                        id: d.id,
-                        mode: d.goal ? "INTERVENE" : "OBSERVE",
-                        sector: "Sector 04",
-                        subject: d.goal || "Cosmic System",
-                        type_tag: d.epoch || "System Shift",
-                        time_label: `AGE: ${formatAgeFormatted(d.age)}`,
-                        data_analysis: "Macro-telemetry verified by observer core.",
-                        temporal_simulation: d.reasoning || "Thermodynamic state locked.",
-                        resolution: d.goal ? `Executing intervention trajectory for ${d.epoch}.` : "Passive observation running."
-                    }));
-                }
-            }
-
             if (logs.length === 0) {
                 if (btn) btn.innerText = "END OF TELEMETRY ARCHIVE";
                 isLoadingLogs = false;
@@ -210,8 +195,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById("btn-load-more")?.addEventListener("click", loadNextBatch);
-
-    // Load initial 4 cards
     loadNextBatch();
 
     // --- TIMELINE ENGINE ---
@@ -238,6 +221,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
         }).join('');
+    }
+
+    function renderAgeHUD(ageGyr) {
+        cameraState.currentAge = ageGyr;
+        const totalYears = Math.floor(ageGyr * 1000000000);
+        const hudAge = document.getElementById('hud-age');
+        if (hudAge) {
+            hudAge.innerText = totalYears >= 1000000000 
+                ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` 
+                : `${totalYears.toLocaleString()} Years`;
+        }
+        updateTimelineUI(totalYears);
     }
 
     function generatePhysics(node, age) {
@@ -285,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="spec-row"><span class="spec-label">Radius</span><span class="spec-value">${radius}</span></div>
             <div class="spec-row"><span class="spec-label">Surface Temp</span><span class="spec-value">${temp}</span></div>
             ${extra}
-            <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Formation Epoch</span><span class="spec-value">${age.toFixed(2)} Myr</span></div>
+            <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Formation Epoch</span><span class="spec-value">${age.toFixed(2)} Gyr</span></div>
         `;
     }
 
@@ -300,28 +295,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('btn-close-inspect')?.addEventListener('click', () => switchTab('btn-explore', null));
 
-    function formatAgeFormatted(ageMyr) {
-        if (!ageMyr || ageMyr < 0.1) return "< 0.1 Myr";
-        if (ageMyr >= 1000.0) return `${(ageMyr / 1000.0).toFixed(2)} Gyr`;
-        return `${Number(ageMyr).toFixed(2)} Myr`;
+    function formatAgeFormatted(ageGyr) {
+        if (!ageGyr || ageGyr < 0.001) return "< 0.001 Gyr";
+        return `${Number(ageGyr).toFixed(3)} Gyr`;
     }
 
+    // --- AUTHORITATIVE SUPABASE POLLERS ---
     async function pollUniverseState() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const data = await res.json();
                 if (data.length > 0) {
-                    localCurrentAge = Math.max(localCurrentAge, Number(data[0].age));
+                    localCurrentAge = Number(data[0].age_gyr || data[0].age || 0.0);
+                    renderAgeHUD(localCurrentAge);
                     
-                    if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = `${data[0].de_pct}%`;
-                    if (document.getElementById('cat-dm-val')) document.getElementById('cat-dm-val').innerText = `${data[0].dm_pct}%`;
-                    if (document.getElementById('cat-baryon-val')) document.getElementById('cat-baryon-val').innerText = `${data[0].baryon_pct}%`;
+                    if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = `${data[0].de_pct || 68.5}%`;
+                    if (document.getElementById('cat-dm-val')) document.getElementById('cat-dm-val').innerText = `${data[0].dm_pct || 26.4}%`;
+                    if (document.getElementById('cat-baryon-val')) document.getElementById('cat-baryon-val').innerText = `${data[0].baryon_pct || 5.1}%`;
                     
                     const barDe = document.getElementById('bar-de'), barDm = document.getElementById('bar-dm'), barBaryon = document.getElementById('bar-baryon');
-                    if(barDe) barDe.style.width = `${data[0].de_pct}%`;
-                    if(barDm) barDm.style.width = `${data[0].dm_pct}%`;
-                    if(barBaryon) barBaryon.style.width = `${data[0].baryon_pct}%`;
+                    if(barDe) barDe.style.width = `${data[0].de_pct || 68.5}%`;
+                    if(barDm) barDm.style.width = `${data[0].dm_pct || 26.4}%`;
+                    if(barBaryon) barBaryon.style.width = `${data[0].baryon_pct || 5.1}%`;
                 }
             }
         } catch (err) {}
@@ -346,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (document.getElementById('cat-quasars-val')) document.getElementById('cat-quasars-val').innerText = (stats.quasars || 0).toLocaleString();
                     if (document.getElementById('cat-exotic-val')) document.getElementById('cat-exotic-val').innerText = (stats.exotic_objects || 0).toLocaleString();
                     if (document.getElementById('cat-inhabited-val')) {
-                        const inhabited = (localCurrentAge > 500.0) ? Math.floor((stats.planets || 0) * 0.012) : 0;
+                        const inhabited = (localCurrentAge > 0.5) ? Math.floor((stats.planets || 0) * 0.012) : 0;
                         document.getElementById('cat-inhabited-val').innerText = inhabited.toLocaleString();
                     }
                 }
@@ -375,15 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {}
     }
 
-    setInterval(() => {
-        localCurrentAge += 0.5;
-        cameraState.currentAge = localCurrentAge;
-        const totalYears = Math.floor(localCurrentAge * 1000000);
-        const hudAge = document.getElementById('hud-age');
-        if (hudAge) hudAge.innerText = totalYears >= 1000000000 ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` : `${totalYears.toLocaleString()} Years`;
-        updateTimelineUI(totalYears);
-    }, 1000);
-
     function pollAll() { pollUniverseState(); pollCatalog(); pollEvents(); }
-    pollAll(); setInterval(pollAll, 2500);
+    pollAll(); 
+    setInterval(pollAll, 2500);
 });
