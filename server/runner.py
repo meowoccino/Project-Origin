@@ -88,9 +88,6 @@ def fetch_latest_state():
     return age, catalog
 
 def sanitize_and_enforce_physics(mutations, age_myr, current_catalog):
-    """
-    HARD CODE ENFORCER: Enforces physical limits and prevents unphysical mass creation.
-    """
     sanitized = {k: max(0, int(v)) for k, v in mutations.items()}
 
     # Timeline Gates
@@ -176,9 +173,6 @@ def query_ai_decision(age_myr, cosmology, current_catalog):
     return goal, reasoning, enforced_mutations
 
 def spawn_individual_objects(mutations, age_myr, goal, reasoning):
-    """
-    PER-OBJECT DATABASE ENGINE: Inserts individual entities into cosmic_objects table.
-    """
     new_rows = []
     type_display_names = {
         "stars": "Main Sequence Star System",
@@ -226,6 +220,24 @@ def spawn_individual_objects(mutations, age_myr, goal, reasoning):
         except Exception as e:
             print(f"[COSMIC OBJECTS WRITE ERROR]: {e}")
 
+def log_milestone_events(age_myr, epoch):
+    """
+    Automatic Historical Event Chronicles
+    """
+    events = []
+    if 0.35 <= age_myr <= 0.45:
+        events.append({"title": "Photon Decoupling & CMB Release", "description": "Thermal baryonic plasma cools below 3,000 K, decoupling photons and producing the Cosmic Microwave Background.", "age": age_myr})
+    elif 99.5 <= age_myr <= 101.0:
+        events.append({"title": "First Dark Matter Halo Collapse", "description": "Non-baryonic matter condenses into deep potential wells, ending the Cosmic Dark Ages.", "age": age_myr})
+    elif 498.0 <= age_myr <= 505.0:
+        events.append({"title": "Population III Reionization Peak", "description": "Zero-metallicity supermassive stars ignite across primary filaments, reionizing interstellar hydrogen.", "age": age_myr})
+    
+    for evt in events:
+        try:
+            requests.post(f"{SUPABASE_URL}/rest/v1/events", json=evt, headers=HEADERS)
+        except Exception:
+            pass
+
 def sync_to_supabase(age, goal, reasoning, redshift, entropy, epoch):
     try:
         payload = {"age": age, "goal": goal, "reasoning": reasoning, "redshift": redshift, "entropy": entropy, "epoch": epoch}
@@ -247,12 +259,12 @@ def update_catalog_cumulative(current_catalog, mutations):
         return current_catalog
 
 def main():
-    print("⚡ [ORIGIN Engine] Full Physical Taxonomy & Per-Object Telemetry Online.")
+    print("⚡ [ORIGIN Engine] Full Physical Taxonomy & Event Chronicle Active.")
     current_age, current_catalog = fetch_latest_state()
 
     while True:
         try:
-            # Adaptive Logarithmic Step
+            # Adaptive Logarithmic Time Step
             delta_age = max(0.05, current_age * 0.004)
             current_age += delta_age
             
@@ -262,6 +274,7 @@ def main():
             sync_to_supabase(current_age, goal, reasoning, cosmology['redshift'], cosmology['entropy'], cosmology['epoch'])
             current_catalog = update_catalog_cumulative(current_catalog, enforced_mutations)
             spawn_individual_objects(enforced_mutations, current_age, goal, reasoning)
+            log_milestone_events(current_age, cosmology['epoch'])
 
             years = int(current_age * 1000000)
             print(f"🌌 Age: {years:,} Yrs (+{int(delta_age*1000000):,} Yrs/step) | Epoch: {cosmology['epoch']}")
