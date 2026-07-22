@@ -1,4 +1,3 @@
-cd ~/Project-Origin && cat << 'EOF' > server/runner.py
 import os
 import time
 import math
@@ -204,6 +203,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-EOF
-
-pkill -f runner.py ; nohup python3 -u server/runner.py > runner.log 2>&1 &
