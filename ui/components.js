@@ -35,8 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
             } else if (e.touches.length === 2 && initialPinchDist) {
                 const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                
-                // Controlled Zoom Boundaries (Screen-filling bounds)
                 const minZoom = 0.35; 
                 const maxZoom = 12.0; 
                 cameraState.zoom = Math.max(minZoom, Math.min(maxZoom, initialZoom * (dist / initialPinchDist)));
@@ -73,6 +71,150 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-timeline')?.addEventListener('click', () => switchTab('btn-timeline', 'view-timeline'));
     document.getElementById('btn-catalog')?.addEventListener('click', () => switchTab('btn-catalog', 'view-catalog'));
 
+    // --- LIVE EARTH CLOCK ---
+    function initEarthClock() {
+        const clockEl = document.getElementById('earth-clock');
+        if (!clockEl) return;
+        const update = () => {
+            const now = new Date();
+            const timeString = now.toISOString().replace('T', ' ').substring(0, 19);
+            clockEl.innerText = `UPLINK TIMESTAMP: ${timeString} UTC`;
+        };
+        setInterval(update, 1000);
+        update();
+    }
+    initEarthClock();
+
+    // --- EYE ANIMATION STATE SWITCHER ---
+    function setObserverEyeState(mode) {
+        const ui = document.getElementById('observer-ui');
+        const label = document.getElementById('status-label');
+        if (!ui || !label) return;
+
+        ui.classList.remove('state-observe', 'state-intervene', 'state-error');
+        const m = (mode || '').toUpperCase();
+
+        if (m === 'INTERVENE') {
+            ui.classList.add('state-intervene');
+            label.innerText = 'EXECUTING INTERVENTION';
+        } else if (m === 'ERROR' || m === 'OFFLINE') {
+            ui.classList.add('state-error');
+            label.innerText = 'CONNECTION SEVERED';
+        } else {
+            ui.classList.add('state-observe');
+            label.innerText = 'OBSERVER ONLINE';
+        }
+    }
+
+    // --- BREADCRUMB LOG CARD GENERATOR ---
+    function createLogCard(log) {
+        const mode = (log.mode || 'OBSERVE').toLowerCase();
+        const sector = log.sector || "Sector 04";
+        const title = log.subject || "Cosmic System";
+        const typeTag = log.type_tag || "Telemetry Event";
+        const timeLabel = log.time_label || `EXPECTED STABILIZATION: IN ${(Math.random() * 20 + 1).toFixed(1)} MYR`;
+
+        const card = document.createElement("div");
+        card.className = `log-card log-${mode}`;
+        
+        card.innerHTML = `
+            <div class="breadcrumb-bar data-font">
+                <span class="bc-item">${sector}</span>
+                <span class="bc-sep">►</span>
+                <span class="bc-item">${title}</span>
+                <span class="bc-sep">►</span>
+                <span class="bc-tag">${typeTag}</span>
+            </div>
+            <div class="log-meta data-font">
+                <span>${timeLabel}</span>
+            </div>
+            <div class="logic-step">
+                <div class="logic-icon">▶</div>
+                <div class="logic-text"><strong>Data Analysis:</strong> ${log.data_analysis || 'Analyzing local thermodynamic density.'}</div>
+            </div>
+            <div class="logic-step">
+                <div class="logic-icon">▶</div>
+                <div class="logic-text"><strong>Simulation:</strong> ${log.temporal_simulation || 'Gravitational trajectories within normal distribution.'}</div>
+            </div>
+            <div class="logic-decision logic-step">
+                <div class="logic-icon">■</div>
+                <div class="logic-text">${log.resolution || 'Standard procedural evolution permitted.'}</div>
+            </div>
+        `;
+        return card;
+    }
+
+    // --- HYBRID 4-CARD BATCH LOAD ENGINE ---
+    let oldestLoadedId = null;
+    let isLoadingLogs = false;
+
+    async function loadNextBatch() {
+        if (isLoadingLogs) return;
+        isLoadingLogs = true;
+
+        const btn = document.getElementById("btn-load-more");
+        const container = document.getElementById("logs-container");
+        if (btn) btn.innerText = "QUERYING ARCHIVE...";
+
+        try {
+            let url = `${SUPABASE_URL}/rest/v1/origin_logs?select=*&order=id.desc&limit=4`;
+            if (oldestLoadedId) url += `&id=lt.${oldestLoadedId}`;
+
+            const res = await fetch(url, { headers: FETCH_HEADERS });
+            let logs = [];
+            if (res.ok) logs = await res.json();
+
+            // Fallback to universe_state if origin_logs table is still initializing
+            if (logs.length === 0 && !oldestLoadedId) {
+                const altRes = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=4`, { headers: FETCH_HEADERS });
+                if (altRes.ok) {
+                    const rawData = await altRes.json();
+                    logs = rawData.map(d => ({
+                        id: d.id,
+                        mode: d.goal ? "INTERVENE" : "OBSERVE",
+                        sector: "Sector 04",
+                        subject: d.goal || "Cosmic System",
+                        type_tag: d.epoch || "System Shift",
+                        time_label: `AGE: ${formatAgeFormatted(d.age)}`,
+                        data_analysis: "Macro-telemetry verified by observer core.",
+                        temporal_simulation: d.reasoning || "Thermodynamic state locked.",
+                        resolution: d.goal ? `Executing intervention trajectory for ${d.epoch}.` : "Passive observation running."
+                    }));
+                }
+            }
+
+            if (logs.length === 0) {
+                if (btn) btn.innerText = "END OF TELEMETRY ARCHIVE";
+                isLoadingLogs = false;
+                return;
+            }
+
+            if (!oldestLoadedId && logs.length > 0) {
+                setObserverEyeState(logs[0].mode);
+            }
+
+            logs.forEach(log => {
+                oldestLoadedId = log.id;
+                const card = createLogCard(log);
+                container.appendChild(card);
+            });
+
+            if (btn) btn.innerText = "QUERY PAST TELEMETRY";
+        } catch (err) {
+            console.error("Failed to fetch telemetry logs:", err);
+            setObserverEyeState('ERROR');
+            if (btn) btn.innerText = "RETRY TELEMETRY QUERY";
+        } finally {
+            isLoadingLogs = false;
+        }
+    }
+
+    document.getElementById("btn-load-more")?.addEventListener("click", loadNextBatch);
+
+    // Load initial 4 cards
+    loadNextBatch();
+
+    // --- TIMELINE ENGINE ---
     const TIMELINE_EPOCHS = [
         { title: "Primordial Inflation", start: 0, end: 100000, desc: "Exponential space-time expansion driven by quantum vacuum inflaton field decay." },
         { title: "Recombination & Decoupling", start: 100000, end: 100000000, desc: "Thermal baryonic gas cools below 3,000 K, releasing Cosmic Microwave Background radiation." },
@@ -166,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function pollUniverseState() {
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const data = await res.json();
                 if (data.length > 0) {
@@ -180,25 +322,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if(barDe) barDe.style.width = `${data[0].de_pct}%`;
                     if(barDm) barDm.style.width = `${data[0].dm_pct}%`;
                     if(barBaryon) barBaryon.style.width = `${data[0].baryon_pct}%`;
-                }
-
-                const container = document.getElementById('origin-actions-container');
-                if (container) {
-                    container.innerHTML = data.map(state => `
-                        <div class="glass-panel" style="margin-bottom:12px; padding:16px; border-left:3px solid #FF8C00;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <span style="font-size:9px; font-weight:bold; letter-spacing:1px; text-transform:uppercase; padding:3px 6px; border-radius:4px; background:rgba(255,140,0,0.15); color:#FF8C00;">Directive</span>
-                                <span class="data-font" style="font-size:11px; color:#FF8C00; font-weight:bold;">${formatAgeFormatted(state.age)}</span>
-                            </div>
-                            <div style="font-size:13.5px; font-weight:bold; color:#fff; margin-bottom:8px;">${state.goal || 'Resolving Dynamic System'}</div>
-                            <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.04); border-radius:8px; padding:8px; font-size:11.5px; color:#b0b5c0; font-style:italic; margin-bottom:8px;">
-                                "Deliberation: ${state.reasoning || 'Executing optimal thermodynamic state.'}"
-                            </div>
-                            <div style="display:flex; justify-content:space-between; font-size:10.5px; color:#8c8f9f;">
-                                <span>Trajectory: <span style="color:#fff; font-weight:bold;">${state.epoch}</span></span>
-                            </div>
-                        </div>
-                    `).join('');
                 }
             }
         } catch (err) {}
