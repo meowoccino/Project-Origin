@@ -1,7 +1,11 @@
 export const shaderCode = /* wgsl */ `
 struct Particle {
-    position : vec3<f32>,
-    color : vec3<f32>,
+    pos_x : f32,
+    pos_y : f32,
+    pos_z : f32,
+    col_r : f32,
+    col_g : f32,
+    col_b : f32,
     size : f32,
     ignition_age : f32,
 };
@@ -47,8 +51,12 @@ fn vs_main(
     let offset = quad_offsets[v_idx];
     out.uv = offset;
 
+    // Reconstruct the vectors from flat floats
+    let raw_pos = vec3<f32>(p.pos_x, p.pos_y, p.pos_z);
+    let raw_col = vec3<f32>(p.col_r, p.col_g, p.col_b);
+
     // Apply cosmological expansion directly in the shader
-    let exp_pos = p.position * params.expansion_factor;
+    let exp_pos = raw_pos * params.expansion_factor;
 
     // Apply Camera Rotation
     let cx = cos(params.rot_x); let sx = sin(params.rot_x);
@@ -71,7 +79,7 @@ fn vs_main(
 
     // Dynamic Appearance based on Age
     var draw_size = p.size * params.zoom_level * 0.05;
-    var final_color = vec4<f32>(p.color, 1.0);
+    var final_color = vec4<f32>(raw_col, 1.0);
 
     if (params.cosmic_age_myr < 0.38) {
         final_color = vec4<f32>(1.0, 0.47, 0.2, 0.4); // Hot Plasma
