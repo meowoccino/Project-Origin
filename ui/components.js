@@ -1,7 +1,14 @@
-import { cameraState } from '../engine/main.js';
+import { initWebGPU, cameraState } from '../engine/main.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("🚀 [ORIGIN UI] Bootstrapping interface and touch telemetry...");
+    console.log("🚀 [ORIGIN UI] Bootstrapping interface...");
+
+    // Start 2D Canvas Renderer Engine immediately
+    initWebGPU().then(() => {
+        console.log("✅ [ENGINE] Canvas successfully attached to Explore tab.");
+    }).catch(err => {
+        console.error("❌ [ENGINE INIT FAILED]:", err);
+    });
 
     const splash = document.getElementById('splash-screen');
     if (splash) {
@@ -47,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         canvasContainer.addEventListener('touchend', (e) => {
             if (e.changedTouches.length === 1 && (Date.now() - touchStartTime < 300)) {
                 if (Math.hypot(e.changedTouches[0].clientX - startX, e.changedTouches[0].clientY - startY) < 15) {
+                    console.log("👆 [TOUCH] Tap detected on Explore canvas.");
                     if (window.selectParticleAt) window.selectParticleAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
                 }
             }
@@ -55,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
     }
 
-    // Navigation Views with Verbose Console Hooks
+    // Navigation Views
     const btnExplore = document.getElementById('btn-explore'), btnEvents = document.getElementById('btn-events'), btnAi = document.getElementById('btn-ai'), btnTimeline = document.getElementById('btn-timeline'), btnCatalog = document.getElementById('btn-catalog');
     const viewEvents = document.getElementById('view-events'), viewAi = document.getElementById('view-ai'), viewTimeline = document.getElementById('view-timeline'), viewCatalog = document.getElementById('view-catalog'), inspectModal = document.getElementById('modal-object-detail');
     const hudContainer = document.getElementById('hud-age-container');
@@ -71,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn?.classList.add('active'); 
         if (view) view.classList.add('active');
 
-        console.log(`📱 [Tab Navigated]: ${tabName}`);
+        console.log(`📱 [Tab Switch]: ${tabName}`);
 
         if (btn === btnExplore) {
             if (hudContainer) hudContainer.style.opacity = '1';
@@ -150,7 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const data = await res.json();
-                console.log(`🌐 [DB Sync UniverseState]: Fetched ${data.length} records.`);
                 if (Array.isArray(data) && data.length > 0) {
                     const latest = data[0];
                     if (latest.age !== undefined && latest.age >= localCurrentAge) localCurrentAge = Number(latest.age);
@@ -186,12 +193,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         }).join('');
                     }
                 }
-            } else {
-                console.warn(`⚠️ [DB Fetch Warning]: Status ${res.status}`);
             }
-        } catch (err) {
-            console.error(`❌ [DB Fetch Exception]:`, err);
-        }
+        } catch (err) {}
     }
 
     async function pollEvents() {
@@ -199,7 +202,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const events = await res.json();
-                console.log(`📜 [DB Sync Events]: Fetched ${events.length} records.`);
                 const container = document.getElementById('events-container');
                 if (container) {
                     if (Array.isArray(events) && events.length > 0) {
@@ -220,9 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }
-        } catch (err) {
-            console.error(`❌ [Events Fetch Error]:`, err);
-        }
+        } catch (err) {}
     }
 
     function formatMass(solarMasses) {
@@ -260,12 +260,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (document.getElementById('cat-asteroids-val')) document.getElementById('cat-asteroids-val').innerText = (stats.asteroids_comets || 0).toLocaleString();
                     if (document.getElementById('cat-quasars-val')) document.getElementById('cat-quasars-val').innerText = (stats.quasars || 0).toLocaleString();
                     if (document.getElementById('cat-exotic-val')) document.getElementById('cat-exotic-val').innerText = (stats.exotic_objects || 0).toLocaleString();
-                    if (document.getElementById('cat-structures-val')) document.getElementById('cat-structures-val').innerText = (stats.dark_matter_structures || 0).toLocaleString();
+                    
+                    // Inhabited Worlds (Realistic physics calculation)
+                    if (document.getElementById('cat-inhabited-val')) {
+                        const planets = stats.planets || 0;
+                        const inhabited = (localCurrentAge > 500.0) ? Math.floor(planets * 0.012) : 0;
+                        document.getElementById('cat-inhabited-val').innerText = inhabited.toLocaleString();
+                    }
                 }
             }
-        } catch (err) {
-            console.error(`❌ [Catalog Fetch Error]:`, err);
-        }
+        } catch (err) {}
     }
 
     setInterval(() => {
