@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Project Origin</title>
-    <link rel="stylesheet" href="ui/styles.css?v=9">
+    <link rel="stylesheet" href="ui/styles.css">
 </head>
 <body>
 
@@ -26,16 +26,16 @@
         <div class="splash-prompt data-font">tap to observe &rarr;</div>
     </div>
 
-    <!-- 1. Canvas Container -->
+    <!-- 1. CANVAS CONTAINER (EXPLORE TAB) -->
     <div id="canvas-container"></div>
 
-    <!-- 2. Universal Age HUD (Scoped Strictly to Explore Tab) -->
+    <!-- 2. UNIVERSE AGE HUD -->
     <div id="hud-age-container" class="glass-panel">
         <div class="hud-label">Universe Age</div>
         <div id="hud-age" class="hud-value data-font">0 Years</div>
     </div>
 
-    <!-- 3. Bottom Navigation -->
+    <!-- 3. BOTTOM NAVIGATION -->
     <div id="bottom-nav">
         <div class="nav-btn active" id="btn-explore">
             <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -59,23 +59,28 @@
         </div>
     </div>
 
-    <!-- 4. Tab Views -->
+    <!-- 4. TAB VIEWS -->
+    
+    <!-- Events View -->
     <div id="view-events" class="view-panel">
         <div id="events-container"></div>
     </div>
 
+    <!-- Origin View -->
     <div id="view-ai" class="view-panel">
         <div id="origin-actions-container"></div>
     </div>
 
+    <!-- Timeline View -->
     <div id="view-timeline" class="view-panel">
         <div class="timeline-wrapper" id="timeline-container"></div>
     </div>
 
-    <!-- Catalog View: Compact Full-Screen 2-Column Layout -->
+    <!-- Catalog View -->
     <div id="view-catalog" class="view-panel">
         <div class="catalog-viewport">
-            <!-- Dynamic Cosmological Mass-Energy Bar -->
+            
+            <!-- Cosmological Mass-Energy Bar -->
             <div class="macro-container">
                 <div class="macro-bar-visual">
                     <div id="bar-de" class="bar-de"></div>
@@ -88,7 +93,7 @@
                         <div class="dot" style="background: #8A2BE2;"></div>
                         <div>
                             <div class="macro-label">Dark Energy</div>
-                            <div id="cat-de-val" class="macro-val data-font">0%</div>
+                            <div id="cat-de-val" class="macro-val data-font">&lt; 0.1%</div>
                         </div>
                     </div>
                     <div class="macro-item">
@@ -115,7 +120,7 @@
                 </div>
             </div>
 
-            <!-- Active Inventory Grid -->
+            <!-- Discrete Object Inventory Grid -->
             <div class="inventory-grid">
                 <div class="inv-card">
                     <div class="inv-header"><div class="dot" style="background: #9932CC;"></div><div class="inv-title">Nebulae</div></div>
@@ -154,14 +159,15 @@
                     <div id="cat-exotic-val" class="inv-val data-font">0</div>
                 </div>
                 <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #20B2AA;"></div><div class="inv-title">Dark Matter Structures</div></div>
-                    <div id="cat-structures-val" class="inv-val data-font">0</div>
+                    <div class="inv-header"><div class="dot" style="background: #00E5FF;"></div><div class="inv-title">Inhabited Worlds</div></div>
+                    <div id="cat-inhabited-val" class="inv-val data-font">0</div>
                 </div>
             </div>
+
         </div>
     </div>
 
-    <!-- 5. Object Inspector UI -->
+    <!-- 5. OBJECT INSPECTOR OVERLAYS -->
     <div id="inspector-preview" class="glass-panel">
         <div>
             <div id="obj-name">Target Acquired</div>
