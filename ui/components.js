@@ -130,28 +130,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('origin-actions-container');
         if (!container) return;
 
-        // Dynamic physical actions based on cosmic age detailing: Target Object, Current Action, Reasoning (Why), Target Goal (For What / ETA)
+        const totalYears = Math.floor(age * 1000000);
+
+        // Dynamically scale action ETAs relative to CURRENT cosmic age
         const actions = [
             {
                 object: `Object-${Math.floor(100 + age * 12)} (Molecular Gas Cloud)`,
                 action: "Collapsing gravitational potential well",
                 why: "Density reached Jeans Instability threshold in Sector 4",
                 forWhat: "Igniting Population III Protostar",
-                eta: `${(1.2 + age * 0.1).toFixed(1)} Million Years`
+                etaYears: Math.floor(totalYears + 150000)
             },
             {
                 object: `Object-${Math.floor(250 + age * 8)} (Dark Matter Halo)`,
                 action: "Channeling baryonic filament gas streams",
                 why: "Higher mass concentration reduces thermal pressure",
                 forWhat: "Accelerating protogalactic disk accretion",
-                eta: `${(2.8 + age * 0.15).toFixed(1)} Million Years`
+                etaYears: Math.floor(totalYears + 350000)
             },
             {
                 object: `Object-${Math.floor(50 + age * 5)} (Primordial Core)`,
                 action: "Stabilizing circumstellar radiation zone",
                 why: "Heavy element metallicity threshold reached",
                 forWhat: "Testing prebiotic molecular formation",
-                eta: `${(4.1 + age * 0.2).toFixed(1)} Million Years`
+                etaYears: Math.floor(totalYears + 600000)
             }
         ];
 
@@ -159,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 12px; border-radius: 10px; margin-top: 8px;">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-weight: bold; color: #00e5ff; font-size: 13px;">● ${act.object}</span>
-                <span style="font-size: 10px; background: rgba(112,0,255,0.3); color: #a680ff; padding: 2px 6px; border-radius: 4px;">${act.eta}</span>
+                <span style="font-size: 10px; background: rgba(112,0,255,0.3); color: #a680ff; padding: 2px 6px; border-radius: 4px;">${act.etaYears.toLocaleString()} Years</span>
               </div>
               <div style="font-size: 12px; color: #fff; font-weight: bold; margin-top: 6px;">Action: ${act.action}</div>
               <div style="font-size: 11px; color: #a0a0c0; margin-top: 3px;"><strong>Why:</strong> ${act.why}</div>
@@ -240,9 +242,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {}
     }
 
-    // Smooth continuous local age progression fallback to advance time smoothly every second
     setInterval(() => {
-        localCurrentAge += 0.0001; // Advance 100 Years per second locally
+        localCurrentAge += 0.0001;
         cameraState.currentAge = localCurrentAge;
 
         const totalYears = Math.floor(localCurrentAge * 1000000);
