@@ -9,9 +9,6 @@ def calculate_cosmology(age):
     l = 1.0 - m
     return round(l * 100, 1), round(m * 84, 1), round(100 - (l * 100) - (m * 84), 1)
 
-def calculate_sagan_kardashev(w):
-    return round(max(0.0, (math.log10(w) - 6.0) / 10.0), 3) if w > 0 else 0.0
-
 def seed_celestial_object(age):
     t = random.uniform(-200, 400)
     has_life, bio = False, None
@@ -21,23 +18,53 @@ def seed_celestial_object(age):
     p_age = random.uniform(0.1, max(0.1, age / 2.0)) if age > 0.2 else 0
     prog = round(min((p_age / 4.0) ** 0.5, 2.5), 3) if has_life and p_age >= 0.1 else 0.0
     w = 10 ** random.uniform(10, 26) if prog > 0.8 else 0
-    return {"name": f"Exoplanet {random.randint(1000, 9999)}-{random.choice('abcdef')}", "object_type": "Planet", "surface_temp": round(t, 1), "has_life": has_life, "biochemistry_class": bio, "progress_index": prog, "kardashev_scale": calculate_sagan_kardashev(w)}
+    k = round(max(0.0, (math.log10(w) - 6.0) / 10.0), 3) if w > 0 else 0.0
+    return {"name": f"Exoplanet {random.randint(1000, 9999)}-{random.choice('abcdef')}", "object_type": "Planet", "surface_temp": round(t, 1), "has_life": has_life, "biochemistry_class": bio, "progress_index": prog, "kardashev_scale": k}
+
+def update_catalog_stats(age):
+    stars = int(min(500000, age * 35000)) if age >= 0.1 else 0
+    planets = int(min(120000, age * 8000)) if age >= 0.2 else 0
+    nebulae = int(min(150, age * 12)) if age >= 0.05 else 2
+    bh = int(min(450, age * 30)) if age >= 0.2 else 0
+    data = {"id": 1, "nebulae": nebulae, "stars": stars, "black_holes": bh, "neutron_stars": int(bh * 2.5), "planets": planets, "moons": int(planets * 2.1), "asteroids_comets": int(planets * 15), "quasars": int(min(50, age * 5)) if age < 3.0 else 2, "exotic_objects": int(age * 3)}
+    try:
+        requests.post(f"{SUPABASE_URL}/rest/v1/catalog_stats", headers={**HEADERS, "Prefer": "resolution=merge-duplicates"}, json=data, timeout=5)
+    except Exception: pass
+
+def log_milestone_event(age, title, desc):
+    try:
+        requests.post(f"{SUPABASE_URL}/rest/v1/events", headers=HEADERS, json={"age": age, "title": title, "description": desc}, timeout=5)
+    except Exception: pass
 
 def run():
-    print("[PROJECT ORIGIN] Physics Engine Initialized...")
+    print("[PROJECT ORIGIN] Physics Engine Initialized with Real-Time Clock...")
     age, tick = 0.0, 0
+    events_logged = set()
     while True:
         tick += 1
-        age += 0.001
         sprint = age < 0.1
+        dt = 0.00005555 if sprint else 0.001
+        age += dt
+        
         de, dm, b = calculate_cosmology(age)
+        
+        # Log major cosmic milestones
+        if 0.00035 <= age <= 0.00045 and "CMB" not in events_logged:
+            log_milestone_event(age, "Cosmic Microwave Background", "Photons decouple from baryonic matter; universe cools below 3,000 K.")
+            events_logged.add("CMB")
+        elif age >= 0.1 and "COSMIC_DAWN" not in events_logged:
+            log_milestone_event(age, "Cosmic Dawn (Pop-III Stars)", "First generation of massive stars ignite out of primordial Hydrogen gas.")
+            events_logged.add("COSMIC_DAWN")
+
         try:
             requests.post(f"{SUPABASE_URL}/rest/v1/universe_state", headers=HEADERS, json={"age": age, "de_pct": de, "dm_pct": dm, "baryon_pct": b}, timeout=5)
             if age >= 0.1 and random.random() < 0.2:
                 requests.post(f"{SUPABASE_URL}/rest/v1/celestial_objects", headers=HEADERS, json=seed_celestial_object(age), timeout=5)
-            print(f"[{'SPRINT' if sprint else 'CRUISE'} | Tick {tick}] Age: {age:.4f} Gyr")
+            update_catalog_stats(age)
+            print(f"[{'SPRINT (1h)' if sprint else 'CRUISE (30d)'} | Tick {tick}] Age: {age:.6f} Gyr")
         except Exception as e:
             print(f"[Tick {tick}] Network error: {e}")
+            
         time.sleep(2 if sprint else 60)
 
 if __name__ == "__main__":
