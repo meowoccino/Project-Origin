@@ -32,7 +32,7 @@
         <div id="hud-age" class="hud-value data-font">0 Years</div>
     </div>
 
-    <!-- INSPECTOR PREVIEW BAR (FLOATING OVERLAY ON EXPLORE) -->
+    <!-- INSPECTOR PREVIEW BAR (FLOATING OVERLAY STRICTLY ON EXPLORE) -->
     <div id="inspector-preview" class="glass-panel">
         <div>
             <div id="obj-name">Celestial Body</div>
@@ -43,7 +43,7 @@
 
     <!-- VIEW: EVENTS TAB -->
     <div id="view-events" class="view-panel">
-        <div id="events-container" style="max-width: 500px; margin: 0 auto;"></div>
+        <div id="events-container" style="max-width: 500px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;"></div>
     </div>
 
     <!-- VIEW: ORIGIN TAB (AI OBSERVER) -->
@@ -55,8 +55,9 @@
                 <div class="eye-core"></div>
             </div>
             <div class="status-header-row">
-                <div class="ping-dot"></div>
+                <div id="ping-dot" class="ping-dot"></div>
                 <span id="status-label" class="status-text data-font">OBSERVER ONLINE</span>
+                <span id="ping-ms" class="data-font" style="font-size: 10px; color: var(--text-muted); margin-left: 4px;">(-- ms)</span>
             </div>
             <div id="earth-clock" class="earth-sync data-font">UPLINK TIMESTAMP: INITIALIZING...</div>
         </div>
@@ -196,36 +197,26 @@
         <div id="spec-name" class="glass-panel" style="padding: 20px;"></div>
     </div>
 
-    <!-- FLOATING MATERIAL 3 PILL NAVBAR -->
+    <!-- SLEEK DOCKED BOTTOM NAVIGATION BAR -->
     <nav id="bottom-nav">
         <div id="btn-explore" class="nav-btn active">
-            <div class="icon-wrapper">
-                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
-            </div>
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
             <span>Explore</span>
         </div>
         <div id="btn-events" class="nav-btn">
-            <div class="icon-wrapper">
-                <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
-            </div>
+            <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
             <span>Events</span>
         </div>
         <div id="btn-ai" class="nav-btn">
-            <div class="icon-wrapper">
-                <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-            </div>
+            <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
             <span>Origin</span>
         </div>
         <div id="btn-timeline" class="nav-btn">
-            <div class="icon-wrapper">
-                <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
-            </div>
+            <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
             <span>Timeline</span>
         </div>
         <div id="btn-catalog" class="nav-btn">
-            <div class="icon-wrapper">
-                <svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
-            </div>
+            <svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
             <span>Catalog</span>
         </div>
     </nav>
