@@ -4,7 +4,6 @@ import * as MainEngine from '../engine/main.js';
 function initApp() {
     initWebGPU().catch(err => console.error("❌ [ENGINE INIT FAILED]:", err));
 
-    // Multi-event splash dismiss listener
     const splash = document.getElementById('splash-screen');
     if (splash) {
         const hideSplash = (e) => {
@@ -50,7 +49,7 @@ function initApp() {
             }
         }, { passive: true });
 
-        // Only allow object selection when actively viewing the Explore tab
+        // Touch particle selection strictly locked to Explore tab
         canvasContainer.addEventListener('touchend', (e) => {
             if (e.changedTouches.length === 1 && (Date.now() - touchStart < 250)) {
                 if (window.selectParticleAt && MainEngine.isExploreActive) {
@@ -66,7 +65,7 @@ function initApp() {
     const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
     const hudContainer = document.getElementById('hud-age-container');
 
-    // Tab switcher with inspector preview auto-hiding
+    // Tab Switcher with Complete Inspector Preview Hiding Fix
     function switchTab(btnId, viewId) {
         allBtns.forEach(b => b?.classList.remove('active'));
         allViews.forEach(v => v?.classList.remove('active'));
@@ -76,9 +75,12 @@ function initApp() {
         if (hudContainer) hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
         MainEngine.isExploreActive = (btnId === 'btn-explore');
 
+        // Always force hide preview bar on non-explore tabs or modals
         const inspector = document.getElementById('inspector-preview');
-        if (inspector && btnId !== 'btn-explore') {
-            inspector.classList.remove('active');
+        if (inspector) {
+            if (btnId !== 'btn-explore' || viewId === 'modal-object-detail') {
+                inspector.classList.remove('active');
+            }
         }
     }
 
@@ -88,7 +90,6 @@ function initApp() {
     document.getElementById('btn-timeline')?.addEventListener('click', () => switchTab('btn-timeline', 'view-timeline'));
     document.getElementById('btn-catalog')?.addEventListener('click', () => switchTab('btn-catalog', 'view-catalog'));
 
-    // Local Device Earth Clock Fix
     function initEarthClock() {
         const clockEl = document.getElementById('earth-clock');
         if (!clockEl) return;
@@ -303,6 +304,7 @@ function initApp() {
         `;
     }
 
+    // Expand Analyze View and Hide Inspector Preview Card
     document.getElementById('btn-expand-inspect')?.addEventListener('click', (e) => {
         e.stopPropagation();
         if (selectedNode) {
