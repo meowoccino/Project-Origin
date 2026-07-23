@@ -34,7 +34,7 @@ def generate_ai_object_name(category: str, physics_data: str = "") -> str:
                 "Content-Type": "application/json"
             },
             json={
-                "model": "meta-llama/llama-3-70b-instruct",
+                "model": "meta-llama/llama-3.3-70b-instruct:free",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.85,
                 "max_tokens": 15
@@ -46,7 +46,7 @@ def generate_ai_object_name(category: str, physics_data: str = "") -> str:
             if ai_name:
                 return ai_name
         else:
-            print(f"⚠️ API Key active but rejected (Check credits/limits): Status {response.status_code}")
+            print(f"⚠️ API Key active but rejected: Status {response.status_code} - {response.text}")
     except Exception as err:
         print(f"⚠️ [AI NAMER TIMEOUT/ERROR]: {err}")
 
@@ -56,9 +56,9 @@ def generate_ai_object_name(category: str, physics_data: str = "") -> str:
 # --- SIMULATION MAIN LOOP ---
 def run_simulation_step():
     try:
-        # 1. Advance Age
-        res = supabase.table("universe_state").select("*").order("id", desc=True).limit(1).execute()
-        current_age = float(res.data[0].get("age", 0.001)) if res.data else 0.001
+        # 1. Advance Age (FIXED BUG: Always target ID 1 to prevent time loops)
+        res = supabase.table("universe_state").select("*").eq("id", 1).execute()
+        current_age = float(res.data[0].get("age", 0.001)) if (res.data and len(res.data) > 0) else 0.001
         new_age = round(current_age + 0.005, 3)
 
         supabase.table("universe_state").upsert({
@@ -66,8 +66,8 @@ def run_simulation_step():
         }).execute()
 
         # 2. Fetch Catalog to dictate Evolutionary Phase
-        cat_res = supabase.table("catalog_stats").select("*").limit(1).execute()
-        stats = cat_res.data[0] if cat_res.data else {}
+        cat_res = supabase.table("catalog_stats").select("*").eq("id", 1).execute()
+        stats = cat_res.data[0] if (cat_res.data and len(cat_res.data) > 0) else {}
         
         c_nebulae = stats.get("nebulae", 0)
         c_stars = stats.get("stars", 0)
