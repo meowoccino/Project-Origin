@@ -1,78 +1,109 @@
-import time, math, random, requests
+import os, requests, json, random, time
 
+OPENROUTER_API_KEY = "Sk-or-v1-100800db31e3592a4b9aa08d91d98f42864aea7c4f1cb2687a1e8982fdb5588b"
 SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0"
-HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json", "Prefer": "return=minimal"}
+HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
 
-def calculate_cosmology(age):
-    m = 0.315 / (1.0 + (age * 0.25)**3)
-    l = 1.0 - m
-    return round(l * 100, 1), round(m * 84, 1), round(100 - (l * 100) - (m * 84), 1)
+SYSTEM_PROMPT = """You are ORIGIN, an observer analyzing the exact thermodynamic state matrix of ALL existing bodies in this universe simultaneously. You cannot alter physical constants. Review the physical matrix below and respond in 2 concise sentences: state your physical synthesis of all current entities and your observer conclusion."""
 
-def seed_celestial_object(age):
-    t = random.uniform(-200, 400)
-    has_life, bio = False, None
-    if 0 <= t <= 50 and random.random() < 0.1: has_life, bio = True, "Carbon/Water"
-    elif t < -100 and random.random() < 0.6: has_life, bio = True, "Carbon/Methane"
-    elif t > 100 and random.random() < 0.3: has_life, bio = True, "Carbon/Sulfur"
-    p_age = random.uniform(0.1, max(0.1, age / 2.0)) if age > 0.2 else 0
-    prog = round(min((p_age / 4.0) ** 0.5, 2.5), 3) if has_life and p_age >= 0.1 else 0.0
-    w = 10 ** random.uniform(10, 26) if prog > 0.8 else 0
-    k = round(max(0.0, (math.log10(w) - 6.0) / 10.0), 3) if w > 0 else 0.0
-    return {"name": f"Exoplanet {random.randint(1000, 9999)}-{random.choice('abcdef')}", "object_type": "Planet", "surface_temp": round(t, 1), "has_life": has_life, "biochemistry_class": bio, "progress_index": prog, "kardashev_scale": k}
-
-def update_catalog_stats(age):
-    stars = int(min(500000, age * 35000)) if age >= 0.1 else 0
-    planets = int(min(120000, age * 8000)) if age >= 0.2 else 0
-    nebulae = int(min(150, age * 12)) if age >= 0.05 else 2
-    bh = int(min(450, age * 30)) if age >= 0.2 else 0
-    data = {"id": 1, "nebulae": nebulae, "stars": stars, "black_holes": bh, "neutron_stars": int(bh * 2.5), "planets": planets, "moons": int(planets * 2.1), "asteroids_comets": int(planets * 15), "quasars": int(min(50, age * 5)) if age < 3.0 else 2, "exotic_objects": int(age * 3)}
+def fetch_universe_state():
     try:
-        requests.post(f"{SUPABASE_URL}/rest/v1/catalog_stats", headers={**HEADERS, "Prefer": "resolution=merge-duplicates"}, json=data, timeout=5)
-    except Exception: pass
+        res = requests.get(f"{SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1", headers=HEADERS, timeout=5)
+        return res.json()[0] if res.status_code == 200 and res.json() else None
+    except Exception: return None
 
-def log_milestone_event(age, title, desc):
+def fetch_catalog_stats():
     try:
-        # Query Supabase first to ensure event hasn't already been created
-        check_headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
-        check = requests.get(f"{SUPABASE_URL}/rest/v1/events", headers=check_headers, params={"title": f"eq.{title}"}, timeout=5)
-        if check.status_code == 200 and len(check.json()) > 0:
-            return  # Already exists in Supabase, skip insertion
-            
-        requests.post(f"{SUPABASE_URL}/rest/v1/events", headers=HEADERS, json={"age": age, "title": title, "description": desc}, timeout=5)
-    except Exception: pass
+        res = requests.get(f"{SUPABASE_URL}/rest/v1/catalog_stats?select=*&limit=1", headers=HEADERS, timeout=5)
+        return res.json()[0] if res.status_code == 200 and res.json() else {}
+    except Exception: return {}
 
-def run():
-    print("[PROJECT ORIGIN] Physics Engine Initialized with Real-Time Clock...")
-    age, tick = 0.0, 0
+def fetch_all_objects():
+    try:
+        # Fetches ALL celestial objects logged in the universe
+        res = requests.get(f"{SUPABASE_URL}/rest/v1/celestial_objects?select=*&order=id.asc&limit=1000", headers=HEADERS, timeout=8)
+        return res.json() if res.status_code == 200 else []
+    except Exception: return []
+
+def compress_objects_to_matrix(objects):
+    if not objects:
+        return "NO_CELESTIAL_BODIES_DETECTED"
     
-    # Check/Log Big Bang at initial startup
-    log_milestone_event(0.000001, "Cosmic Big Bang & Primordial Inflation", "Quantum vacuum inflaton decay drives space-time expansion, seeding initial baryonic density fluctuations.")
+    # Ultra-dense CSV-style matrix format to pack maximum physical data into minimum tokens
+    matrix_lines = ["ID|NAME|TYPE|TEMP_K|LIFE|BIO|PROG|KARDASHEV"]
+    for o in objects:
+        has_life = 1 if o.get('has_life') else 0
+        bio = o.get('biochemistry_class') or 'NONE'
+        prog = o.get('progress_index', 0.0)
+        kard = o.get('kardashev_scale', 0.0)
+        line = f"{o.get('id')}|{o.get('name')}|{o.get('object_type')}|{o.get('surface_temp')}|{has_life}|{bio}|{prog}|{kard}"
+        matrix_lines.append(line)
+    return "\n".join(matrix_lines)
 
-    while True:
-        tick += 1
-        sprint = age < 0.1
-        dt = 0.00005555 if sprint else 0.001
-        age += dt
-        
-        de, dm, b = calculate_cosmology(age)
-        
-        # Log major cosmic milestones
-        if 0.00035 <= age <= 0.00045:
-            log_milestone_event(age, "Cosmic Microwave Background", "Photons decouple from baryonic matter; universe cools below 3,000 K.")
-        elif age >= 0.1:
-            log_milestone_event(age, "Cosmic Dawn (Pop-III Stars)", "First generation of massive stars ignite out of primordial Hydrogen gas.")
+def call_openrouter(prompt_data):
+    payload = {
+        "model": "meta-llama/llama-3-70b-instruct",
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt_data}
+        ]
+    }
+    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
+    try:
+        res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=15)
+        if res.status_code == 200:
+            return res.json()["choices"][0]["message"]["content"]
+        else:
+            print(f"[API ERROR] Status: {res.status_code}, Body: {res.text}")
+    except Exception as e:
+        print(f"[NETWORK ERROR] {e}")
+    return "Continuous thermodynamic observation in progress across all physical bodies."
 
-        try:
-            requests.post(f"{SUPABASE_URL}/rest/v1/universe_state", headers=HEADERS, json={"age": age, "de_pct": de, "dm_pct": dm, "baryon_pct": b}, timeout=5)
-            if age >= 0.1 and random.random() < 0.2:
-                requests.post(f"{SUPABASE_URL}/rest/v1/celestial_objects", headers=HEADERS, json=seed_celestial_object(age), timeout=5)
-            update_catalog_stats(age)
-            print(f"[{'SPRINT (1h)' if sprint else 'CRUISE (30d)'} | Tick {tick}] Age: {age:.6f} Gyr")
-        except Exception as e:
-            print(f"[Tick {tick}] Network error: {e}")
-            
-        time.sleep(2 if sprint else 60)
+def run_full_universe_pass():
+    state = fetch_universe_state()
+    if not state:
+        print("[BRAIN] Waiting for universe state...")
+        return
+
+    stats = fetch_catalog_stats()
+    all_objects = fetch_all_objects()
+    matrix_data = compress_objects_to_matrix(all_objects)
+    
+    age = state.get('age', 0.0)
+    
+    prompt = (
+        f"COSMIC AGE: {age:.6f} Gyr\n"
+        f"COSMOLOGY: Dark Energy: {state.get('de_pct')}%, Dark Matter: {state.get('dm_pct')}%, Baryons: {state.get('baryon_pct')}%\n"
+        f"TOTAL COUNT: Stars: {stats.get('stars', 0)}, Nebulae: {stats.get('nebulae', 0)}, Black Holes: {stats.get('black_holes', 0)}, Planets: {stats.get('planets', 0)}\n"
+        f"TOTAL OBJECTS IN MATRIX: {len(all_objects)}\n\n"
+        f"=== COMPLETE UNIVERSE PHYSICAL STATE MATRIX ===\n"
+        f"{matrix_data}"
+    )
+
+    print(f"\n[DENSE MATRIX PASS AT AGE {age:.6f} Gyr | {len(all_objects)} Objects]")
+    thought = call_openrouter(prompt)
+    print(f"[ORIGIN THOUGHT]: {thought}")
+
+    log_data = {
+        "mode": "OBSERVE",
+        "sector": f"Sector {random.randint(1, 12):02d}",
+        "subject": "Full-Universe Matrix Sweep",
+        "type_tag": "Complete Telemetry",
+        "latency_myr": round(random.uniform(0.5, 2.0), 1),
+        "data_analysis": f"Cosmic age: {age:.4f} Gyr. Mapped full physical matrix of {len(all_objects)} celestial bodies.",
+        "temporal_simulation": "All thermodynamic state vectors mapped simultaneously.",
+        "resolution": thought
+    }
+
+    try:
+        requests.post(f"{SUPABASE_URL}/rest/v1/origin_logs", headers=HEADERS, json=log_data, timeout=5)
+        print("Logged to Supabase origin_logs!")
+    except Exception as e:
+        print(f"Failed to save log: {e}")
 
 if __name__ == "__main__":
-    run()
+    print("[PROJECT ORIGIN] Full-Universe Dense Matrix Observer Active (1-Minute Cadence)...")
+    while True:
+        run_full_universe_pass()
+        time.sleep(60)  # Runs full sweep exactly every 1 minute
