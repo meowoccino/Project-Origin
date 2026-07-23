@@ -49,7 +49,6 @@ function initApp() {
             }
         }, { passive: true });
 
-        // Touch particle selection strictly locked to Explore tab
         canvasContainer.addEventListener('touchend', (e) => {
             if (e.changedTouches.length === 1 && (Date.now() - touchStart < 250)) {
                 if (window.selectParticleAt && MainEngine.isExploreActive) {
@@ -65,22 +64,20 @@ function initApp() {
     const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
     const hudContainer = document.getElementById('hud-age-container');
 
-    // Tab Switcher with Complete Inspector Preview Hiding Fix
+    // Tab Switcher Fix: Completely hides inspector preview bar on non-explore views
     function switchTab(btnId, viewId) {
         allBtns.forEach(b => b?.classList.remove('active'));
         allViews.forEach(v => v?.classList.remove('active'));
-        document.getElementById(btnId)?.classList.add('active');
+        
+        if (btnId) document.getElementById(btnId)?.classList.add('active');
         if (viewId) document.getElementById(viewId)?.classList.add('active');
         
         if (hudContainer) hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
         MainEngine.isExploreActive = (btnId === 'btn-explore');
 
-        // Always force hide preview bar on non-explore tabs or modals
         const inspector = document.getElementById('inspector-preview');
         if (inspector) {
-            if (btnId !== 'btn-explore' || viewId === 'modal-object-detail') {
-                inspector.classList.remove('active');
-            }
+            inspector.classList.remove('active');
         }
     }
 
@@ -304,7 +301,6 @@ function initApp() {
         `;
     }
 
-    // Expand Analyze View and Hide Inspector Preview Card
     document.getElementById('btn-expand-inspect')?.addEventListener('click', (e) => {
         e.stopPropagation();
         if (selectedNode) {
