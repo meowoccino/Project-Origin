@@ -1,5 +1,5 @@
-import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode, clearSelection } from '../engine/main.js';
-import * as MainEngine from '../engine/main.js';
+import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode } from './main.js';
+import * as MainEngine from './main.js';
 
 function initApp() {
     initWebGPU().catch(err => console.error("❌ [ENGINE INIT FAILED]:", err));
@@ -19,7 +19,7 @@ function initApp() {
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0";
     const FETCH_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
 
-    const canvasContainer = document.getElementById('canvas-container');
+    const canvasContainer = document.getElementById('universe-canvas');
     let isDragging = false, lastX = 0, lastY = 0, initialPinchDist = null, initialZoom = 1.0, touchStart = 0;
     let localCurrentAge = 0.0;
 
@@ -60,7 +60,6 @@ function initApp() {
         }, { passive: true });
     }
 
-    // THE FIX: Connecting your nav buttons directly to the HTML IDs
     window.switchTab = function(tabName) {
         document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -76,8 +75,9 @@ function initApp() {
         if (hudContainer) hudContainer.style.opacity = (tabName === 'explore') ? '1' : '0';
         MainEngine.isExploreActive = (tabName === 'explore');
 
-        if (tabName !== 'explore' && MainEngine.clearSelection) {
-            MainEngine.clearSelection();
+        const selectionCard = document.getElementById('selection-card');
+        if (selectionCard && tabName !== 'explore') {
+            selectionCard.classList.remove('visible');
         }
     };
 
@@ -212,6 +212,7 @@ function initApp() {
 
             if (btn) btn.innerText = "QUERY PAST TELEMETRY";
         } catch (err) {
+            console.error("Failed to fetch telemetry logs:", err);
             setObserverEyeState('ERROR');
             if (btn) btn.innerText = "RETRY TELEMETRY QUERY";
         } finally {
@@ -248,9 +249,16 @@ function initApp() {
         }).join('');
     }
 
-    function formatAgeFormatted(ageGyr) {
-        if (!ageGyr || ageGyr < 0.001) return "< 0.001 Gyr";
-        return `${Number(ageGyr).toFixed(3)} Gyr`;
+    function renderAgeHUD(ageGyr) {
+        cameraState.currentAge = ageGyr;
+        const totalYears = Math.floor(ageGyr * 1000000000);
+        const hudAge = document.getElementById('universe-age-val');
+        if (hudAge) {
+            hudAge.innerText = totalYears >= 1000000000 
+                ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` 
+                : `${totalYears.toLocaleString()} Years`;
+        }
+        updateTimelineUI(totalYears);
     }
 
     function generatePhysics(node, age) {
@@ -304,16 +312,18 @@ function initApp() {
         if (selectedNode) {
             document.getElementById('inspect-title').innerText = selectedNode.designation;
             document.getElementById('spec-name').innerHTML = generatePhysics(selectedNode, localCurrentAge);
-            
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.getElementById('modal-object-detail').classList.add('active');
+            window.switchTab('modal-object-detail');
         }
     });
 
     document.getElementById('btn-close-inspect')?.addEventListener('click', () => {
-        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-        document.getElementById('tab-explore').classList.add('active');
+        window.switchTab('explore');
     });
+
+    function formatAgeFormatted(ageGyr) {
+        if (!ageGyr || ageGyr < 0.001) return "< 0.001 Gyr";
+        return `${Number(ageGyr).toFixed(3)} Gyr`;
+    }
 
     async function pollUniverseState() {
         const t0 = performance.now();
@@ -326,14 +336,7 @@ function initApp() {
                 const data = await res.json();
                 if (data.length > 0) {
                     localCurrentAge = Number(data[0].age || 0.0);
-                    const totalYears = Math.floor(localCurrentAge * 1000000000);
-                    const hudAge = document.getElementById('universe-age-val');
-                    if (hudAge) {
-                        hudAge.innerText = totalYears >= 1000000000 
-                            ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` 
-                            : `${totalYears.toLocaleString()} Years`;
-                    }
-                    updateTimelineUI(totalYears);
+                    renderAgeHUD(localCurrentAge);
                     
                     if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = `${data[0].de_pct || 68.5}%`;
                     if (document.getElementById('cat-dm-val')) document.getElementById('cat-dm-val').innerText = `${data[0].dm_pct || 26.4}%`;
@@ -364,7 +367,7 @@ function initApp() {
                     if (document.getElementById('cat-bh-val')) document.getElementById('cat-bh-val').innerText = (stats.black_holes || 0).toLocaleString();
                     if (document.getElementById('cat-degenerate-val')) document.getElementById('cat-degenerate-val').innerText = (stats.neutron_stars || 0).toLocaleString();
                     if (document.getElementById('cat-planets-val')) document.getElementById('cat-planets-val').innerText = (stats.planets || 0).toLocaleString();
-                    if (document.getElementById('cat-moons-val')) document.getElementById('cat-moons-val').innerText = (stats.moons || 0).toLocaleString();
+                    if (document.getElementById('cat-moons-val')) document.getElementById('cat-moons-valinnerText') = (stats.moons || 0).toLocaleString();
                     if (document.getElementById('cat-asteroids-val')) document.getElementById('cat-asteroids-val').innerText = (stats.asteroids_comets || 0).toLocaleString();
                     if (document.getElementById('cat-quasars-val')) document.getElementById('cat-quasars-val').innerText = (stats.quasars || 0).toLocaleString();
                     if (document.getElementById('cat-exotic-val')) document.getElementById('cat-exotic-val').innerText = (stats.exotic_objects || 0).toLocaleString();
@@ -387,21 +390,21 @@ function initApp() {
         
         const lowerTitle = title.toLowerCase();
 
-        if (lowerTitle.includes("nebula") || lowerTitle.includes("cloud") || lowerTitle.includes("gas")) {
+        if (lowerTitle.includes("cmb") || lowerTitle.includes("background") || lowerTitle.includes("decoupling")) {
+            hex = "#9C27B0"; rgb = "156, 39, 176"; tag = "DECOUPLING";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8.009 8.009 0 0 1-8 8z"/></svg>`;
+        } else if (lowerTitle.includes("nebula") || lowerTitle.includes("cloud") || lowerTitle.includes("gas")) {
             hex = "#00E5FF"; rgb = "0, 229, 255"; tag = "NEBULA CLOUD";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>`;
-        } else if (lowerTitle.includes("star") || lowerTitle.includes("dwarf") || lowerTitle.includes("giant")) {
+        } else if (lowerTitle.includes("star") || lowerTitle.includes("protostar") || lowerTitle.includes("ignition")) {
             hex = "#FFD700"; rgb = "255, 215, 0"; tag = "CLASS-O STAR";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>`;
         } else if (lowerTitle.includes("black hole") || lowerTitle.includes("singularity")) {
             hex = "#B026FF"; rgb = "176, 38, 255"; tag = "SINGULARITY";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
         } else if (lowerTitle.includes("pulsar") || lowerTitle.includes("neutron")) {
-            hex = "#FF3366"; rgb = "255, 51, 102"; tag = "NEUTRON CORE";
+            hex = "#FF3366"; rgb = "255, 51, 102"; tag = "PULSAR BURST";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`;
-        } else if (lowerTitle.includes("planet") || lowerTitle.includes("world")) {
-            hex = "#10B981"; rgb = "16, 185, 129"; tag = "PLANETARY BODY";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>`;
         }
 
         let m1 = { lbl: "EPOCH", val: ageFormatted }, m2 = { lbl: "STATUS", val: "STABLE" }, m3 = { lbl: "SECTOR", val: "SEC 04" };
@@ -445,7 +448,7 @@ function initApp() {
                 const events = await res.json();
                 const container = document.getElementById('tab-events');
                 if (container && events.length > 0) {
-                    container.innerHTML = `<div class="events-feed" style="padding: 16px;">` + events.map(e => renderDesign4EventCard(e)).join('') + `</div>`;
+                    container.innerHTML = `<div class="events-feed">` + events.map(e => renderDesign4EventCard(e)).join('') + `</div>`;
                 }
             }
         } catch (err) {}
