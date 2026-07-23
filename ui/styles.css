@@ -230,7 +230,7 @@ body, html {
   font-size: 10px;
   font-weight: 700;
   color: var(--c-hex, #38BDF8);
-  background: rgba(var(--c-rgb, 56, 189, 248), 0.12);
+  background: rgba(255, 255, 255, 0.06);
   padding: 2px 8px;
   border-radius: 6px;
 }
@@ -266,6 +266,7 @@ body, html {
   font-size: 9px;
   color: #64748B;
   font-weight: 600;
+  text-transform: uppercase;
 }
 
 .m-val {
