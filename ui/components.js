@@ -64,7 +64,7 @@ function initApp() {
     const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
     const hudContainer = document.getElementById('hud-age-container');
 
-    // Tab Switcher Fix: Completely hides inspector preview bar on non-explore views
+    // Strict Tab Switcher with Complete Inspector Preview Bar Hiding
     function switchTab(btnId, viewId) {
         allBtns.forEach(b => b?.classList.remove('active'));
         allViews.forEach(v => v?.classList.remove('active'));
@@ -75,9 +75,11 @@ function initApp() {
         if (hudContainer) hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
         MainEngine.isExploreActive = (btnId === 'btn-explore');
 
+        // Absolute hiding for inspector-preview on all non-explore views
         const inspector = document.getElementById('inspector-preview');
         if (inspector) {
             inspector.classList.remove('active');
+            inspector.style.display = 'none';
         }
     }
 
@@ -122,6 +124,26 @@ function initApp() {
         } else {
             ui.classList.add('state-observe');
             label.innerText = 'OBSERVER ONLINE';
+        }
+    }
+
+    // Dynamic Network Latency Measuring Dot (Green / Yellow / Red)
+    function updatePingLatency(latencyMs, isSuccess) {
+        const pingDot = document.getElementById('ping-dot');
+        const pingText = document.getElementById('ping-ms');
+        if (!pingDot) return;
+
+        if (pingText) pingText.innerText = `(${latencyMs} ms)`;
+
+        if (!isSuccess || latencyMs > 1500) {
+            pingDot.style.background = '#FF1744'; // Red
+            pingDot.style.boxShadow = '0 0 8px #FF1744';
+        } else if (latencyMs > 500) {
+            pingDot.style.background = '#FFEA00'; // Yellow
+            pingDot.style.boxShadow = '0 0 8px #FFEA00';
+        } else {
+            pingDot.style.background = '#00E676'; // Green
+            pingDot.style.boxShadow = '0 0 8px #00E676';
         }
     }
 
@@ -251,10 +273,7 @@ function initApp() {
     function generatePhysics(node, age) {
         let mass, radius, temp, extra;
         const seed = node.id * 13;
-        
-        const epochLabel = age < 0.1 
-            ? `${(age * 1000).toFixed(2)} Myr` 
-            : `${age.toFixed(3)} Gyr`;
+        const epochLabel = age < 0.1 ? `${(age * 1000).toFixed(2)} Myr` : `${age.toFixed(3)} Gyr`;
 
         switch (node.category) {
             case 'asteroids_comets':
@@ -280,10 +299,6 @@ function initApp() {
             case 'black_holes':
                 mass = (seed % 50 + 5).toFixed(2) + " M_sun"; radius = ((seed % 50 + 5) * 2.95).toFixed(1) + " km (Schwarzschild)"; temp = "0.000" + (seed % 9 + 1) + " K (Hawking)";
                 extra = `<div class="spec-row"><span class="spec-label">Accretion</span><span class="spec-value">${(seed % 5 * 0.1).toFixed(3)} M_sun/yr</span></div>`;
-                break;
-            case 'quasars':
-                mass = (seed % 500 + 100) + " Million M_sun"; radius = (seed % 50 + 10) + " AU (Accretion Disk)"; temp = "Millions of K";
-                extra = `<div class="spec-row"><span class="spec-label">Energy Output</span><span class="spec-value" style="color:#FFF066">10^40 Watts</span></div>`;
                 break;
             default:
                 mass = (seed % 5000 + 1000) + " M_sun"; radius = (seed % 150 + 10) + " Lightyears"; temp = "10 - 50 K";
@@ -318,8 +333,12 @@ function initApp() {
     }
 
     async function pollUniverseState() {
+        const t0 = performance.now();
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`, { headers: FETCH_HEADERS });
+            const latency = Math.round(performance.now() - t0);
+            updatePingLatency(latency, res.ok);
+
             if (res.ok) {
                 const data = await res.json();
                 if (data.length > 0) {
@@ -336,7 +355,9 @@ function initApp() {
                     if(barBaryon) barBaryon.style.width = `${data[0].baryon_pct || 5.1}%`;
                 }
             }
-        } catch (err) {}
+        } catch (err) {
+            updatePingLatency(9999, false);
+        }
     }
 
     async function pollCatalog() {
@@ -366,6 +387,57 @@ function initApp() {
         } catch (err) {}
     }
 
+    // Design 4 Card Builder with Real Astrophysics Parameters per Category
+    function renderDesign4EventCard(e) {
+        const title = e.title || 'Cosmic Telemetry Event';
+        const desc = e.description || 'Thermodynamic equilibrium shift detected in local space-time region.';
+        const ageFormatted = formatAgeFormatted(e.age);
+        
+        let hex = "#FF8C00", rgb = "255, 140, 0", tag = "COSMIC EVENT";
+        let iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
+        let m1 = { lbl: "EPOCH", val: ageFormatted }, m2 = { lbl: "STATUS", val: "STABLE" }, m3 = { lbl: "SECTOR", val: "SEC 04" };
+
+        const lowerTitle = title.toLowerCase();
+
+        if (lowerTitle.includes("cmb") || lowerTitle.includes("background") || lowerTitle.includes("decoupling")) {
+            hex = "#9C27B0"; rgb = "156, 39, 176"; tag = "DECOUPLING";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8.009 8.009 0 0 1-8 8z"/></svg>`;
+            m1 = { lbl: "REDSHIFT", val: "z ≈ 1100" }; m2 = { lbl: "TEMP", val: "3,000 K" }; m3 = { lbl: "EPOCH", val: "380,000 Yrs" };
+        } else if (lowerTitle.includes("nebula") || lowerTitle.includes("cloud") || lowerTitle.includes("gas")) {
+            hex = "#00E5FF"; rgb = "0, 229, 255"; tag = "NEBULA CLOUD";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>`;
+            m1 = { lbl: "GAS TEMP", val: "18 K" }; m2 = { lbl: "DENSITY", val: "10⁴ /cm³" }; m3 = { lbl: "EPOCH", val: ageFormatted };
+        } else if (lowerTitle.includes("star") || lowerTitle.includes("protostar") || lowerTitle.includes("ignition")) {
+            hex = "#FFD700"; rgb = "255, 215, 0"; tag = "CLASS-O STAR";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>`;
+            m1 = { lbl: "MASS", val: "18.5 M_sun" }; m2 = { lbl: "TEMP", val: "33,000 K" }; m3 = { lbl: "LUMINOSITY", val: "45,000 L_sun" };
+        } else if (lowerTitle.includes("black hole") || lowerTitle.includes("singularity")) {
+            hex = "#B026FF"; rgb = "176, 38, 255"; tag = "SINGULARITY";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
+            m1 = { lbl: "MASS", val: "4.2M M_sun" }; m2 = { lbl: "R_SCHWARZ", val: "0.08 AU" }; m3 = { lbl: "SPIN", val: "0.94 Kerr" };
+        } else if (lowerTitle.includes("pulsar") || lowerTitle.includes("neutron")) {
+            hex = "#FF3366"; rgb = "255, 51, 102"; tag = "PULSAR BURST";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`;
+            m1 = { lbl: "B-FIELD", val: "10¹⁴ Gauss" }; m2 = { lbl: "PERIOD", val: "5.8 ms" }; m3 = { lbl: "RADIUS", val: "11.2 km" };
+        }
+
+        return `
+            <div class="d4-card" style="--c-hex: ${hex}; --c-rgb: ${rgb};">
+                <div class="d4-header">
+                    <div class="d4-icon-box">${iconSvg}</div>
+                    <span class="d4-tag mono">${tag}</span>
+                </div>
+                <div class="d4-title">${title}</div>
+                <div class="d4-desc">${desc}</div>
+                <div class="d4-metrics-grid mono">
+                    <div class="m-item"><span class="m-lbl">${m1.lbl}</span><span class="m-val">${m1.val}</span></div>
+                    <div class="m-item"><span class="m-lbl">${m2.lbl}</span><span class="m-val">${m2.val}</span></div>
+                    <div class="m-item"><span class="m-lbl">${m3.lbl}</span><span class="m-val">${m3.val}</span></div>
+                </div>
+            </div>
+        `;
+    }
+
     async function pollEvents() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
@@ -373,15 +445,7 @@ function initApp() {
                 const events = await res.json();
                 const container = document.getElementById('events-container');
                 if (container && events.length > 0) {
-                    container.innerHTML = events.map(e => `
-                        <div class="glass-panel" style="margin-bottom: 12px; padding: 16px;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <span style="font-weight: bold; color: #fff; font-size: 14px; flex:1; padding-right:8px;">${e.title || 'Cosmic Event'}</span>
-                            <span class="data-font" style="font-size: 11px; color: #FF8C00; font-weight: bold; white-space:nowrap;">${formatAgeFormatted(e.age)}</span>
-                            </div>
-                            <div style="color: #b0b0d0; font-size: 13px; margin-top: 8px; line-height: 1.4;">${e.description || ''}</div>
-                        </div>
-                    `).join('');
+                    container.innerHTML = events.map(e => renderDesign4EventCard(e)).join('');
                 }
             }
         } catch (err) {}
