@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 
-  <!-- PATH FIX: Pointing to the ui folder -->
-  <link rel="stylesheet" href="./ui/styles.css">
+  <!-- VITE PATH FIX: Points explicitly to your UI folder -->
+  <link rel="stylesheet" href="/ui/styles.css">
 </head>
 <body>
 
@@ -27,7 +27,7 @@
     <!-- REDESIGNED SLEEK UNIVERSE AGE PILL -->
     <div class="universe-age-pill">
       <div class="age-dot"></div>
-      <div class="age-text" id="universe-age-val">12.402 Billion Years</div>
+      <div class="age-text" id="universe-age-val">0.000 Billion Years</div>
     </div>
 
     <!-- TAB 1: EXPLORE -->
@@ -40,7 +40,7 @@
           <div class="card-title" id="sel-card-title">Astraea Prime</div>
           <div class="card-subtitle" id="sel-card-sub">Inhabited World</div>
         </div>
-        <button class="analyze-btn">Analyze</button>
+        <button class="analyze-btn" id="btn-expand-inspect">Analyze</button>
       </div>
     </div>
 
@@ -51,12 +51,21 @@
 
     <!-- TAB 3: ORIGIN -->
     <div id="tab-origin" class="tab-content">
-      <div class="tab-placeholder">Origin Logs Loading...</div>
+      <div id="observer-ui" class="state-observe">
+        <div class="status-box">
+          <span id="ping-dot"></span>
+          <span id="status-label">OBSERVER ONLINE</span>
+          <span id="ping-ms">(0 ms)</span>
+        </div>
+        <div id="earth-clock"></div>
+      </div>
+      <div id="logs-container"></div>
+      <button id="btn-load-more" class="load-btn">QUERY PAST TELEMETRY</button>
     </div>
 
     <!-- TAB 4: TIMELINE -->
     <div id="tab-timeline" class="tab-content">
-      <div class="tab-placeholder">Timeline Archives Loading...</div>
+      <div id="timeline-container" class="tab-placeholder">Timeline Archives Loading...</div>
     </div>
 
     <!-- TAB 5: CATALOG (TEXT HEADERS REMOVED) -->
@@ -66,20 +75,70 @@
         <!-- MACRO COSMOLOGICAL STATE BAR -->
         <div class="macro-bar-card">
           <div class="macro-progress-track">
-            <div class="macro-segment" style="width: 68.5%; background: #8B5CF6;"></div>
-            <div class="macro-segment" style="width: 26.4%; background: #F97316;"></div>
-            <div class="macro-segment" style="width: 5.1%; background: #FACC15;"></div>
+            <div id="bar-de" class="macro-segment" style="width: 68.5%; background: #8B5CF6;"></div>
+            <div id="bar-dm" class="macro-segment" style="width: 26.4%; background: #F97316;"></div>
+            <div id="bar-baryon" class="macro-segment" style="width: 5.1%; background: #FACC15;"></div>
           </div>
           <div class="macro-legend">
-            <div class="legend-item"><div class="legend-dot" style="background:#8B5CF6;"></div>Dark Energy 68.5%</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#F97316;"></div>Dark Matter 26.4%</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#FACC15;"></div>Baryonic 5.1%</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#8B5CF6;"></div>Dark Energy <span id="cat-de-val">68.5%</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:#F97316;"></div>Dark Matter <span id="cat-dm-val">26.4%</span></div>
+            <div class="legend-item"><div class="legend-dot" style="background:#FACC15;"></div>Baryonic <span id="cat-baryon-val">5.1%</span></div>
           </div>
         </div>
 
         <!-- 10-CATEGORY CELESTIAL INVENTORY GRID -->
-        <div class="catalog-grid" id="catalog-grid-items"></div>
+        <div class="catalog-grid">
+          <div class="catalog-card">
+            <div class="card-cat-name" style="color:#00E5FF">Nebulae & Clouds</div>
+            <div class="card-cat-count" id="cat-nebulae-val">0</div>
+          </div>
+          <div class="catalog-card">
+            <div class="card-cat-name" style="color:#FFD700">Active Stars</div>
+            <div class="card-cat-count" id="cat-stars-val">0</div>
+          </div>
+          <div class="catalog-card">
+            <div class="card-cat-name" style="color:#8B5CF6">Black Holes</div>
+            <div class="card-cat-count" id="cat-bh-val">0</div>
+          </div>
+          <div class="catalog-card">
+            <div class="card-cat-name" style="color:#FF3366">Neutron Cores</div>
+            <div class="card-cat-count" id="cat-degenerate-val">0</div>
+          </div>
+          <div class="catalog-card">
+            <div class="card-cat-name" style="color:#10B981">Planets</div>
+            <div class="card-cat-count" id="cat-planets-val">0</div>
+          </div>
+          <div class="catalog-card">
+            <div class="card-cat-name" style="color:#8C8F9F">Moons</div>
+            <div class="card-cat-count" id="cat-moons-val">0</div>
+          </div>
+          <div class="catalog-card">
+            <div class="card-cat-name" style="color:#B0B0D0">Asteroids & Comets</div>
+            <div class="card-cat-count" id="cat-asteroids-val">0</div>
+          </div>
+          <div class="catalog-card">
+            <div class="card-cat-name" style="color:#FF5722">Quasars</div>
+            <div class="card-cat-count" id="cat-quasars-val">0</div>
+          </div>
+          <div class="catalog-card">
+            <div class="card-cat-name" style="color:#FF007A">Exotic Objects</div>
+            <div class="card-cat-count" id="cat-exotic-val">0</div>
+          </div>
+          <div class="catalog-card">
+            <div class="card-cat-name" style="color:#00FFB2">Inhabited Worlds</div>
+            <div class="card-cat-count" id="cat-inhabited-val">0</div>
+          </div>
+        </div>
 
+      </div>
+    </div>
+
+    <!-- MODAL OBJECT DETAIL -->
+    <div id="modal-object-detail" class="tab-content">
+      <div style="padding: 20px;">
+        <h2 id="inspect-title" style="margin-bottom: 16px;">Detailed Telemetry</h2>
+        <div id="spec-name"></div>
+        <button id="btn-close-inspect" class="analyze-btn" style="margin-top: 20px; width: 100%;">CLOSE INSPECTION</button>
       </div>
     </div>
 
@@ -109,7 +168,7 @@
 
   </div>
 
-  <!-- PATH FIX: Pointing to the ui folder -->
-  <script type="module" src="./ui/components.js"></script>
+  <!-- VITE PATH FIX: Points explicitly to your UI folder -->
+  <script type="module" src="/ui/components.js"></script>
 </body>
 </html>
