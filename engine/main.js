@@ -195,12 +195,12 @@ export async function initWebGPU() {
             if (dist < minDist) { minDist = dist; closest = p; }
         }
 
-        const preview = document.getElementById('inspector-preview');
+        const preview = document.getElementById('selection-card');
         if (closest) {
             selectedNode = closest;
-            document.getElementById('obj-name').innerText = closest.designation;
-            document.getElementById('obj-sub').innerText = CATEGORY_STYLES[closest.category].name;
-            preview.classList.add('active');
+            document.getElementById('sel-card-title').innerText = closest.designation;
+            document.getElementById('sel-card-sub').innerText = CATEGORY_STYLES[closest.category].name;
+            preview.classList.add('visible');
 
             const driftAngle = animTime * 0.02;
             const cosD = Math.cos(driftAngle);
@@ -213,7 +213,7 @@ export async function initWebGPU() {
             
         } else {
             selectedNode = null;
-            preview.classList.remove('active');
+            preview.classList.remove('visible');
         }
     };
 }
