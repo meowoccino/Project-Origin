@@ -1,49 +1,78 @@
-import os, requests, json, random
+import time, math, random, requests
 
-OPENROUTER_API_KEY = "Sk-or-v1-100800db31e3592a4b9aa08d91d98f42864aea7c4f1cb2687a1e8982fdb5588b"
 SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0"
-HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
+HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json", "Prefer": "return=minimal"}
 
-SYSTEM_PROMPT = """You are ORIGIN, an observer embedded within this universe watching it unfold from the Big Bang forward in real time. You cannot change physical laws. Respond concisely with what you noticed, what you choose to do, why, and hoped outcome."""
+def calculate_cosmology(age):
+    m = 0.315 / (1.0 + (age * 0.25)**3)
+    l = 1.0 - m
+    return round(l * 100, 1), round(m * 84, 1), round(100 - (l * 100) - (m * 84), 1)
 
-def fetch_universe_state():
-    res = requests.get(f"{SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1", headers=HEADERS)
-    return res.json()[0] if res.status_code == 200 and res.json() else None
+def seed_celestial_object(age):
+    t = random.uniform(-200, 400)
+    has_life, bio = False, None
+    if 0 <= t <= 50 and random.random() < 0.1: has_life, bio = True, "Carbon/Water"
+    elif t < -100 and random.random() < 0.6: has_life, bio = True, "Carbon/Methane"
+    elif t > 100 and random.random() < 0.3: has_life, bio = True, "Carbon/Sulfur"
+    p_age = random.uniform(0.1, max(0.1, age / 2.0)) if age > 0.2 else 0
+    prog = round(min((p_age / 4.0) ** 0.5, 2.5), 3) if has_life and p_age >= 0.1 else 0.0
+    w = 10 ** random.uniform(10, 26) if prog > 0.8 else 0
+    k = round(max(0.0, (math.log10(w) - 6.0) / 10.0), 3) if w > 0 else 0.0
+    return {"name": f"Exoplanet {random.randint(1000, 9999)}-{random.choice('abcdef')}", "object_type": "Planet", "surface_temp": round(t, 1), "has_life": has_life, "biochemistry_class": bio, "progress_index": prog, "kardashev_scale": k}
 
-def fetch_active_objects():
-    res = requests.get(f"{SUPABASE_URL}/rest/v1/celestial_objects?select=*&order=id.desc&limit=5", headers=HEADERS)
-    return res.json() if res.status_code == 200 else []
+def update_catalog_stats(age):
+    stars = int(min(500000, age * 35000)) if age >= 0.1 else 0
+    planets = int(min(120000, age * 8000)) if age >= 0.2 else 0
+    nebulae = int(min(150, age * 12)) if age >= 0.05 else 2
+    bh = int(min(450, age * 30)) if age >= 0.2 else 0
+    data = {"id": 1, "nebulae": nebulae, "stars": stars, "black_holes": bh, "neutron_stars": int(bh * 2.5), "planets": planets, "moons": int(planets * 2.1), "asteroids_comets": int(planets * 15), "quasars": int(min(50, age * 5)) if age < 3.0 else 2, "exotic_objects": int(age * 3)}
+    try:
+        requests.post(f"{SUPABASE_URL}/rest/v1/catalog_stats", headers={**HEADERS, "Prefer": "resolution=merge-duplicates"}, json=data, timeout=5)
+    except Exception: pass
 
-def call_openrouter(prompt_data):
-    payload = {"model": "meta-llama/llama-3-70b-instruct", "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt_data}]}
-    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
-    response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
-    return response.json()["choices"][0]["message"]["content"] if response.status_code == 200 else "Observing cosmic drift."
+def log_milestone_event(age, title, desc):
+    try:
+        # Query Supabase first to ensure event hasn't already been created
+        check_headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
+        check = requests.get(f"{SUPABASE_URL}/rest/v1/events", headers=check_headers, params={"title": f"eq.{title}"}, timeout=5)
+        if check.status_code == 200 and len(check.json()) > 0:
+            return  # Already exists in Supabase, skip insertion
+            
+        requests.post(f"{SUPABASE_URL}/rest/v1/events", headers=HEADERS, json={"age": age, "title": title, "description": desc}, timeout=5)
+    except Exception: pass
 
-def run_brain():
-    print("Scanning Universe for ORIGIN AI Observer...")
-    state, objects = fetch_universe_state(), fetch_active_objects()
-    if not state:
-        return
+def run():
+    print("[PROJECT ORIGIN] Physics Engine Initialized with Real-Time Clock...")
+    age, tick = 0.0, 0
     
-    age = state.get('age', 0)
-    prompt = f"CURRENT UNIVERSE AGE: {age:.6f} Gyr\nCOMPOSITION: {state.get('de_pct')}% Dark Energy, {state.get('dm_pct')}% Dark Matter\nOBJECTS DISCOVERED: {len(objects)}"
-    ai_thought = call_openrouter(prompt)
-    
-    # Save thought to origin_logs for UI tab
-    log_data = {
-        "mode": "OBSERVE",
-        "sector": f"Sector {random.randint(1, 12):02d}",
-        "subject": "Cosmic Fluid Density",
-        "type_tag": "Telemetry",
-        "latency_myr": 1.2,
-        "data_analysis": f"Cosmic age measured at {age:.4f} Gyr.",
-        "temporal_simulation": "Dark matter halo formation proceeding as predicted.",
-        "resolution": ai_thought
-    }
-    requests.post(f"{SUPABASE_URL}/rest/v1/origin_logs", headers=HEADERS, json=log_data)
-    print("Log saved to Supabase origin_logs!")
+    # Check/Log Big Bang at initial startup
+    log_milestone_event(0.000001, "Cosmic Big Bang & Primordial Inflation", "Quantum vacuum inflaton decay drives space-time expansion, seeding initial baryonic density fluctuations.")
+
+    while True:
+        tick += 1
+        sprint = age < 0.1
+        dt = 0.00005555 if sprint else 0.001
+        age += dt
+        
+        de, dm, b = calculate_cosmology(age)
+        
+        # Log major cosmic milestones
+        if 0.00035 <= age <= 0.00045:
+            log_milestone_event(age, "Cosmic Microwave Background", "Photons decouple from baryonic matter; universe cools below 3,000 K.")
+        elif age >= 0.1:
+            log_milestone_event(age, "Cosmic Dawn (Pop-III Stars)", "First generation of massive stars ignite out of primordial Hydrogen gas.")
+
+        try:
+            requests.post(f"{SUPABASE_URL}/rest/v1/universe_state", headers=HEADERS, json={"age": age, "de_pct": de, "dm_pct": dm, "baryon_pct": b}, timeout=5)
+            if age >= 0.1 and random.random() < 0.2:
+                requests.post(f"{SUPABASE_URL}/rest/v1/celestial_objects", headers=HEADERS, json=seed_celestial_object(age), timeout=5)
+            update_catalog_stats(age)
+            print(f"[{'SPRINT (1h)' if sprint else 'CRUISE (30d)'} | Tick {tick}] Age: {age:.6f} Gyr")
+        except Exception as e:
+            print(f"[Tick {tick}] Network error: {e}")
+            
+        time.sleep(2 if sprint else 60)
 
 if __name__ == "__main__":
-    run_brain()
+    run()
