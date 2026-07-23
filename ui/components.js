@@ -1,5 +1,5 @@
-import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode } from './main.js';
-import * as MainEngine from './main.js';
+import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode } from '../engine/main.js';
+import * as MainEngine from '../engine/main.js';
 
 function initApp() {
     initWebGPU().catch(err => console.error("❌ [ENGINE INIT FAILED]:", err));
@@ -60,10 +60,9 @@ function initApp() {
         }, { passive: true });
     }
 
-    window.switchTab = function(tabName) {
+    const switchTab = function(tabName) {
         document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-
         const targetTab = document.getElementById(`tab-${tabName}`);
         if (targetTab) targetTab.classList.add('active');
 
@@ -80,6 +79,12 @@ function initApp() {
             selectionCard.classList.remove('visible');
         }
     };
+
+    document.getElementById('btn-explore')?.addEventListener('click', () => switchTab('explore'));
+    document.getElementById('btn-events')?.addEventListener('click', () => switchTab('events'));
+    document.getElementById('btn-origin')?.addEventListener('click', () => switchTab('origin'));
+    document.getElementById('btn-timeline')?.addEventListener('click', () => switchTab('timeline'));
+    document.getElementById('btn-catalog')?.addEventListener('click', () => switchTab('catalog'));
 
     function initEarthClock() {
         const clockEl = document.getElementById('earth-clock');
@@ -307,18 +312,16 @@ function initApp() {
         `;
     }
 
-    document.getElementById('btn-expand-inspect')?.addEventListener('click', (e) => {
+    document.querySelector('.analyze-btn')?.addEventListener('click', (e) => {
         e.stopPropagation();
         if (selectedNode) {
             document.getElementById('inspect-title').innerText = selectedNode.designation;
             document.getElementById('spec-name').innerHTML = generatePhysics(selectedNode, localCurrentAge);
-            window.switchTab('modal-object-detail');
+            switchTab('modal-object-detail');
         }
     });
 
-    document.getElementById('btn-close-inspect')?.addEventListener('click', () => {
-        window.switchTab('explore');
-    });
+    document.getElementById('btn-close-inspect')?.addEventListener('click', () => switchTab('explore'));
 
     function formatAgeFormatted(ageGyr) {
         if (!ageGyr || ageGyr < 0.001) return "< 0.001 Gyr";
@@ -367,7 +370,7 @@ function initApp() {
                     if (document.getElementById('cat-bh-val')) document.getElementById('cat-bh-val').innerText = (stats.black_holes || 0).toLocaleString();
                     if (document.getElementById('cat-degenerate-val')) document.getElementById('cat-degenerate-val').innerText = (stats.neutron_stars || 0).toLocaleString();
                     if (document.getElementById('cat-planets-val')) document.getElementById('cat-planets-val').innerText = (stats.planets || 0).toLocaleString();
-                    if (document.getElementById('cat-moons-val')) document.getElementById('cat-moons-valinnerText') = (stats.moons || 0).toLocaleString();
+                    if (document.getElementById('cat-moons-val')) document.getElementById('cat-moons-val').innerText = (stats.moons || 0).toLocaleString();
                     if (document.getElementById('cat-asteroids-val')) document.getElementById('cat-asteroids-val').innerText = (stats.asteroids_comets || 0).toLocaleString();
                     if (document.getElementById('cat-quasars-val')) document.getElementById('cat-quasars-val').innerText = (stats.quasars || 0).toLocaleString();
                     if (document.getElementById('cat-exotic-val')) document.getElementById('cat-exotic-val').innerText = (stats.exotic_objects || 0).toLocaleString();
@@ -446,9 +449,9 @@ function initApp() {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const events = await res.json();
-                const container = document.getElementById('tab-events');
+                const container = document.getElementById('events-container');
                 if (container && events.length > 0) {
-                    container.innerHTML = `<div class="events-feed">` + events.map(e => renderDesign4EventCard(e)).join('') + `</div>`;
+                    container.innerHTML = events.map(e => renderDesign4EventCard(e)).join('');
                 }
             }
         } catch (err) {}
