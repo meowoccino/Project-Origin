@@ -7,7 +7,7 @@ from supabase import create_client, Client
 # --- ENVIRONMENT CONFIGURATION ---
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY", "Csk-8j23hwwjff3ykh5n4v5nm5v42dknh9ywjf2j93ett2r5mww5")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -121,24 +121,31 @@ def generate_ai_object_name(category: str, physics_data: str = "") -> str:
         f"Rules: Output ONLY the name text. Do NOT use quotation marks, explanations, or punctuation."
     )
 
-    if GEMINI_API_KEY:
+    if CEREBRAS_API_KEY:
         try:
-            # UPDATED: gemini-3.5-flash endpoint
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={GEMINI_API_KEY}"
-            payload = {
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.85, "maxOutputTokens": 20}
+            url = "https://api.cerebras.ai/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {CEREBRAS_API_KEY}",
+                "Content-Type": "application/json"
             }
-            res = requests.post(url, json=payload, timeout=5)
+            payload = {
+                "model": "llama-3.3-70b",
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.85,
+                "max_tokens": 20
+            }
+            res = requests.post(url, json=payload, headers=headers, timeout=5)
             if res.status_code == 200:
                 data = res.json()
-                text = data["candidates"][0]["content"]["parts"][0]["text"].strip(' "\'\n')
+                text = data["choices"][0]["message"]["content"].strip(' "\'\n')
                 if text:
                     return text
             else:
-                print(f"⚠️ [GEMINI NAMER ERROR]: Status {res.status_code}")
+                print(f"⚠️ [CEREBRAS NAMER ERROR]: Status {res.status_code}")
         except Exception as err:
-            print(f"⚠️ [GEMINI NAMER EXCEPTION]: {err}")
+            print(f"⚠️ [CEREBRAS NAMER EXCEPTION]: {err}")
 
     return f"{category.replace('_', ' ').title()} #{random.randint(1000, 9999)}"
 
