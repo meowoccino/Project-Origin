@@ -2,139 +2,233 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Project Origin</title>
     <link rel="stylesheet" href="ui/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <!-- 0. SPLASH SCREEN -->
+    <!-- SPLASH SCREEN -->
     <div id="splash-screen">
         <div class="splash-content">
             <svg class="splash-logo" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="14" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
-                <circle cx="50" cy="50" r="26" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
-                <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
-                <circle cx="50" cy="50" r="2" fill="#ffffff" />
-                <g class="orbit-anim"><circle cx="50" cy="24" r="3.5" fill="#FF8C00" /></g>
+                <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,140,0,0.15)" stroke-width="1"/>
+                <circle class="orbit-anim" cx="50" cy="50" r="30" fill="none" stroke="rgba(255,140,0,0.4)" stroke-width="1.5" stroke-dasharray="4 8"/>
+                <circle class="orbit-anim" cx="50" cy="20" r="4" fill="#FF8C00"/>
+                <circle cx="50" cy="50" r="6" fill="#FFFFFF"/>
             </svg>
-            <div class="splash-title">PROJECT <span style="color: #FF8C00;">ORIGIN</span></div>
-            <div class="splash-subtitle">AN AI-DIRECTED UNIVERSE</div>
+            <h1 class="splash-title">PROJECT <span style="color: var(--accent);">ORIGIN</span></h1>
+            <p class="splash-subtitle">AN AI-DIRECTED UNIVERSE</p>
         </div>
-        <div class="splash-prompt data-font">tap to observe &rarr;</div>
+        <div class="splash-prompt data-font">tap to observe _</div>
     </div>
 
-    <!-- 1. CANVAS CONTAINER (EXPLORE TAB) -->
+    <!-- CANVAS CONTAINER -->
     <div id="canvas-container"></div>
 
-    <!-- 2. UNIVERSE AGE HUD -->
+    <!-- HUD AGE OVERLAY -->
     <div id="hud-age-container" class="glass-panel">
         <div class="hud-label">Universe Age</div>
         <div id="hud-age" class="hud-value data-font">0 Years</div>
     </div>
 
-    <!-- 3. BOTTOM NAVIGATION -->
-    <div id="bottom-nav">
-        <div class="nav-btn active" id="btn-explore">
-            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><circle cx="12" cy="12" r="3"/></svg>
-            Explore
+    <!-- INSPECTOR PREVIEW BAR (FLOATING OVERLAY ON EXPLORE) -->
+    <div id="inspector-preview" class="glass-panel">
+        <div>
+            <div id="obj-name">Celestial Body</div>
+            <div id="obj-sub" class="data-font">Object Selected</div>
         </div>
-        <div class="nav-btn" id="btn-events">
-            <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
-            Events
-        </div>
-        <div class="nav-btn" id="btn-ai">
-            <svg viewBox="0 0 24 24"><path d="M12 2L2 12l10 10 10-10L12 2zm0 14.5l-4.5-4.5L12 7.5l4.5 4.5-4.5 4.5z"/></svg>
-            Origin
-        </div>
-        <div class="nav-btn" id="btn-timeline">
-            <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
-            Timeline
-        </div>
-        <div class="nav-btn" id="btn-catalog">
-            <svg viewBox="0 0 24 24"><path d="M4 11h5V5H4v6zm0 7h5v-6H4v6zm6 0h5v-6h-5v6zm6 0h5v-6h-5v6zm-6-7h5V5h-5v6zm6-6v6h5V5h-5z"/></svg>
-            Catalog
-        </div>
+        <button id="btn-expand-inspect" style="background: var(--accent); border: none; color: #fff; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer;">Analyze</button>
     </div>
 
-    <!-- 4. TAB VIEWS -->
-    <div id="view-events" class="view-panel"><div id="events-container"></div></div>
-    
-    <!-- ORIGIN TAB VIEW -->
+    <!-- VIEW: EVENTS TAB -->
+    <div id="view-events" class="view-panel">
+        <div id="events-container" style="max-width: 500px; margin: 0 auto;"></div>
+    </div>
+
+    <!-- VIEW: ORIGIN TAB (AI OBSERVER) -->
     <div id="view-ai" class="view-panel">
-        <div class="observer-module state-observe" id="observer-ui">
-            <div class="eye-container">
+        <div class="observer-module">
+            <div id="observer-ui" class="eye-container state-observe">
                 <div class="eye-ring-outer"></div>
                 <div class="eye-ring-inner"></div>
                 <div class="eye-core"></div>
             </div>
-            <div id="status-label" class="status-text data-font">OBSERVER ONLINE</div>
-            <div id="earth-clock" class="earth-sync data-font">UPLINK TIMESTAMP: --:--:-- UTC</div>
+            <div class="status-header-row">
+                <div class="ping-dot"></div>
+                <span id="status-label" class="status-text data-font">OBSERVER ONLINE</span>
+            </div>
+            <div id="earth-clock" class="earth-sync data-font">UPLINK TIMESTAMP: INITIALIZING...</div>
         </div>
 
         <div id="logs-container"></div>
-
-        <button class="btn-history data-font" id="btn-load-more">
-            Query Past Telemetry
-        </button>
+        <button id="btn-load-more" class="btn-history data-font">QUERY PAST TELEMETRY</button>
     </div>
 
-    <div id="view-timeline" class="view-panel"><div class="timeline-wrapper" id="timeline-container"></div></div>
-    
+    <!-- VIEW: TIMELINE TAB -->
+    <div id="view-timeline" class="view-panel">
+        <div id="timeline-container" class="timeline-wrapper"></div>
+    </div>
+
+    <!-- VIEW: CATALOG TAB -->
     <div id="view-catalog" class="view-panel">
         <div class="catalog-viewport">
+            <!-- MACRO COSMOLOGICAL STATE -->
             <div class="macro-container">
+                <div class="hud-label" style="margin-bottom: 10px;">Macro Cosmological State</div>
                 <div class="macro-bar-visual">
                     <div id="bar-de" class="bar-de"></div>
                     <div id="bar-dm" class="bar-dm"></div>
                     <div id="bar-baryon" class="bar-baryonic"></div>
                 </div>
                 <div class="macro-grid">
-                    <div class="macro-item"><div class="dot" style="background: #8A2BE2;"></div><div><div class="macro-label">Dark Energy</div><div id="cat-de-val" class="macro-val data-font">&lt; 0.1%</div></div></div>
-                    <div class="macro-item"><div class="dot" style="background: #FF8C00;"></div><div><div class="macro-label">Dark Matter</div><div id="cat-dm-val" class="macro-val data-font">0% | 0 M_sun</div></div></div>
-                    <div class="macro-item"><div class="dot" style="background: #FFD700;"></div><div><div class="macro-label">Baryonic Reservoir</div><div id="cat-baryon-val" class="macro-val data-font">0% | 0 M_sun</div></div></div>
-                    <div class="macro-item"><div class="dot" style="background: #FF1493;"></div><div><div class="macro-label">Antimatter Asymmetry</div><div class="macro-val data-font">&lt; 10⁻⁹</div></div></div>
+                    <div class="macro-item">
+                        <div class="dot" style="background: #8A2BE2;"></div>
+                        <div>
+                            <div class="macro-label">Dark Energy</div>
+                            <div id="cat-de-val" class="macro-val data-font">68.5%</div>
+                        </div>
+                    </div>
+                    <div class="macro-item">
+                        <div class="dot" style="background: #FF8C00;"></div>
+                        <div>
+                            <div class="macro-label">Dark Matter</div>
+                            <div id="cat-dm-val" class="macro-val data-font">26.4%</div>
+                        </div>
+                    </div>
+                    <div class="macro-item">
+                        <div class="dot" style="background: #FFD700;"></div>
+                        <div>
+                            <div class="macro-label">Baryonic Matter</div>
+                            <div id="cat-baryon-val" class="macro-val data-font">5.1%</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
+            <!-- INVENTORY GRID -->
+            <div class="hud-label" style="margin: 20px 0 10px 0;">Celestial Inventory</div>
             <div class="inventory-grid">
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #9932CC;"></div><div class="inv-title">Nebulae</div></div><div id="cat-nebulae-val" class="inv-val data-font">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #FFF066;"></div><div class="inv-title">Stars & Protostars</div></div><div id="cat-stars-val" class="inv-val data-font">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #4A4D66;"></div><div class="inv-title">Black Holes</div></div><div id="cat-bh-val" class="inv-val data-font">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #00E5FF;"></div><div class="inv-title">Neutron Cores</div></div><div id="cat-degenerate-val" class="inv-val data-font">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #CD7F32;"></div><div class="inv-title">Planetary Bodies</div></div><div id="cat-planets-val" class="inv-val data-font">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #8C8F9F;"></div><div class="inv-title">Moons & Satellites</div></div><div id="cat-moons-val" class="inv-val data-font">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #B0B0D0;"></div><div class="inv-title">Asteroids & Comets</div></div><div id="cat-asteroids-val" class="inv-val data-font">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #FFFFFF; box-shadow: 0 0 6px #fff;"></div><div class="inv-title">Active Quasars</div></div><div id="cat-quasars-val" class="inv-val data-font">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #FF69B4;"></div><div class="inv-title">Exotic Relics</div></div><div id="cat-exotic-val" class="inv-val data-font">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #00E5FF;"></div><div class="inv-title">Inhabited Worlds</div></div><div id="cat-inhabited-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card">
+                    <div class="inv-header">
+                        <div class="dot" style="background: #00E5FF;"></div>
+                        <div class="inv-title">Nebulae & Clouds</div>
+                    </div>
+                    <div id="cat-nebulae-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header">
+                        <div class="dot" style="background: #FFD700;"></div>
+                        <div class="inv-title">Active Stars</div>
+                    </div>
+                    <div id="cat-stars-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header">
+                        <div class="dot" style="background: #B026FF;"></div>
+                        <div class="inv-title">Black Holes</div>
+                    </div>
+                    <div id="cat-bh-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header">
+                        <div class="dot" style="background: #FF3366;"></div>
+                        <div class="inv-title">Neutron Stars</div>
+                    </div>
+                    <div id="cat-degenerate-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header">
+                        <div class="dot" style="background: #4CAF50;"></div>
+                        <div class="inv-title">Planets</div>
+                    </div>
+                    <div id="cat-planets-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header">
+                        <div class="dot" style="background: #A0AEC0;"></div>
+                        <div class="inv-title">Moons</div>
+                    </div>
+                    <div id="cat-moons-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header">
+                        <div class="dot" style="background: #888888;"></div>
+                        <div class="inv-title">Asteroids & Comets</div>
+                    </div>
+                    <div id="cat-asteroids-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header">
+                        <div class="dot" style="background: #FF8C00;"></div>
+                        <div class="inv-title">Quasars</div>
+                    </div>
+                    <div id="cat-quasars-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header">
+                        <div class="dot" style="background: #E91E63;"></div>
+                        <div class="inv-title">Exotic Objects</div>
+                    </div>
+                    <div id="cat-exotic-val" class="inv-val data-font">0</div>
+                </div>
+                <div class="inv-card">
+                    <div class="inv-header">
+                        <div class="dot" style="background: #00E5FF; box-shadow: 0 0 6px #00E5FF;"></div>
+                        <div class="inv-title">Inhabited Worlds</div>
+                    </div>
+                    <div id="cat-inhabited-val" class="inv-val data-font">0</div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- 5. OBJECT INSPECTOR OVERLAYS -->
-    <div id="inspector-preview" class="glass-panel">
-        <div>
-            <div id="obj-name">Target Acquired</div>
-            <div id="obj-sub">Scanning class...</div>
-        </div>
-        <button id="btn-expand-inspect" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:8px; padding:8px 16px; font-weight:bold;">Analyze</button>
-    </div>
-
+    <!-- MODAL: OBJECT DETAIL VIEW -->
     <div id="modal-object-detail" class="view-panel">
         <div class="modal-header">
-            <button class="btn-back" id="btn-close-inspect">←</button>
-            <div>
-                <div id="inspect-title" style="font-size: 20px; font-weight: bold;">Object</div>
-                <div style="font-size: 12px; color: #8c8f9f; display: none;">Deep Space Telemetry</div>
-            </div>
+            <button id="btn-close-inspect" class="btn-back" aria-label="Go Back">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <span id="inspect-title">Celestial Body</span>
         </div>
-        <div class="glass-panel" style="padding: 24px;">
-            <div class="hud-label" style="margin-bottom: 16px;">Physical Specifications</div>
-            <div id="spec-name" style="width: 100%;"></div>
-        </div>
+        <div id="spec-name" class="glass-panel" style="padding: 20px;"></div>
     </div>
+
+    <!-- FLOATING MATERIAL 3 PILL NAVBAR -->
+    <nav id="bottom-nav">
+        <div id="btn-explore" class="nav-btn active">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+            </div>
+            <span>Explore</span>
+        </div>
+        <div id="btn-events" class="nav-btn">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+            </div>
+            <span>Events</span>
+        </div>
+        <div id="btn-ai" class="nav-btn">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            </div>
+            <span>Origin</span>
+        </div>
+        <div id="btn-timeline" class="nav-btn">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+            </div>
+            <span>Timeline</span>
+        </div>
+        <div id="btn-catalog" class="nav-btn">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
+            </div>
+            <span>Catalog</span>
+        </div>
+    </nav>
 
     <script type="module" src="ui/components.js"></script>
 </body>
