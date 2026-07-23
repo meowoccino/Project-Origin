@@ -2,9 +2,9 @@ import os
 import time
 import random
 import requests
+import urllib.parse
 
 # --- ENVIRONMENT CONFIGURATION ---
-CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY", "csk-yv9t94hyyxph655v62x8kjv9tx68n6eddc2ecn5p8dkv2mme")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
 
@@ -72,45 +72,29 @@ def analyze_matrix_data(objects):
     
     return matrix_str, life_count, max_kardashev, avg_temp
 
-def call_cerebras_api(prompt_data):
-    if not CEREBRAS_API_KEY:
-        print("⚠️ [BRAIN]: CEREBRAS_API_KEY missing from environment.")
-        return None
-
-    url = "https://api.cerebras.ai/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {CEREBRAS_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "gemma-4-31b",
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt_data}
-        ],
-        "temperature": 0.7,
-        "max_tokens": 120
-    }
+def call_free_ai(prompt_data):
+    full_prompt = f"{SYSTEM_PROMPT}\n\n{prompt_data}"
+    encoded_prompt = urllib.parse.quote(full_prompt)
+    url = f"https://text.pollinations.ai/{encoded_prompt}?model=openai"
 
     try:
-        res = requests.post(url, json=payload, headers=headers, timeout=15)
-        if res.status_code == 200:
-            data = res.json()
-            content = data["choices"][0]["message"]["content"].strip()
-            if content:
-                print("✨ [AI SUCCESS via Cerebras Gemma-4-31B]")
-                return content
+        res = requests.get(url, timeout=12)
+        if res.status_code == 200 and res.text:
+            text = res.text.strip()
+            if text:
+                print("✨ [AI SUCCESS via Keyless Open Engine]")
+                return text
         else:
-            print(f"❌ [CEREBRAS API ERROR] Status: {res.status_code} | Msg: {res.text}")
+            print(f"❌ [AI ERROR] Status: {res.status_code}")
     except Exception as e:
-        print(f"❌ [CEREBRAS NETWORK ERROR] {e}")
+        print(f"❌ [NETWORK ERROR] {e}")
 
     return None
 
 def run_full_universe_pass():
     state = fetch_universe_state()
     if not state:
-        print("🧠 [BRAIN] Waiting for universe state...")
+        print("brain [BRAIN] Waiting for universe state...")
         return
 
     stats = fetch_catalog_stats()
@@ -129,7 +113,7 @@ def run_full_universe_pass():
     )
 
     print(f"\n🧠 [DENSE MATRIX PASS AT AGE {age:.6f} Gyr | {len(all_objects)} Objects]")
-    thought = call_cerebras_api(prompt)
+    thought = call_free_ai(prompt)
 
     if thought:
         print(f"👁️ [ORIGIN THOUGHT]: {thought}")
@@ -151,7 +135,7 @@ def run_full_universe_pass():
             print(f"❌ Failed to save log: {e}")
 
 if __name__ == "__main__":
-    print("🚀 [PROJECT ORIGIN] Cerebras Observer Active...")
+    print("🚀 [PROJECT ORIGIN] Universal Observer Active...")
     while True:
         run_full_universe_pass()
         time.sleep(60)
