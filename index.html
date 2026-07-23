@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Project Origin</title>
 
-  <!-- Google Fonts -->
+  <!-- Google Sans / System Font Fallbacks -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="./ui/styles.css">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -23,149 +23,91 @@
   <!-- APP ROOT -->
   <div id="app">
 
-    <!-- FLOATING UNIVERSE AGE PILL -->
-    <div id="hud-age-container">
+    <!-- REDESIGNED SLEEK UNIVERSE AGE PILL -->
+    <div class="universe-age-pill">
       <div class="age-dot"></div>
-      <span class="hud-label">UNIVERSE AGE</span>
-      <span class="hud-val" id="hud-age">0.000 Billion Years</span>
+      <div class="age-text" id="universe-age-val">12.402 Billion Years</div>
     </div>
 
-    <!-- 2D COSMIC CANVAS -->
-    <div id="canvas-container"></div>
-
-    <!-- SELECTION OVERLAY CARD -->
-    <div id="inspector-preview">
-      <div class="card-info">
-        <div class="card-title" id="obj-name">Astraea Prime</div>
-        <div class="card-subtitle" id="obj-sub">Inhabited World</div>
+    <!-- TAB 1: EXPLORE -->
+    <div id="tab-explore" class="tab-content active">
+      <canvas id="universe-canvas"></canvas>
+      
+      <!-- SELECTION OVERLAY CARD -->
+      <div id="selection-card">
+        <div class="card-info">
+          <div class="card-title" id="sel-card-title">Astraea Prime</div>
+          <div class="card-subtitle" id="sel-card-sub">Inhabited World</div>
+        </div>
+        <button class="analyze-btn">Analyze</button>
       </div>
-      <button class="analyze-btn" id="btn-expand-inspect">Analyze</button>
     </div>
 
     <!-- TAB 2: EVENTS -->
-    <div id="view-events" class="tab-content">
-      <div id="events-container" class="events-feed"></div>
+    <div id="tab-events" class="tab-content">
+      <div class="tab-placeholder">Events Feed Loading...</div>
     </div>
 
-    <!-- TAB 3: ORIGIN (AI LOGS) -->
-    <div id="view-ai" class="tab-content">
-      <div id="observer-ui" class="state-observe">
-        <div class="status-box">
-          <span id="ping-dot"></span>
-          <span id="status-label">OBSERVER ONLINE</span>
-          <span id="ping-ms">(0 ms)</span>
-        </div>
-        <div id="earth-clock"></div>
-      </div>
-      <div id="logs-container"></div>
-      <button id="btn-load-more" class="load-btn">QUERY PAST TELEMETRY</button>
+    <!-- TAB 3: ORIGIN -->
+    <div id="tab-origin" class="tab-content">
+      <div class="tab-placeholder">Origin Logs Loading...</div>
     </div>
 
     <!-- TAB 4: TIMELINE -->
-    <div id="view-timeline" class="tab-content">
-      <div id="timeline-container"></div>
+    <div id="tab-timeline" class="tab-content">
+      <div class="tab-placeholder">Timeline Archives Loading...</div>
     </div>
 
-    <!-- TAB 5: CATALOG -->
-    <div id="view-catalog" class="tab-content">
+    <!-- TAB 5: CATALOG (TEXT HEADERS REMOVED) -->
+    <div id="tab-catalog" class="tab-content">
       <div class="catalog-container">
         
         <!-- MACRO COSMOLOGICAL STATE BAR -->
         <div class="macro-bar-card">
           <div class="macro-progress-track">
-            <div id="bar-de" style="width:68.5%; background:#8B5CF6;"></div>
-            <div id="bar-dm" style="width:26.4%; background:#F97316;"></div>
-            <div id="bar-baryon" style="width:5.1%; background:#FACC15;"></div>
+            <div class="macro-segment" style="width: 68.5%; background: #8B5CF6;"></div>
+            <div class="macro-segment" style="width: 26.4%; background: #F97316;"></div>
+            <div class="macro-segment" style="width: 5.1%; background: #FACC15;"></div>
           </div>
           <div class="macro-legend">
-            <span>Dark Energy: <strong id="cat-de-val">68.5%</strong></span>
-            <span>Dark Matter: <strong id="cat-dm-val">26.4%</strong></span>
-            <span>Baryonic: <strong id="cat-baryon-val">5.1%</strong></span>
+            <div class="legend-item"><div class="legend-dot" style="background:#8B5CF6;"></div>Dark Energy 68.5%</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#F97316;"></div>Dark Matter 26.4%</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#FACC15;"></div>Baryonic 5.1%</div>
           </div>
         </div>
 
         <!-- 10-CATEGORY CELESTIAL INVENTORY GRID -->
-        <div class="catalog-grid">
-          <div class="catalog-card">
-            <div class="card-cat-name" style="color:#00E5FF">Nebulae & Clouds</div>
-            <div class="card-cat-count" id="cat-nebulae-val">0</div>
-          </div>
-          <div class="catalog-card">
-            <div class="card-cat-name" style="color:#FFD700">Active Stars</div>
-            <div class="card-cat-count" id="cat-stars-val">0</div>
-          </div>
-          <div class="catalog-card">
-            <div class="card-cat-name" style="color:#8B5CF6">Black Holes</div>
-            <div class="card-cat-count" id="cat-bh-val">0</div>
-          </div>
-          <div class="catalog-card">
-            <div class="card-cat-name" style="color:#F000FF">Neutron Stars</div>
-            <div class="card-cat-count" id="cat-degenerate-val">0</div>
-          </div>
-          <div class="catalog-card">
-            <div class="card-cat-name" style="color:#10B981">Planets</div>
-            <div class="card-cat-count" id="cat-planets-val">0</div>
-          </div>
-          <div class="catalog-card">
-            <div class="card-cat-name" style="color:#8C8F9F">Moons</div>
-            <div class="card-cat-count" id="cat-moons-val">0</div>
-          </div>
-          <div class="catalog-card">
-            <div class="card-cat-name" style="color:#B0B0D0">Asteroids & Comets</div>
-            <div class="card-cat-count" id="cat-asteroids-val">0</div>
-          </div>
-          <div class="catalog-card">
-            <div class="card-cat-name" style="color:#FF5722">Quasars</div>
-            <div class="card-cat-count" id="cat-quasars-val">0</div>
-          </div>
-          <div class="catalog-card">
-            <div class="card-cat-name" style="color:#FF007A">Exotic Objects</div>
-            <div class="card-cat-count" id="cat-exotic-val">0</div>
-          </div>
-          <div class="catalog-card">
-            <div class="card-cat-name" style="color:#00FFB2">Inhabited Worlds</div>
-            <div class="card-cat-count" id="cat-inhabited-val">0</div>
-          </div>
-        </div>
+        <div class="catalog-grid" id="catalog-grid-items"></div>
 
-      </div>
-    </div>
-
-    <!-- MODAL OBJECT DETAIL -->
-    <div id="modal-object-detail" class="tab-content">
-      <div style="padding: 20px;">
-        <h2 id="inspect-title" style="margin-bottom: 16px;">Detailed Telemetry</h2>
-        <div id="spec-name"></div>
-        <button id="btn-close-inspect" class="analyze-btn" style="margin-top: 20px; width: 100%;">CLOSE INSPECTION</button>
       </div>
     </div>
 
     <!-- BOTTOM NAVIGATION BAR -->
     <nav class="nav-bar">
-      <button id="btn-explore" class="nav-item active">
+      <button class="nav-item active" onclick="switchTab('explore')">
         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
-        <span>Explore</span>
+        Explore
       </button>
-      <button id="btn-events" class="nav-item">
+      <button class="nav-item" onclick="switchTab('events')">
         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10z"/></svg>
-        <span>Events</span>
+        Events
       </button>
-      <button id="btn-ai" class="nav-item">
+      <button class="nav-item" onclick="switchTab('origin')">
         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-7.5-3.75l-2.5 1.25L12 16l10-5l-2.5-1.25L12 13.5z"/></svg>
-        <span>Origin</span>
+        Origin
       </button>
-      <button id="btn-timeline" class="nav-item">
+      <button class="nav-item" onclick="switchTab('timeline')">
         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
-        <span>Timeline</span>
+        Timeline
       </button>
-      <button id="btn-catalog" class="nav-item">
+      <button class="nav-item" onclick="switchTab('catalog')">
         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
-        <span>Catalog</span>
+        Catalog
       </button>
     </nav>
 
   </div>
 
-  <script type="module" src="./ui/components.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
