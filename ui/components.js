@@ -4,7 +4,6 @@ import * as MainEngine from '../engine/main.js';
 function initApp() {
     initWebGPU().catch(err => console.error("❌ [ENGINE INIT FAILED]:", err));
 
-    // Multi-event splash dismiss listener (Works on all mobile touch browsers)
     const splash = document.getElementById('splash-screen');
     if (splash) {
         const hideSplash = (e) => {
@@ -50,9 +49,12 @@ function initApp() {
             }
         }, { passive: true });
 
+        // FIXED: Only allow object selection when on Explore tab
         canvasContainer.addEventListener('touchend', (e) => {
             if (e.changedTouches.length === 1 && (Date.now() - touchStart < 250)) {
-                if (window.selectParticleAt) window.selectParticleAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+                if (window.selectParticleAt && MainEngine.isExploreActive) {
+                    window.selectParticleAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+                }
             }
             if (e.touches.length < 2) initialPinchDist = null;
             if (e.touches.length === 0) isDragging = false;
@@ -63,6 +65,7 @@ function initApp() {
     const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
     const hudContainer = document.getElementById('hud-age-container');
 
+    // FIXED: Hide floating object inspector preview bar when switching tabs
     function switchTab(btnId, viewId) {
         allBtns.forEach(b => b?.classList.remove('active'));
         allViews.forEach(v => v?.classList.remove('active'));
@@ -72,8 +75,9 @@ function initApp() {
         if (hudContainer) hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
         MainEngine.isExploreActive = (btnId === 'btn-explore');
 
-        if (btnId !== 'btn-explore') {
-            document.getElementById('inspector-preview')?.classList.remove('active');
+        const inspector = document.getElementById('inspector-preview');
+        if (inspector && btnId !== 'btn-explore') {
+            inspector.classList.remove('active');
         }
     }
 
