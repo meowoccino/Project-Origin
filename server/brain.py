@@ -4,7 +4,7 @@ import random
 import requests
 
 # --- ENVIRONMENT CONFIGURATION ---
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY", "Csk-8j23hwwjff3ykh5n4v5nm5v42dknh9ywjf2j93ett2r5mww5")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
 
@@ -72,35 +72,38 @@ def analyze_matrix_data(objects):
     
     return matrix_str, life_count, max_kardashev, avg_temp
 
-def call_gemini_api(prompt_data):
-    if not GEMINI_API_KEY:
-        print("⚠️ [BRAIN]: GEMINI_API_KEY missing from environment.")
+def call_cerebras_api(prompt_data):
+    if not CEREBRAS_API_KEY:
+        print("⚠️ [BRAIN]: CEREBRAS_API_KEY missing from environment.")
         return None
 
-    # UPDATED: gemini-3.5-flash endpoint
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={GEMINI_API_KEY}"
+    url = "https://api.cerebras.ai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {CEREBRAS_API_KEY}",
+        "Content-Type": "application/json"
+    }
     payload = {
-        "contents": [{
-            "parts": [{"text": f"{SYSTEM_PROMPT}\n\n{prompt_data}"}]
-        }],
-        "generationConfig": {
-            "temperature": 0.8,
-            "maxOutputTokens": 100
-        }
+        "model": "llama-3.3-70b",
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt_data}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 120
     }
 
     try:
-        res = requests.post(url, json=payload, timeout=8)
+        res = requests.post(url, json=payload, headers=headers, timeout=15)
         if res.status_code == 200:
             data = res.json()
-            content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            content = data["choices"][0]["message"]["content"].strip()
             if content:
-                print("✨ [AI SUCCESS via Gemini 3.5 Flash]")
+                print("✨ [AI SUCCESS via Cerebras Llama-3.3-70B]")
                 return content
         else:
-            print(f"❌ [GEMINI API ERROR] Status: {res.status_code} | Msg: {res.text}")
+            print(f"❌ [CEREBRAS API ERROR] Status: {res.status_code} | Msg: {res.text}")
     except Exception as e:
-        print(f"❌ [GEMINI NETWORK ERROR] {e}")
+        print(f"❌ [CEREBRAS NETWORK ERROR] {e}")
 
     return None
 
@@ -126,7 +129,7 @@ def run_full_universe_pass():
     )
 
     print(f"\n🧠 [DENSE MATRIX PASS AT AGE {age:.6f} Gyr | {len(all_objects)} Objects]")
-    thought = call_gemini_api(prompt)
+    thought = call_cerebras_api(prompt)
 
     if thought:
         print(f"👁️ [ORIGIN THOUGHT]: {thought}")
@@ -148,7 +151,7 @@ def run_full_universe_pass():
             print(f"❌ Failed to save log: {e}")
 
 if __name__ == "__main__":
-    print("🚀 [PROJECT ORIGIN] Gemini Observer Active...")
+    print("🚀 [PROJECT ORIGIN] Cerebras Observer Active...")
     while True:
         run_full_universe_pass()
         time.sleep(60)
