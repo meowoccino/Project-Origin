@@ -4,9 +4,11 @@ import random
 import requests
 from supabase import create_client, Client
 
+# --- CONFIGURATION ---
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
-SAMBANOVA_API_KEY = os.getenv("SAMBANOVA_API_KEY", "YOUR_SAMBANOVA_KEY_HERE")
+# Hardcoded your provided key as default fallback
+SAMBANOVA_API_KEY = os.getenv("SAMBANOVA_API_KEY", "6695a135-b434-4b17-9de1-d0319e670d9f")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -101,7 +103,7 @@ def generate_unique_physics(category_key: str):
     return category_key, label, specs
 
 def generate_ai_object_name(category: str, physics_data: str = ""):
-    if not SAMBANOVA_API_KEY or SAMBANOVA_API_KEY == "YOUR_SAMBANOVA_KEY_HERE":
+    if not SAMBANOVA_API_KEY:
         print("⚠️ [RUNNER]: API Key missing.")
         return None
 
@@ -113,7 +115,7 @@ def generate_ai_object_name(category: str, physics_data: str = ""):
     url = "https://api.sambanova.ai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {SAMBANOVA_API_KEY}", "Content-Type": "application/json"}
     payload = {
-        "model": "Meta-Llama-3.1-8B-Instruct",
+        "model": "Meta-Llama-3.3-70B-Instruct",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.85,
         "max_tokens": 20
@@ -179,7 +181,7 @@ def run_simulation_step():
         print(f"❌ [SIMULATION ERROR]: {e}")
 
 if __name__ == "__main__":
-    print("🚀 [ORIGIN] Strict Engine Active...")
+    print("🚀 [ORIGIN] Strict Engine Active (Llama 3.3 70B)...")
     while True:
         run_simulation_step()
-        time.sleep(30)
+        time.sleep(20) # 20s = 4,320 requests/day, well within SambaNova limits.
