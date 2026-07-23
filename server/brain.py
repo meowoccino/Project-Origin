@@ -74,10 +74,11 @@ def analyze_matrix_data(objects):
 
 def call_openrouter(prompt_data):
     if not OPENROUTER_API_KEY:
+        print("⚠️ [BRAIN]: OPENROUTER_API_KEY missing.")
         return "Continuous thermodynamic observation in progress across all physical bodies."
 
     payload = {
-        "model": "meta-llama/llama-3.3-70b-instruct:free",
+        "model": "meta-llama/llama-3.2-3b-instruct:free",
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt_data}
