@@ -34,7 +34,7 @@ function initWebHubs() {
 }
 
 function createWebNode(category, id) {
-    const style = CATEGORY_STYLES[category];
+    const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.stars;
     const hubA = webHubs[Math.floor(Math.random() * webHubs.length)];
     const hubB = webHubs[Math.floor(Math.random() * webHubs.length)];
     
@@ -54,11 +54,11 @@ function createWebNode(category, id) {
     };
 }
 
-export function updateCanvasFromCatalog(stats, ageMyr) {
+export function updateCanvasFromCatalog(stats, ageGyr) {
     if (!ctx) return;
     if (webHubs.length === 0) initWebHubs();
 
-    const inhabitedCount = (ageMyr > 500.0) ? Math.floor((stats.planets || 0) * 0.012) : 0;
+    const inhabitedCount = (ageGyr > 0.5) ? Math.floor((stats.planets || 0) * 0.012) : 0;
     const counts = {
         nebulae: stats.nebulae || 0, stars: stats.stars || 0,
         black_holes: stats.black_holes || 0, neutron_stars: stats.neutron_stars || 0,
@@ -125,16 +125,13 @@ export async function initWebGPU() {
         animTime += 0.015;
         const dpr = window.devicePixelRatio || 1;
 
-        // Dark Cosmic Background
         ctx.fillStyle = '#0A0B14';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Slow Cosmic Web Swirl
         const driftAngle = animTime * 0.02;
         const cosD = Math.cos(driftAngle);
         const sinD = Math.sin(driftAngle);
 
-        // Enforce Camera Panning Bounds
         const maxPanOffset = maxWebRadius * cameraState.zoom * 1.2;
         cameraState.panX = Math.max((canvas.width / 2) - maxPanOffset, Math.min((canvas.width / 2) + maxPanOffset, cameraState.panX));
         cameraState.panY = Math.max((canvas.height / 2) - maxPanOffset, Math.min((canvas.height / 2) + maxPanOffset, cameraState.panY));
@@ -142,22 +139,18 @@ export async function initWebGPU() {
         for (let i = 0; i < cosmicNodes.length; i++) {
             const p = cosmicNodes[i];
             
-            // Rotate around center
             const rx = p.baseX * cosD - p.baseY * sinD;
             const ry = p.baseX * sinD + p.baseY * cosD;
 
             p.screenX = cameraState.panX + (rx * cameraState.zoom * dpr);
             p.screenY = cameraState.panY + (ry * cameraState.zoom * dpr);
 
-            // Screen Culling
             if (p.screenX < -100 || p.screenX > canvas.width + 100 || p.screenY < -100 || p.screenY > canvas.height + 100) continue;
 
             const pulse = Math.sin(animTime * p.pulseSpeed * 100 + p.pulsePhase) * 0.15 + 1.0;
             const radius = Math.max(1.0, p.size * dpr * pulse * Math.sqrt(cameraState.zoom));
 
-            // HIGH QUALITY SHADER RENDERING
             if (p.category === 'black_holes') {
-                // Accretion Disk Glow
                 const grad = ctx.createRadialGradient(p.screenX, p.screenY, radius * 0.5, p.screenX, p.screenY, radius * 3.0);
                 grad.addColorStop(0, 'rgba(255, 140, 0, 0.9)');
                 grad.addColorStop(0.5, 'rgba(138, 43, 226, 0.4)');
@@ -165,11 +158,9 @@ export async function initWebGPU() {
                 ctx.fillStyle = grad;
                 ctx.beginPath(); ctx.arc(p.screenX, p.screenY, radius * 3.0, 0, Math.PI * 2); ctx.fill();
 
-                // Event Horizon Shadow
                 ctx.fillStyle = '#000000';
                 ctx.beginPath(); ctx.arc(p.screenX, p.screenY, radius * 1.1, 0, Math.PI * 2); ctx.fill();
             } else {
-                // Radial Atmosphere Glow
                 if (p.style.glowColor) {
                     const glowGrad = ctx.createRadialGradient(p.screenX, p.screenY, 0, p.screenX, p.screenY, radius * 3.2);
                     glowGrad.addColorStop(0, p.style.glowColor);
@@ -178,12 +169,10 @@ export async function initWebGPU() {
                     ctx.beginPath(); ctx.arc(p.screenX, p.screenY, radius * 3.2, 0, Math.PI * 2); ctx.fill();
                 }
 
-                // Core Point
                 ctx.fillStyle = p.style.color;
                 ctx.beginPath(); ctx.arc(p.screenX, p.screenY, radius, 0, Math.PI * 2); ctx.fill();
             }
 
-            // Selection Circle
             if (selectedNode === p) {
                 ctx.strokeStyle = '#FF8C00'; 
                 ctx.lineWidth = 2.0 * dpr;
@@ -213,7 +202,6 @@ export async function initWebGPU() {
             document.getElementById('obj-sub').innerText = CATEGORY_STYLES[closest.category].name;
             preview.classList.add('active');
 
-            // Accurate Screen Centering
             const driftAngle = animTime * 0.02;
             const cosD = Math.cos(driftAngle);
             const sinD = Math.sin(driftAngle);
