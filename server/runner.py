@@ -1,13 +1,12 @@
-import os
+python3 -c '
+code = """import os
 import time
 import math
 import random
 import requests
 
-# --- SUPABASE CONFIGURATION ---
 SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co"
-# Reads the key securely from the system environment on Oracle
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -16,83 +15,90 @@ HEADERS = {
     "Prefer": "return=minimal"
 }
 
-# --- ENGINE TIMING CONSTANTS ---
-TICK_INTERVAL_SEC = 60         # 1 minute real time per tick
-PRIMORDIAL_TICKS = 60          # Hour 1 (Ticks 1-60): Dark Ages (0.0 to 0.1 Gyr)
-MAIN_DT_GYR = 0.000317         # Ticks 61+: ~317,000 yrs/min (~13.7 Gyr over 30 days)
+MAIN_DT_GYR = 0.001 
+CRUISE_TICK_SEC = 60
+SPRINT_TICK_SEC = 2
+SPRINT_THRESHOLD_GYR = 0.1
 
 def calculate_cosmology(age_gyr):
     omega_m = 0.315 / (1.0 + (age_gyr * 0.25)**3)
     omega_lambda = 1.0 - omega_m
-    de_pct = round(max(0.0, min(99.0, omega_lambda * 100.0)), 1)
-    dm_pct = round(max(0.0, min(99.0, omega_m * 84.0)), 1)
-    baryon_pct = round(max(0.1, 100.0 - de_pct - dm_pct), 1)
-    return de_pct, dm_pct, baryon_pct
+    return round(omega_lambda * 100.0, 1), round(omega_m * 84.0, 1), round(100.0 - (omega_lambda * 100.0) - (omega_m * 84.0), 1)
 
-def calculate_catalog_counts(age_gyr):
-    if age_gyr < 0.001:
-        return 0, 0, 0, 0, 0, 0, 0, 0, 0
-    elif age_gyr < 0.1:
-        pop_iii = int(age_gyr * 500)
-        return 0, pop_iii, 0, 0, 0, 0, 0, 0, 0
-    else:
-        growth_factor = math.pow(age_gyr / 13.8, 1.5)
-        nebulae = int(120 * growth_factor)
-        stars = int(14200 * growth_factor)
-        black_holes = int(480 * growth_factor)
-        neutron_stars = int(890 * growth_factor)
-        planets = int(32000 * growth_factor)
-        moons = int(85000 * growth_factor)
-        asteroids = int(450000 * growth_factor)
-        quasars = int(max(0, (5.0 - age_gyr) * 80)) if age_gyr < 6.0 else 12
-        exotic = int(15 * growth_factor)
-        return nebulae, stars, black_holes, neutron_stars, planets, moons, asteroids, quasars, exotic
+def calculate_sagan_kardashev(watts):
+    if watts <= 0: return 0.0
+    return round(max(0.0, (math.log10(watts) - 6.0) / 10.0), 3)
 
-def generate_directive_log(tick, age_gyr, mode):
-    sectors = ["Sector 01", "Sector 04", "Kepler Field", "Perseus Arm", "Core Singularity"]
-    targets = ["Onyx Filament", "Chronos Cluster", "Vespera Vortex", "Zephyrus Node", "Primordial Cloud"]
-    actions = [
-        "Analyzing local thermodynamic entropy gradient.",
-        "Accreting disk metallicity surrounding target system.",
-        "Evaluating gravitational wave perturbations.",
-        "Tracking photon decoupling and cosmic background temperature."
-    ]
+def calculate_biological_progress(planet_age_gyr):
+    if planet_age_gyr < 0.1: return 0.0
+    progress = (planet_age_gyr / 4.0) ** 0.5
+    return round(min(progress, 2.5), 3)
+
+def seed_celestial_object(age_gyr):
+    temp = random.uniform(-200, 400)
+    has_life = False
+    bio_class = None
+    
+    if 0 <= temp <= 50:
+        if random.random() < 0.10:
+            has_life, bio_class = True, "Carbon/Water"
+    elif temp < -100:
+        if random.random() < 0.60:
+            has_life, bio_class = True, "Carbon/Methane (Titan-analog)"
+    elif temp > 100:
+        if random.random() < 0.30:
+            has_life, bio_class = True, "Carbon/Sulfur-reducing"
+
+    planet_age = random.uniform(0.1, max(0.1, age_gyr / 2.0)) if age_gyr > 0.2 else 0
+    prog_idx = calculate_biological_progress(planet_age) if has_life else 0.0
+    
+    watts = 0
+    if prog_idx > 0.8:
+        watts = 10 ** random.uniform(10, 26)
+    k_scale = calculate_sagan_kardashev(watts) if watts > 0 else 0.0
+
     return {
-        "mode": mode,
-        "sector": sectors[tick % len(sectors)],
-        "subject": targets[(tick * 3) % len(targets)],
-        "type_tag": "TELEMETRY EVALUATION",
-        "latency_myr": round(random.uniform(0.1, 5.0), 2),
-        "data_analysis": actions[tick % len(actions)],
-        "temporal_simulation": f"Scale factor a(t) integrated at age {age_gyr:.4f} Gyr.",
-        "resolution": "Physical trajectory verified. Standard procedural evolution proceeding."
+        "name": f"Exoplanet {random.randint(1000, 9999)}-{random.choice(\"abcdef\")}",
+        "object_type": "Planet",
+        "surface_temp": round(temp, 1),
+        "has_life": has_life,
+        "biochemistry_class": bio_class,
+        "progress_index": prog_idx,
+        "kardashev_scale": k_scale
     }
 
 def run_simulation():
-    print("🚀 [PROJECT ORIGIN] Physics Engine Initialized...")
+    print("🚀 [PROJECT ORIGIN] Advanced Physics Engine Initialized...")
     current_age_gyr = 0.0
     tick = 0
     
     while True:
         tick += 1
-        if tick <= PRIMORDIAL_TICKS:
-            current_age_gyr += (0.1 / PRIMORDIAL_TICKS)
-        else:
-            current_age_gyr += MAIN_DT_GYR
-            
+        current_age_gyr += MAIN_DT_GYR
+        is_sprint = current_age_gyr < SPRINT_THRESHOLD_GYR
+        
         de_pct, dm_pct, baryon_pct = calculate_cosmology(current_age_gyr)
-        nebulae, stars, bh, ns, planets, moons, asteroids, quasars, exotic = calculate_catalog_counts(current_age_gyr)
         
         try:
-            r1 = requests.post(f"{SUPABASE_URL}/rest/v1/universe_state", headers=HEADERS, json={"age_gyr": current_age_gyr, "de_pct": de_pct, "dm_pct": dm_pct, "baryon_pct": baryon_pct}, timeout=5)
-            r2 = requests.post(f"{SUPABASE_URL}/rest/v1/catalog_stats", headers={**HEADERS, "Prefer": "resolution=merge-duplicates"}, json={"id": 1, "nebulae": nebulae, "stars": stars, "black_holes": bh, "neutron_stars": ns, "planets": planets, "moons": moons, "asteroids_comets": asteroids, "quasars": quasars, "exotic_objects": exotic}, timeout=5)
-            r3 = requests.post(f"{SUPABASE_URL}/rest/v1/origin_logs", headers=HEADERS, json=generate_directive_log(tick, current_age_gyr, "OBSERVE"), timeout=5)
+            u_payload = {"age": current_age_gyr, "de_pct": de_pct, "dm_pct": dm_pct, "baryon_pct": baryon_pct}
+            requests.post(f"{SUPABASE_URL}/rest/v1/universe_state", headers=HEADERS, json=u_payload, timeout=5)
             
-            print(f"[Tick {tick}] Age: {current_age_gyr:.4f} Gyr | Stars: {stars} | Status: {r1.status_code}")
+            if current_age_gyr >= 0.1 and random.random() < 0.20:
+                obj_payload = seed_celestial_object(current_age_gyr)
+                requests.post(f"{SUPABASE_URL}/rest/v1/celestial_objects", headers=HEADERS, json=obj_payload, timeout=5)
+
+            mode = "SPRINT" if is_sprint else "CRUISE"
+            print(f"[{mode} | Tick {tick}] Age: {current_age_gyr:.4f} Gyr")
+            
         except Exception as e:
-            print(f"⚠️ [Tick {tick}] Error: {e}")
+            print(f"⚠️ [Tick {tick}] Network timeout, continuing...")
             
-        time.sleep(TICK_INTERVAL_SEC)
+        time.sleep(SPRINT_TICK_SEC if is_sprint else CRUISE_TICK_SEC)
 
 if __name__ == "__main__":
     run_simulation()
+"""
+with open("/home/ubuntu/Project-Origin/server/runner.py", "w") as f:
+    f.write(code)
+print("✅ runner.py successfully created!")
+'
