@@ -3,6 +3,7 @@ import time
 import random
 import requests
 
+# --- ENVIRONMENT CONFIGURATION ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
@@ -76,7 +77,8 @@ def call_gemini_api(prompt_data):
         print("⚠️ [BRAIN]: GEMINI_API_KEY missing from environment.")
         return None
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # UPDATED: gemini-3.5-flash endpoint
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={GEMINI_API_KEY}"
     payload = {
         "contents": [{
             "parts": [{"text": f"{SYSTEM_PROMPT}\n\n{prompt_data}"}]
@@ -93,10 +95,10 @@ def call_gemini_api(prompt_data):
             data = res.json()
             content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
             if content:
-                print("✨ [AI SUCCESS via Gemini 1.5 Flash]")
+                print("✨ [AI SUCCESS via Gemini 3.5 Flash]")
                 return content
         else:
-            print(f"❌ [GEMINI API ERROR] Status: {res.status_code}")
+            print(f"❌ [GEMINI API ERROR] Status: {res.status_code} | Msg: {res.text}")
     except Exception as e:
         print(f"❌ [GEMINI NETWORK ERROR] {e}")
 
