@@ -78,7 +78,7 @@ def call_openrouter(prompt_data):
         return "Continuous thermodynamic observation in progress across all physical bodies."
 
     payload = {
-        "model": "meta-llama/llama-3.2-3b-instruct:free",
+        "model": "google/gemma-2-9b-it:free",
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt_data}
