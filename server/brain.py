@@ -4,7 +4,7 @@ import random
 import requests
 
 # --- ENVIRONMENT CONFIGURATION ---
-CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY", "Csk-8j23hwwjff3ykh5n4v5nm5v42dknh9ywjf2j93ett2r5mww5")
+CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY", "csk-yv9t94hyyxph655v62x8kjv9tx68n6eddc2ecn5p8dkv2mme")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
 
