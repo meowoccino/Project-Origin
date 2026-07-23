@@ -4,6 +4,7 @@ import random
 import requests
 
 # --- ENVIRONMENT CONFIGURATION ---
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
@@ -19,14 +20,6 @@ You analyze physical state matrices, thermodynamic shifts, entropy levels, and b
 
 Task: Provide a 2-sentence philosophical and thermodynamic synthesis of the universe's current state. 
 Focus on entropy, stellar evolution, and biological emergence (if present). Tone: Cold, scientific, profound, omniscient. Output ONLY the 2-sentence text."""
-
-FREE_AI_MODELS = [
-    "openrouter/free",
-    "google/gemma-2-9b-it:free",
-    "meta-llama/llama-3.1-8b-instruct:free",
-    "qwen/qwen-2.5-72b-instruct:free",
-    "mistralai/mistral-7b-instruct:free"
-]
 
 def fetch_universe_state():
     try:
@@ -80,47 +73,57 @@ def analyze_matrix_data(objects):
     
     return matrix_str, life_count, max_kardashev, avg_temp
 
-def call_openrouter_chain(prompt_data):
-    if not OPENROUTER_API_KEY:
-        print("⚠️ [BRAIN]: OPENROUTER_API_KEY missing.")
-        return None
-
-    # HTTP-Referer and X-Title are strictly required by OpenRouter for free models!
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "HTTP-Referer": "https://project-origin.app",
-        "X-Title": "Project Origin Simulation",
-        "Content-Type": "application/json"
-    }
-
-    for model_id in FREE_AI_MODELS:
-        payload = {
-            "model": model_id,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt_data}
-            ],
-            "temperature": 0.8,
-            "max_tokens": 100
-        }
-        
+def call_ai_providers(prompt_data):
+    # 1. Try Groq API (High Speed, Free Key)
+    if GROQ_API_KEY:
         try:
-            res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=8)
+            res = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                json={
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt_data}],
+                    "temperature": 0.8,
+                    "max_tokens": 100
+                },
+                timeout=8
+            )
             if res.status_code == 200:
-                data = res.json()
-                choices = data.get("choices", [])
-                if choices and len(choices) > 0:
-                    content = choices[0].get("message", {}).get("content")
-                    if content and isinstance(content, str):
-                        content = content.strip()
-                        if content:
-                            print(f"✨ [AI SUCCESS via {model_id}]")
-                            return content
-            print(f"⚠️ [{model_id}] Status {res.status_code}, trying next model...")
+                content = res.json()["choices"][0]["message"]["content"].strip()
+                if content:
+                    print("✨ [AI SUCCESS via Groq API]")
+                    return content
         except Exception as e:
-            print(f"⚠️ [{model_id}] Exception ({e}), trying next model...")
+            print(f"⚠️ [Groq Error]: {e}")
 
-    print("❌ [BRAIN]: All free AI models failed on this pass. Skipping log entry.")
+    # 2. Try OpenRouter API
+    if OPENROUTER_API_KEY:
+        try:
+            res = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "HTTP-Referer": "https://project-origin.app",
+                    "X-Title": "Project Origin",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "openrouter/free",
+                    "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt_data}],
+                    "temperature": 0.8,
+                    "max_tokens": 100
+                },
+                timeout=8
+            )
+            if res.status_code == 200:
+                content = res.json()["choices"][0]["message"]["content"].strip()
+                if content:
+                    print("✨ [AI SUCCESS via OpenRouter]")
+                    return content
+        except Exception as e:
+            print(f"⚠️ [OpenRouter Error]: {e}")
+
+    print("❌ [BRAIN]: All AI calls failed or rate-limited on this pass.")
     return None
 
 def run_full_universe_pass():
@@ -145,7 +148,7 @@ def run_full_universe_pass():
     )
 
     print(f"\n🧠 [DENSE MATRIX PASS AT AGE {age:.6f} Gyr | {len(all_objects)} Objects]")
-    thought = call_openrouter_chain(prompt)
+    thought = call_ai_providers(prompt)
 
     if thought:
         print(f"👁️ [ORIGIN THOUGHT]: {thought}")
@@ -167,7 +170,7 @@ def run_full_universe_pass():
             print(f"❌ Failed to save log: {e}")
 
 if __name__ == "__main__":
-    print("🚀 [PROJECT ORIGIN] Full-Universe Observer Active (1-Minute Cadence)...")
+    print("🚀 [PROJECT ORIGIN] Observer Active (1-Minute Cadence)...")
     while True:
         run_full_universe_pass()
         time.sleep(60)
