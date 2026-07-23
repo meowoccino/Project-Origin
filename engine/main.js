@@ -95,13 +95,20 @@ export function updateCanvasFromCatalog(stats, ageGyr) {
 }
 
 export async function initWebGPU() {
-    const container = document.getElementById('canvas-container');
+    const container = document.getElementById('canvas-container') || document.getElementById('tab-explore');
     if (!container) return;
     
-    container.innerHTML = '';
-    canvas = document.createElement('canvas');
-    canvas.style.width = '100%'; canvas.style.height = '100%'; canvas.style.display = 'block';
-    container.appendChild(canvas);
+    const existing = document.getElementById('universe-canvas');
+    if (existing) {
+        canvas = existing;
+    } else {
+        container.innerHTML = '';
+        canvas = document.createElement('canvas');
+        canvas.id = 'universe-canvas';
+        canvas.style.width = '100%'; canvas.style.height = '100%'; canvas.style.display = 'block';
+        container.appendChild(canvas);
+    }
+    
     ctx = canvas.getContext('2d');
 
     function resize() {
