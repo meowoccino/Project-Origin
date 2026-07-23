@@ -212,7 +212,6 @@ export async function initWebGPU() {
             selectedNode = closest;
             const styleName = CATEGORY_STYLES[closest.category].name;
             
-            // Clean title/subtitle formatting
             let titleText = closest.designation;
             let subText = styleName;
             
