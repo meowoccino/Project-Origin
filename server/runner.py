@@ -33,12 +33,12 @@ def generate_ai_object_name(category: str, physics_data: str = "") -> str:
                 "Content-Type": "application/json"
             },
             json={
-                "model": "google/gemma-2-9b-it:free",
+                "model": "openrouter/free",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.85,
                 "max_tokens": 15
             },
-            timeout=5
+            timeout=8
         )
         if response.status_code == 200:
             ai_name = response.json()['choices'][0]['message']['content'].strip(' "\'\n')
