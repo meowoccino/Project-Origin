@@ -129,7 +129,7 @@ def generate_ai_object_name(category: str, physics_data: str = "") -> str:
                 "Content-Type": "application/json"
             }
             payload = {
-                "model": "llama-3.3-70b",
+                "model": "gemma-4-31b",
                 "messages": [
                     {"role": "user", "content": prompt}
                 ],
