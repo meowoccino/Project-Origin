@@ -381,45 +381,64 @@ function initApp() {
         } catch (err) {}
     }
 
+    // DYNAMIC PARSER FOR EVENT CARDS (FIXES HARDCODED METRICS BUG)
     function renderDesign4EventCard(e) {
         const title = e.title || 'Cosmic Telemetry Event';
         const desc = e.description || 'Thermodynamic equilibrium shift detected in local space-time region.';
         const ageFormatted = formatAgeFormatted(e.age);
         
-        let hex = "#FF8C00", rgb = "255, 140, 0", tag = "COSMIC EVENT";
+        let hex = "#FF8C00", tag = "COSMIC EVENT";
         let iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
-        let m1 = { lbl: "EPOCH", val: ageFormatted }, m2 = { lbl: "STATUS", val: "STABLE" }, m3 = { lbl: "SECTOR", val: "SEC 04" };
-
+        
         const lowerTitle = title.toLowerCase();
         const catKey = (e.category || "").toLowerCase();
 
         if (catKey === "neutron_stars" || lowerTitle.includes("pulsar") || lowerTitle.includes("neutron")) {
-            hex = "#F000FF"; rgb = "240, 0, 255"; tag = "NEUTRON CORE";
+            hex = "#F000FF"; tag = "NEUTRON CORE";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`;
-            m1 = { lbl: "B-FIELD", val: "10¹⁴ Gauss" }; m2 = { lbl: "PERIOD", val: "5.8 ms" }; m3 = { lbl: "RADIUS", val: "11.2 km" };
         } else if (catKey === "nebulae" || lowerTitle.includes("nebula") || lowerTitle.includes("cloud")) {
-            hex = "#00E5FF"; rgb = "0, 229, 255"; tag = "NEBULA CLOUD";
+            hex = "#00E5FF"; tag = "NEBULA CLOUD";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>`;
-            m1 = { lbl: "GAS TEMP", val: "18 K" }; m2 = { lbl: "DENSITY", val: "10⁴ /cm³" }; m3 = { lbl: "EPOCH", val: ageFormatted };
-        } else if (catKey === "stars" || lowerTitle.includes("star")) {
-            hex = "#FFD700"; rgb = "255, 215, 0"; tag = "CLASS-O STAR";
+        } else if (catKey === "stars" || lowerTitle.includes("star") || lowerTitle.includes("dwarf") || lowerTitle.includes("giant")) {
+            hex = "#FFD700"; tag = "STELLAR CORE";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>`;
-            m1 = { lbl: "MASS", val: "18.5 M_sun" }; m2 = { lbl: "TEMP", val: "33,000 K" }; m3 = { lbl: "LUMINOSITY", val: "45,000 L_sun" };
         } else if (catKey === "black_holes" || lowerTitle.includes("black hole") || lowerTitle.includes("singularity")) {
-            hex = "#8B5CF6"; rgb = "139, 92, 246"; tag = "SINGULARITY";
+            hex = "#8B5CF6"; tag = "SINGULARITY";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
-            m1 = { lbl: "MASS", val: "4.2M M_sun" }; m2 = { lbl: "R_SCHWARZ", val: "0.08 AU" }; m3 = { lbl: "SPIN", val: "0.94 Kerr" };
+        } else if (catKey === "planets" || lowerTitle.includes("planet")) {
+            hex = "#10B981"; tag = "PLANET";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>`;
+        }
+
+        // Extract and parse real dynamic metrics from e.description Specs
+        let m1 = { lbl: "EPOCH", val: ageFormatted };
+        let m2 = { lbl: "STATUS", val: "STABLE" };
+        let m3 = { lbl: "SECTOR", val: "SEC 04" };
+
+        const specsMatch = desc.match(/Specs:\s*(.*)/i);
+        if (specsMatch && specsMatch[1]) {
+            const rawSpecs = specsMatch[1].split(",");
+            const parsed = [];
+            rawSpecs.forEach(part => {
+                const kv = part.split(":");
+                if (kv.length === 2) {
+                    parsed.push({ lbl: kv[0].trim().toUpperCase(), val: kv[1].trim() });
+                }
+            });
+            if (parsed.length >= 1) m1 = parsed[0];
+            if (parsed.length >= 2) m2 = parsed[1];
+            if (parsed.length >= 3) m3 = parsed[2];
         }
 
         return `
-            <div class="d4-card" style="--c-hex: ${hex}; --c-rgb: ${rgb};">
+            <div class="d4-card" style="--c-hex: ${hex};">
                 <div class="d4-header">
                     <div class="d4-icon-box">${iconSvg}</div>
-                    <span class="d4-tag mono">${tag}</span>
+                    <span class="d4-tag">${tag}</span>
                 </div>
                 <div class="d4-title">${title}</div>
                 <div class="d4-desc">${desc}</div>
-                <div class="d4-metrics-grid mono">
+                <div class="d4-metrics-grid">
                     <div class="m-item"><span class="m-lbl">${m1.lbl}</span><span class="m-val">${m1.val}</span></div>
                     <div class="m-item"><span class="m-lbl">${m2.lbl}</span><span class="m-val">${m2.val}</span></div>
                     <div class="m-item"><span class="m-lbl">${m3.lbl}</span><span class="m-val">${m3.val}</span></div>
