@@ -2,12 +2,12 @@ import os
 import time
 import random
 import requests
+import urllib.parse
 from supabase import create_client, Client
 
 # --- ENVIRONMENT CONFIGURATION ---
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
-CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY", "csk-yv9t94hyyxph655v62x8kjv9tx68n6eddc2ecn5p8dkv2mme")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -111,41 +111,23 @@ def generate_unique_physics(category_key: str):
 
     return category_key, label, specs
 
-# --- AI NAMING ENGINE ---
+# --- FREE AI NAMING ENGINE (NO API KEY REQUIRED) ---
 def generate_ai_object_name(category: str, physics_data: str = "") -> str:
     prompt = (
-        f"You are naming a newly born celestial object in a cosmic simulation.\n"
-        f"Category: {category}\n"
-        f"Physical Properties: {physics_data}\n\n"
-        f"Task: Generate ONE unique, scientifically evocative name for this object.\n"
-        f"Rules: Output ONLY the name text. Do NOT use quotation marks, explanations, or punctuation."
+        f"Generate ONE unique short futuristic name for a celestial {category}. "
+        f"Properties: {physics_data}. Output ONLY the name, no quotes or explanation."
     )
-
-    if CEREBRAS_API_KEY:
-        try:
-            url = "https://api.cerebras.ai/v1/chat/completions"
-            headers = {
-                "Authorization": f"Bearer {CEREBRAS_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": "gemma-4-31b",
-                "messages": [
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": 0.85,
-                "max_tokens": 20
-            }
-            res = requests.post(url, json=payload, headers=headers, timeout=5)
-            if res.status_code == 200:
-                data = res.json()
-                text = data["choices"][0]["message"]["content"].strip(' "\'\n')
-                if text:
-                    return text
-            else:
-                print(f"⚠️ [CEREBRAS NAMER ERROR]: Status {res.status_code}")
-        except Exception as err:
-            print(f"⚠️ [CEREBRAS NAMER EXCEPTION]: {err}")
+    
+    try:
+        encoded_prompt = urllib.parse.quote(prompt)
+        url = f"https://text.pollinations.ai/{encoded_prompt}?model=openai"
+        res = requests.get(url, timeout=5)
+        if res.status_code == 200 and res.text:
+            text = res.text.strip(' "\'\n')
+            if text and len(text) < 40:
+                return text
+    except Exception as err:
+        print(f"⚠️ [FREE NAMER EXCEPTION]: {err}")
 
     return f"{category.replace('_', ' ').title()} #{random.randint(1000, 9999)}"
 
