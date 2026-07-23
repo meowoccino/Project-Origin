@@ -1,382 +1,219 @@
-import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode } from '../engine/main.js';
-import * as MainEngine from '../engine/main.js';
+export const cameraState = { rotX: 0, rotY: 0, zoom: 1.0, currentAge: 0.0, panX: 0, panY: 0 };
+export let isExploreActive = true;
 
-document.addEventListener('DOMContentLoaded', () => {
-    initWebGPU().catch(err => console.error("❌ [ENGINE INIT FAILED]:", err));
+let canvas, ctx;
+export let cosmicNodes = [];
+export let selectedNode = null;
 
-    const splash = document.getElementById('splash-screen');
-    if (splash) splash.addEventListener('click', () => splash.classList.add('hidden'));
+let webHubs = [];
+const NUM_HUBS = 30;
+let globalNodeId = 0;
+let maxWebRadius = 600;
 
-    const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0";
-    const FETCH_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
+const CATEGORY_STYLES = {
+    nebulae: { color: '#9932CC', glowColor: 'rgba(153, 50, 204, 0.35)', name: 'Nebula Gas Cloud', size: 6.0 },
+    stars: { color: '#FFD700', glowColor: 'rgba(255, 215, 0, 0.5)', name: 'Stellar Core', size: 3.0 },
+    black_holes: { color: '#05050A', ringColor: '#FF8C00', name: 'Singularity', size: 4.0 },
+    neutron_stars: { color: '#00E5FF', glowColor: 'rgba(0, 229, 255, 0.6)', name: 'Neutron Core', size: 2.2 },
+    planets: { color: '#CD7F32', glowColor: 'rgba(205, 127, 50, 0.3)', name: 'Planetary Body', size: 2.0 },
+    moons: { color: '#8C8F9F', glowColor: 'rgba(140, 143, 159, 0.2)', name: 'Satellite Moon', size: 1.4 },
+    asteroids_comets: { color: '#B0B0D0', name: 'Asteroid Fragment', size: 1.2 },
+    quasars: { color: '#FFFFFF', glowColor: 'rgba(255, 255, 255, 0.8)', name: 'Active Quasar', size: 6.0 },
+    exotic_objects: { color: '#FF69B4', glowColor: 'rgba(255, 105, 180, 0.5)', name: 'Exotic Artifact', size: 3.5 },
+    inhabited: { color: '#00E5FF', glowColor: 'rgba(0, 229, 255, 0.7)', name: 'Inhabited World', size: 3.5 }
+};
 
-    const canvasContainer = document.getElementById('canvas-container');
-    let isDragging = false, lastX = 0, lastY = 0, initialPinchDist = null, initialZoom = 1.0, touchStart = 0;
-    let localCurrentAge = 0.0;
+function initWebHubs() {
+    webHubs = [];
+    maxWebRadius = Math.min(window.innerWidth, window.innerHeight) * 1.2;
+    for (let i = 0; i < NUM_HUBS; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.pow(Math.random(), 0.8) * maxWebRadius;
+        webHubs.push({ x: Math.cos(angle) * dist, y: Math.sin(angle) * dist });
+    }
+}
 
-    if (canvasContainer) {
-        canvasContainer.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1) {
-                isDragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
-                touchStart = Date.now();
-            } else if (e.touches.length === 2) {
-                isDragging = false; 
-                initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                initialZoom = cameraState.zoom;
+function createWebNode(category, id) {
+    const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.stars;
+    const hubA = webHubs[Math.floor(Math.random() * webHubs.length)];
+    const hubB = webHubs[Math.floor(Math.random() * webHubs.length)];
+    
+    const t = Math.random();
+    let x = hubA.x + (hubB.x - hubA.x) * t;
+    let y = hubA.y + (hubB.y - hubA.y) * t;
+
+    const scatter = (Math.random() > 0.6) ? 70 : 15;
+    x += (Math.random() - 0.5) * scatter;
+    y += (Math.random() - 0.5) * scatter;
+
+    return {
+        id: id, category: category, designation: `${style.name} #${id}`,
+        baseX: x, baseY: y, size: style.size, style: style,
+        pulseSpeed: 0.02 + Math.random() * 0.03, pulsePhase: Math.random() * Math.PI * 2,
+        screenX: 0, screenY: 0
+    };
+}
+
+export function updateCanvasFromCatalog(stats, ageGyr) {
+    if (!ctx) return;
+    if (webHubs.length === 0) initWebHubs();
+
+    const inhabitedCount = (ageGyr > 0.5) ? Math.floor((stats.planets || 0) * 0.012) : 0;
+    const counts = {
+        nebulae: stats.nebulae || 0, stars: stats.stars || 0,
+        black_holes: stats.black_holes || 0, neutron_stars: stats.neutron_stars || 0,
+        planets: stats.planets || 0, moons: stats.moons || 0,
+        asteroids_comets: stats.asteroids_comets || 0, quasars: stats.quasars || 0,
+        exotic_objects: stats.exotic_objects || 0, inhabited: inhabitedCount
+    };
+
+    let totalObjects = Object.values(counts).reduce((a, b) => a + b, 0);
+    const MAX_VISUAL_NODES = 1200;
+    const scaleFactor = totalObjects > 0 ? Math.min(1.0, MAX_VISUAL_NODES / Math.min(500000, totalObjects)) : 0;
+
+    Object.keys(counts).forEach(cat => {
+        const targetCount = Math.round(counts[cat] * scaleFactor);
+        const currentNodes = cosmicNodes.filter(n => n.category === cat);
+
+        if (currentNodes.length < targetCount) {
+            const toAdd = targetCount - currentNodes.length;
+            for (let i = 0; i < toAdd; i++) cosmicNodes.push(createWebNode(cat, ++globalNodeId));
+        } else if (currentNodes.length > targetCount) {
+            const toRemove = currentNodes.length - targetCount;
+            for (let i = 0; i < toRemove; i++) {
+                const index = cosmicNodes.findIndex(n => n.category === cat);
+                if (index > -1) {
+                    if (selectedNode && cosmicNodes[index].id === selectedNode.id) {
+                        selectedNode = null;
+                        document.getElementById('inspector-preview')?.classList.remove('active');
+                    }
+                    cosmicNodes.splice(index, 1);
+                }
             }
-        }, { passive: true });
-
-        canvasContainer.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 1 && isDragging) {
-                const dpr = window.devicePixelRatio || 1;
-                cameraState.panX += (e.touches[0].clientX - lastX) * dpr;
-                cameraState.panY += (e.touches[0].clientY - lastY) * dpr;
-                lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
-            } else if (e.touches.length === 2 && initialPinchDist) {
-                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                const minZoom = 0.35; 
-                const maxZoom = 12.0; 
-                cameraState.zoom = Math.max(minZoom, Math.min(maxZoom, initialZoom * (dist / initialPinchDist)));
-            }
-        }, { passive: true });
-
-        canvasContainer.addEventListener('touchend', (e) => {
-            if (e.changedTouches.length === 1 && (Date.now() - touchStart < 250)) {
-                if (window.selectParticleAt) window.selectParticleAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-            }
-            if (e.touches.length < 2) initialPinchDist = null;
-            if (e.touches.length === 0) isDragging = false;
-        }, { passive: true });
-    }
-
-    const allBtns = ['btn-explore', 'btn-events', 'btn-ai', 'btn-timeline', 'btn-catalog'].map(id => document.getElementById(id));
-    const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
-    const hudContainer = document.getElementById('hud-age-container');
-
-    function switchTab(btnId, viewId) {
-        allBtns.forEach(b => b?.classList.remove('active'));
-        allViews.forEach(v => v?.classList.remove('active'));
-        document.getElementById(btnId)?.classList.add('active');
-        if (viewId) document.getElementById(viewId)?.classList.add('active');
-        
-        if (hudContainer) hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
-        MainEngine.isExploreActive = (btnId === 'btn-explore');
-
-        if (btnId !== 'btn-explore') {
-            document.getElementById('inspector-preview')?.classList.remove('active');
-        }
-    }
-
-    document.getElementById('btn-explore')?.addEventListener('click', () => switchTab('btn-explore', null));
-    document.getElementById('btn-events')?.addEventListener('click', () => switchTab('btn-events', 'view-events'));
-    document.getElementById('btn-ai')?.addEventListener('click', () => switchTab('btn-ai', 'view-ai'));
-    document.getElementById('btn-timeline')?.addEventListener('click', () => switchTab('btn-timeline', 'view-timeline'));
-    document.getElementById('btn-catalog')?.addEventListener('click', () => switchTab('btn-catalog', 'view-catalog'));
-
-    // --- LIVE UTC CLOCK ---
-    function initEarthClock() {
-        const clockEl = document.getElementById('earth-clock');
-        if (!clockEl) return;
-        const update = () => {
-            const now = new Date();
-            const timeString = now.toISOString().replace('T', ' ').substring(0, 19);
-            clockEl.innerText = `UPLINK TIMESTAMP: ${timeString} UTC`;
-        };
-        setInterval(update, 1000);
-        update();
-    }
-    initEarthClock();
-
-    // --- OBSERVER EYE STATE SWITCHER ---
-    function setObserverEyeState(mode) {
-        const ui = document.getElementById('observer-ui');
-        const label = document.getElementById('status-label');
-        if (!ui || !label) return;
-
-        ui.classList.remove('state-observe', 'state-intervene', 'state-error');
-        const m = (mode || '').toUpperCase();
-
-        if (m === 'INTERVENE') {
-            ui.classList.add('state-intervene');
-            label.innerText = 'EXECUTING INTERVENTION';
-        } else if (m === 'ERROR' || m === 'OFFLINE') {
-            ui.classList.add('state-error');
-            label.innerText = 'CONNECTION SEVERED';
-        } else {
-            ui.classList.add('state-observe');
-            label.innerText = 'OBSERVER ONLINE';
-        }
-    }
-
-    // --- BREADCRUMB LOG CARD GENERATOR ---
-    function createLogCard(log) {
-        const mode = (log.mode || 'OBSERVE').toLowerCase();
-        const sector = log.sector || "Sector 04";
-        const title = log.subject || "Cosmic System";
-        const typeTag = log.type_tag || "Telemetry Event";
-        const timeLabel = log.time_label || `LATENCY: ${(log.latency_myr || 1.0).toFixed(1)} MYR`;
-
-        const card = document.createElement("div");
-        card.className = `log-card log-${mode}`;
-        
-        card.innerHTML = `
-            <div class="breadcrumb-bar data-font">
-                <span class="bc-item" style="flex-shrink: 0;">${sector}</span>
-                <span class="bc-sep">►</span>
-                <span class="bc-item">${title}</span>
-                <span class="bc-sep">►</span>
-                <span class="bc-tag">${typeTag}</span>
-            </div>
-            <div class="log-meta data-font">
-                <span>${timeLabel}</span>
-            </div>
-            <div class="logic-step">
-                <div class="logic-icon">▶</div>
-                <div class="logic-text"><strong>Data Analysis:</strong> ${log.data_analysis || 'Analyzing local thermodynamic density.'}</div>
-            </div>
-            <div class="logic-step">
-                <div class="logic-icon">▶</div>
-                <div class="logic-text"><strong>Simulation:</strong> ${log.temporal_simulation || 'Gravitational trajectories within normal distribution.'}</div>
-            </div>
-            <div class="logic-decision logic-step">
-                <div class="logic-icon">■</div>
-                <div class="logic-text">${log.resolution || 'Standard procedural evolution permitted.'}</div>
-            </div>
-        `;
-        return card;
-    }
-
-    // --- LOG PAGINATION ---
-    let oldestLoadedId = null;
-    let isLoadingLogs = false;
-
-    async function loadNextBatch() {
-        if (isLoadingLogs) return;
-        isLoadingLogs = true;
-
-        const btn = document.getElementById("btn-load-more");
-        const container = document.getElementById("logs-container");
-        if (btn) btn.innerText = "QUERYING ARCHIVE...";
-
-        try {
-            let url = `${SUPABASE_URL}/rest/v1/origin_logs?select=*&order=id.desc&limit=4`;
-            if (oldestLoadedId) url += `&id=lt.${oldestLoadedId}`;
-
-            const res = await fetch(url, { headers: FETCH_HEADERS });
-            let logs = [];
-            if (res.ok) logs = await res.json();
-
-            if (logs.length === 0) {
-                if (btn) btn.innerText = "END OF TELEMETRY ARCHIVE";
-                isLoadingLogs = false;
-                return;
-            }
-
-            if (!oldestLoadedId && logs.length > 0) {
-                setObserverEyeState(logs[0].mode);
-            }
-
-            logs.forEach(log => {
-                oldestLoadedId = log.id;
-                const card = createLogCard(log);
-                container?.appendChild(card);
-            });
-
-            if (btn) btn.innerText = "QUERY PAST TELEMETRY";
-        } catch (err) {
-            console.error("Failed to fetch telemetry logs:", err);
-            setObserverEyeState('ERROR');
-            if (btn) btn.innerText = "RETRY TELEMETRY QUERY";
-        } finally {
-            isLoadingLogs = false;
-        }
-    }
-
-    document.getElementById("btn-load-more")?.addEventListener("click", loadNextBatch);
-    loadNextBatch();
-
-    // --- TIMELINE EPOCHS ---
-    const TIMELINE_EPOCHS = [
-        { title: "Primordial Inflation", start: 0, end: 100000, desc: "Exponential space-time expansion driven by quantum vacuum inflaton field decay." },
-        { title: "Recombination & Decoupling", start: 100000, end: 100000000, desc: "Thermal baryonic gas cools below 3,000 K, releasing Cosmic Microwave Background radiation." },
-        { title: "Pop-III Star Reionization", start: 100000000, end: 1000000000, desc: "Zero-metallicity primordial gas collapses into hypermassive stars, ionising neutral hydrogen." },
-        { title: "Galactic Disk Accretion", start: 1000000000, end: 13800000000, desc: "Angular momentum conservation forms flat spinning galactic disks with MHD turbulence." },
-        { title: "Degenerate & Far Cosmic Era", start: 13800000000, end: Infinity, desc: "Interstellar gas depletion, white dwarf dominance, and open-ended thermodynamic entropy decay." }
-    ];
-
-    function updateTimelineUI(totalYears) {
-        const container = document.getElementById('timeline-container');
-        if (!container) return;
-        container.innerHTML = TIMELINE_EPOCHS.map(epoch => {
-            const isActive = totalYears >= epoch.start && totalYears < epoch.end;
-            const actClass = isActive ? 'active' : '';
-            const endLabel = (epoch.end === Infinity) ? "∞" : epoch.end.toLocaleString();
-            return `
-                <div class="timeline-node">
-                  <div class="node-marker ${actClass}"></div>
-                  <div class="node-title ${actClass}">${epoch.title}</div>
-                  <div class="node-time data-font ${actClass}">${epoch.start.toLocaleString()} - ${endLabel} Yrs</div>
-                  <div class="node-desc ${actClass}">${epoch.desc}</div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    function renderAgeHUD(ageGyr) {
-        cameraState.currentAge = ageGyr;
-        const totalYears = Math.floor(ageGyr * 1000000000);
-        const hudAge = document.getElementById('hud-age');
-        if (hudAge) {
-            hudAge.innerText = totalYears >= 1000000000 
-                ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` 
-                : `${totalYears.toLocaleString()} Years`;
-        }
-        updateTimelineUI(totalYears);
-    }
-
-    function generatePhysics(node, age) {
-        let mass, radius, temp, extra;
-        const seed = node.id * 13;
-        
-        // Exact epoch formatting (Myr if under 0.1 Gyr, Gyr otherwise)
-        const epochLabel = age < 0.1 
-            ? `${(age * 1000).toFixed(2)} Myr` 
-            : `${age.toFixed(3)} Gyr`;
-
-        switch (node.category) {
-            case 'asteroids_comets':
-                mass = (seed % 90 + 1) + " × 10^15 kg"; radius = (seed % 150 + 5) + " km"; temp = (seed % 100 + 40) + " K";
-                extra = `<div class="spec-row"><span class="spec-label">Composition</span><span class="spec-value">Silicates / Nickel-Iron</span></div>`;
-                break;
-            case 'moons':
-                mass = "0." + (seed % 99 + 1) + " M_lunar"; radius = (seed % 2000 + 500) + " km"; temp = (seed % 150 + 50) + " K";
-                extra = `<div class="spec-row"><span class="spec-label">Tidal State</span><span class="spec-value">Tidally Locked</span></div>`;
-                break;
-            case 'planets':
-            case 'inhabited':
-                mass = (seed % 15 + 0.1).toFixed(2) + " M_earth"; radius = (seed % 20000 + 4000) + " km";
-                temp = node.category === 'inhabited' ? ((seed % 40) + 5) + " °C" : "-" + (seed % 150) + " °C";
-                extra = node.category === 'inhabited' 
-                    ? `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">N2/O2 Rich</span></div><div class="spec-row"><span class="spec-label">Biosphere</span><span class="spec-value" style="color:#00E5FF">Confirmed</span></div>`
-                    : `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">CO2 / Methane</span></div>`;
-                break;
-            case 'stars':
-                mass = (seed % 25 + 0.5).toFixed(2) + " M_sun"; radius = (seed % 15 + 0.8).toFixed(2) + " R_sun"; temp = (seed % 30000 + 3000).toLocaleString() + " K";
-                extra = `<div class="spec-row"><span class="spec-label">Luminosity</span><span class="spec-value">${(seed % 1000 + 1).toFixed(1)} L_sun</span></div>`;
-                break;
-            case 'black_holes':
-                mass = (seed % 50 + 5).toFixed(2) + " M_sun"; radius = ((seed % 50 + 5) * 2.95).toFixed(1) + " km (Schwarzschild)"; temp = "0.000" + (seed % 9 + 1) + " K (Hawking)";
-                extra = `<div class="spec-row"><span class="spec-label">Accretion</span><span class="spec-value">${(seed % 5 * 0.1).toFixed(3)} M_sun/yr</span></div>`;
-                break;
-            case 'quasars':
-                mass = (seed % 500 + 100) + " Million M_sun"; radius = (seed % 50 + 10) + " AU (Accretion Disk)"; temp = "Millions of K";
-                extra = `<div class="spec-row"><span class="spec-label">Energy Output</span><span class="spec-value" style="color:#FFF066">10^40 Watts</span></div>`;
-                break;
-            default:
-                mass = (seed % 5000 + 1000) + " M_sun"; radius = (seed % 150 + 10) + " Lightyears"; temp = "10 - 50 K";
-                extra = `<div class="spec-row"><span class="spec-label">Composition</span><span class="spec-value">H II Region / Plasma</span></div>`;
-                break;
-        }
-
-        return `
-            <div class="spec-row"><span class="spec-label">Designation</span><span class="spec-value" style="font-weight:bold; color:#fff;">${node.designation}</span></div>
-            <div class="spec-row"><span class="spec-label">Mass</span><span class="spec-value">${mass}</span></div>
-            <div class="spec-row"><span class="spec-label">Radius</span><span class="spec-value">${radius}</span></div>
-            <div class="spec-row"><span class="spec-label">Surface Temp</span><span class="spec-value">${temp}</span></div>
-            ${extra}
-            <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Formation Epoch</span><span class="spec-value">${epochLabel}</span></div>
-        `;
-    }
-
-    document.getElementById('btn-expand-inspect')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (selectedNode) {
-            document.getElementById('inspect-title').innerText = selectedNode.designation;
-            document.getElementById('spec-name').innerHTML = generatePhysics(selectedNode, localCurrentAge);
-            switchTab(null, 'modal-object-detail');
         }
     });
+}
 
-    document.getElementById('btn-close-inspect')?.addEventListener('click', () => switchTab('btn-explore', null));
+export async function initWebGPU() {
+    const container = document.getElementById('canvas-container');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    canvas = document.createElement('canvas');
+    canvas.style.width = '100%'; canvas.style.height = '100%'; canvas.style.display = 'block';
+    container.appendChild(canvas);
+    ctx = canvas.getContext('2d');
 
-    function formatAgeFormatted(ageGyr) {
-        if (!ageGyr || ageGyr < 0.001) return "< 0.001 Gyr";
-        return `${Number(ageGyr).toFixed(3)} Gyr`;
+    function resize() {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        if (!selectedNode) {
+            cameraState.panX = canvas.width / 2;
+            cameraState.panY = canvas.height / 2;
+        }
     }
+    window.addEventListener('resize', resize);
+    resize();
 
-    // --- AUTHORITATIVE SUPABASE POLLERS ---
-    async function pollUniverseState() {
-        try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`, { headers: FETCH_HEADERS });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.length > 0) {
-                    localCurrentAge = Number(data[0].age || data[0].age_gyr || 0.0);
-                    renderAgeHUD(localCurrentAge);
-                    
-                    if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = `${data[0].de_pct || 68.5}%`;
-                    if (document.getElementById('cat-dm-val')) document.getElementById('cat-dm-val').innerText = `${data[0].dm_pct || 26.4}%`;
-                    if (document.getElementById('cat-baryon-val')) document.getElementById('cat-baryon-val').innerText = `${data[0].baryon_pct || 5.1}%`;
-                    
-                    const barDe = document.getElementById('bar-de'), barDm = document.getElementById('bar-dm'), barBaryon = document.getElementById('bar-baryon');
-                    if(barDe) barDe.style.width = `${data[0].de_pct || 68.5}%`;
-                    if(barDm) barDm.style.width = `${data[0].dm_pct || 26.4}%`;
-                    if(barBaryon) barBaryon.style.width = `${data[0].baryon_pct || 5.1}%`;
+    let animTime = 0;
+
+    function renderLoop() {
+        requestAnimationFrame(renderLoop);
+        if (!isExploreActive) return;
+
+        animTime += 0.015;
+        const dpr = window.devicePixelRatio || 1;
+
+        ctx.fillStyle = '#0A0B14';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const driftAngle = animTime * 0.02;
+        const cosD = Math.cos(driftAngle);
+        const sinD = Math.sin(driftAngle);
+
+        const maxPanOffset = maxWebRadius * cameraState.zoom * 1.2;
+        cameraState.panX = Math.max((canvas.width / 2) - maxPanOffset, Math.min((canvas.width / 2) + maxPanOffset, cameraState.panX));
+        cameraState.panY = Math.max((canvas.height / 2) - maxPanOffset, Math.min((canvas.height / 2) + maxPanOffset, cameraState.panY));
+
+        for (let i = 0; i < cosmicNodes.length; i++) {
+            const p = cosmicNodes[i];
+            
+            const rx = p.baseX * cosD - p.baseY * sinD;
+            const ry = p.baseX * sinD + p.baseY * cosD;
+
+            p.screenX = cameraState.panX + (rx * cameraState.zoom * dpr);
+            p.screenY = cameraState.panY + (ry * cameraState.zoom * dpr);
+
+            if (p.screenX < -100 || p.screenX > canvas.width + 100 || p.screenY < -100 || p.screenY > canvas.height + 100) continue;
+
+            const pulse = Math.sin(animTime * p.pulseSpeed * 100 + p.pulsePhase) * 0.15 + 1.0;
+            const radius = Math.max(1.0, p.size * dpr * pulse * Math.sqrt(cameraState.zoom));
+
+            if (p.category === 'black_holes') {
+                const grad = ctx.createRadialGradient(p.screenX, p.screenY, radius * 0.5, p.screenX, p.screenY, radius * 3.0);
+                grad.addColorStop(0, 'rgba(255, 140, 0, 0.9)');
+                grad.addColorStop(0.5, 'rgba(138, 43, 226, 0.4)');
+                grad.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath(); ctx.arc(p.screenX, p.screenY, radius * 3.0, 0, Math.PI * 2); ctx.fill();
+
+                ctx.fillStyle = '#000000';
+                ctx.beginPath(); ctx.arc(p.screenX, p.screenY, radius * 1.1, 0, Math.PI * 2); ctx.fill();
+            } else {
+                if (p.style.glowColor) {
+                    const glowGrad = ctx.createRadialGradient(p.screenX, p.screenY, 0, p.screenX, p.screenY, radius * 3.2);
+                    glowGrad.addColorStop(0, p.style.glowColor);
+                    glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = glowGrad;
+                    ctx.beginPath(); ctx.arc(p.screenX, p.screenY, radius * 3.2, 0, Math.PI * 2); ctx.fill();
                 }
+
+                ctx.fillStyle = p.style.color;
+                ctx.beginPath(); ctx.arc(p.screenX, p.screenY, radius, 0, Math.PI * 2); ctx.fill();
             }
-        } catch (err) {}
+
+            if (selectedNode === p) {
+                ctx.strokeStyle = '#FF8C00'; 
+                ctx.lineWidth = 2.0 * dpr;
+                ctx.beginPath(); ctx.arc(p.screenX, p.screenY, radius * 3.5 + 8, 0, Math.PI * 2); ctx.stroke();
+            }
+        }
     }
 
-    async function pollCatalog() {
-        try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/catalog_stats?select=*&limit=1`, { headers: FETCH_HEADERS });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.length > 0) {
-                    const stats = data[0];
-                    updateCanvasFromCatalog(stats, localCurrentAge);
-                    
-                    if (document.getElementById('cat-nebulae-val')) document.getElementById('cat-nebulae-val').innerText = (stats.nebulae || 0).toLocaleString();
-                    if (document.getElementById('cat-stars-val')) document.getElementById('cat-stars-val').innerText = (stats.stars || 0).toLocaleString();
-                    if (document.getElementById('cat-bh-val')) document.getElementById('cat-bh-val').innerText = (stats.black_holes || 0).toLocaleString();
-                    if (document.getElementById('cat-degenerate-val')) document.getElementById('cat-degenerate-val').innerText = (stats.neutron_stars || 0).toLocaleString();
-                    if (document.getElementById('cat-planets-val')) document.getElementById('cat-planets-val').innerText = (stats.planets || 0).toLocaleString();
-                    if (document.getElementById('cat-moons-val')) document.getElementById('cat-moons-val').innerText = (stats.moons || 0).toLocaleString();
-                    if (document.getElementById('cat-asteroids-val')) document.getElementById('cat-asteroids-val').innerText = (stats.asteroids_comets || 0).toLocaleString();
-                    if (document.getElementById('cat-quasars-val')) document.getElementById('cat-quasars-val').innerText = (stats.quasars || 0).toLocaleString();
-                    if (document.getElementById('cat-exotic-val')) document.getElementById('cat-exotic-val').innerText = (stats.exotic_objects || 0).toLocaleString();
-                    if (document.getElementById('cat-inhabited-val')) {
-                        const inhabited = (localCurrentAge > 0.5) ? Math.floor((stats.planets || 0) * 0.012) : 0;
-                        document.getElementById('cat-inhabited-val').innerText = inhabited.toLocaleString();
-                    }
-                }
-            }
-        } catch (err) {}
-    }
+    renderLoop();
 
-    async function pollEvents() {
-        try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
-            if (res.ok) {
-                const events = await res.json();
-                const container = document.getElementById('events-container');
-                if (container && events.length > 0) {
-                    container.innerHTML = events.map(e => `
-                        <div class="glass-panel" style="margin-bottom: 12px; padding: 16px;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <span style="font-weight: bold; color: #fff; font-size: 14px; flex:1; padding-right:8px;">${e.title || 'Cosmic Event'}</span>
-                            <span class="data-font" style="font-size: 11px; color: #FF8C00; font-weight: bold; white-space:nowrap;">${formatAgeFormatted(e.age)}</span>
-                            </div>
-                            <div style="color: #b0b0d0; font-size: 13px; margin-top: 8px; line-height: 1.4;">${e.description || ''}</div>
-                        </div>
-                    `).join('');
-                }
-            }
-        } catch (err) {}
-    }
+    window.selectParticleAt = function(clientX, clientY) {
+        const dpr = window.devicePixelRatio || 1;
+        const tapX = clientX * dpr;
+        const tapY = clientY * dpr;
 
-    function pollAll() { pollUniverseState(); pollCatalog(); pollEvents(); }
-    pollAll(); 
-    setInterval(pollAll, 2500);
-});
+        let closest = null, minDist = 40 * dpr;
+        for (let i = 0; i < cosmicNodes.length; i++) {
+            const p = cosmicNodes[i];
+            const dist = Math.hypot(tapX - p.screenX, tapY - p.screenY);
+            if (dist < minDist) { minDist = dist; closest = p; }
+        }
+
+        const preview = document.getElementById('inspector-preview');
+        if (closest) {
+            selectedNode = closest;
+            document.getElementById('obj-name').innerText = closest.designation;
+            document.getElementById('obj-sub').innerText = CATEGORY_STYLES[closest.category].name;
+            preview.classList.add('active');
+
+            const driftAngle = animTime * 0.02;
+            const cosD = Math.cos(driftAngle);
+            const sinD = Math.sin(driftAngle);
+            const rx = closest.baseX * cosD - closest.baseY * sinD;
+            const ry = closest.baseX * sinD + closest.baseY * cosD;
+
+            cameraState.panX = (canvas.width / 2) - (rx * cameraState.zoom * dpr);
+            cameraState.panY = (canvas.height / 2) - (ry * cameraState.zoom * dpr) - (90 * dpr);
+            
+        } else {
+            selectedNode = null;
+            preview.classList.remove('active');
+        }
+    };
+}
