@@ -4,7 +4,7 @@ import random
 import requests
 from supabase import create_client, Client
 
-# --- ENVIRONMENT & SUPABASE CONFIGURATION ---
+# --- ENVIRONMENT CONFIGURATION ---
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
@@ -13,10 +13,6 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # --- AI NAMING ENGINE (LLAMA 3 VIA OPENROUTER) ---
 def generate_ai_object_name(category: str, physics_data: str = "") -> str:
-    """
-    Asks Llama 3 70B via OpenRouter to generate a unique, scientifically 
-    evocative or astronomical name for EVERY object created in the universe.
-    """
     if not OPENROUTER_API_KEY:
         fallback_num = random.randint(100, 999)
         return f"{category.replace('_', ' ').title()} #{fallback_num}"
@@ -59,7 +55,6 @@ def generate_ai_object_name(category: str, physics_data: str = "") -> str:
 # --- SIMULATION MAIN LOOP ---
 def run_simulation_step():
     try:
-        # 1. Fetch current universe age & macro state
         res = supabase.table("universe_state").select("*").order("id", desc=True).limit(1).execute()
         current_age = 0.001
         de_pct, dm_pct, baryon_pct = 68.5, 26.4, 5.1
@@ -70,10 +65,8 @@ def run_simulation_step():
             dm_pct = float(res.data[0].get("dm_pct", 26.4))
             baryon_pct = float(res.data[0].get("baryon_pct", 5.1))
 
-        # Advance universe age by +0.005 Gyr each step
         new_age = round(current_age + 0.005, 3)
 
-        # Update universe state table
         supabase.table("universe_state").upsert({
             "id": 1,
             "age": new_age,
@@ -82,7 +75,6 @@ def run_simulation_step():
             "baryon_pct": baryon_pct
         }).execute()
 
-        # 2. Celestial Object Categories & Realistic Physics Profiles
         categories = [
             ("nebulae", "Nebula Cloud", "Gas Temp: 18 K, Density: 10^4/cm³, H2/He Composition"),
             ("stars", "Class-O Star", "Mass: 18.5 M_sun, Core Temp: 33,000 K, Luminosity: 45,000 L_sun"),
@@ -93,10 +85,8 @@ def run_simulation_step():
 
         category_key, category_label, physics_specs = random.choice(categories)
 
-        # 3. Generate AI Name for EVERY object
         ai_name = generate_ai_object_name(category_key, physics_specs)
 
-        # 4. Insert formatted Event Card into Supabase
         event_title = f"{ai_name} ({category_label})"
         event_desc = f"Thermodynamic equilibrium shift detected at Age {new_age} Gyr. Physical specs: {physics_specs}."
 
@@ -106,7 +96,6 @@ def run_simulation_step():
             "age": new_age
         }).execute()
 
-        # 5. Increment Catalog Inventory Count
         cat_res = supabase.table("catalog_stats").select("*").limit(1).execute()
         if cat_res.data and len(cat_res.data) > 0:
             stats = cat_res.data[0]
@@ -123,4 +112,4 @@ if __name__ == "__main__":
     print("🚀 [PROJECT ORIGIN] Physics Engine Started. Running 24/7...")
     while True:
         run_simulation_step()
-        time.sleep(10)  # Runs cycle every 10 seconds
+        time.sleep(10)
