@@ -20,6 +20,15 @@ You analyze physical state matrices, thermodynamic shifts, entropy levels, and b
 Task: Provide a 2-sentence philosophical and thermodynamic synthesis of the universe's current state. 
 Focus on entropy, stellar evolution, and biological emergence (if present). Tone: Cold, scientific, profound, omniscient. Output ONLY the 2-sentence text."""
 
+# Candidate free AI models to rotate through
+FREE_AI_MODELS = [
+    "meta-llama/llama-3.1-8b-instruct:free",
+    "google/gemma-2-9b-it:free",
+    "qwen/qwen-2.5-72b-instruct:free",
+    "mistralai/mistral-7b-instruct:free",
+    "openrouter/free"
+]
+
 def fetch_universe_state():
     try:
         res = requests.get(f"{SUPABASE_URL}/rest/v1/universe_state?id=eq.1&select=*", headers=HEADERS, timeout=5)
@@ -72,41 +81,47 @@ def analyze_matrix_data(objects):
     
     return matrix_str, life_count, max_kardashev, avg_temp
 
-def call_openrouter(prompt_data):
+def call_openrouter_chain(prompt_data):
     if not OPENROUTER_API_KEY:
         print("⚠️ [BRAIN]: OPENROUTER_API_KEY missing.")
         return None
 
-    payload = {
-        "model": "openrouter/free",
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt_data}
-        ],
-        "temperature": 0.8,
-        "max_tokens": 100
-    }
-    
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json"
     }
-    
-    try:
-        res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=12)
-        if res.status_code == 200:
-            return res.json()["choices"][0]["message"]["content"].strip()
-        else:
-            print(f"❌ [BRAIN API ERROR] Status: {res.status_code}, Body: {res.text}")
-    except Exception as e:
-        print(f"❌ [BRAIN NETWORK ERROR] {e}")
+
+    # Loop through real free AI models until ONE succeeds
+    for model_id in FREE_AI_MODELS:
+        payload = {
+            "model": model_id,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt_data}
+            ],
+            "temperature": 0.8,
+            "max_tokens": 100
+        }
         
+        try:
+            res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=6)
+            if res.status_code == 200:
+                content = res.json()["choices"][0]["message"]["content"].strip()
+                if content:
+                    print(f"✨ [AI SUCCESS via {model_id}]")
+                    return content
+            else:
+                print(f"⚠️ [{model_id}] Status {res.status_code}, trying next model...")
+        except Exception as e:
+            print(f"⚠️ [{model_id}] Network timeout/error, trying next model...")
+
+    print("❌ [BRAIN]: All free AI models failed on this pass. Skipping log entry.")
     return None
 
 def run_full_universe_pass():
     state = fetch_universe_state()
     if not state:
-        print("brain [BRAIN] Waiting for universe state...")
+        print("🧠 [BRAIN] Waiting for universe state...")
         return
 
     stats = fetch_catalog_stats()
@@ -125,9 +140,9 @@ def run_full_universe_pass():
     )
 
     print(f"\n🧠 [DENSE MATRIX PASS AT AGE {age:.6f} Gyr | {len(all_objects)} Objects]")
-    thought = call_openrouter(prompt)
+    thought = call_openrouter_chain(prompt)
 
-    # Only log to Supabase if we get a real, dynamic AI output!
+    # ONLY log if an actual AI gave us a thought
     if thought:
         print(f"👁️ [ORIGIN THOUGHT]: {thought}")
         log_data = {
@@ -143,14 +158,12 @@ def run_full_universe_pass():
 
         try:
             requests.post(f"{SUPABASE_URL}/rest/v1/origin_logs", headers=HEADERS, json=log_data, timeout=5)
-            print("✅ Logged to Supabase origin_logs!")
+            print("✅ Real AI thought logged to Supabase origin_logs!")
         except Exception as e:
             print(f"❌ Failed to save log: {e}")
-    else:
-        print("⚠️ [BRAIN SKIPPED LOG]: Waiting for successful OpenRouter response.")
 
 if __name__ == "__main__":
-    print("🚀 [PROJECT ORIGIN] Full-Universe Dense Matrix Observer Active (1-Minute Cadence)...")
+    print("🚀 [PROJECT ORIGIN] Full-Universe Observer Active (1-Minute Cadence)...")
     while True:
         run_full_universe_pass()
         time.sleep(60)
