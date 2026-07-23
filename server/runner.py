@@ -7,9 +7,7 @@ from supabase import create_client, Client
 # --- ENVIRONMENT CONFIGURATION ---
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
-
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -36,7 +34,7 @@ def generate_unique_physics(category_key: str):
             mass = round(random.uniform(10.0, 25.0), 1)
             temp = random.randint(10000, 28000)
             lum = random.randint(1000, 45000)
-        else: # Yellow Dwarf
+        else:
             mass = round(random.uniform(0.8, 1.15), 2)
             temp = random.randint(5300, 6000)
             lum = round(random.uniform(0.6, 1.5), 2)
@@ -47,20 +45,20 @@ def generate_unique_physics(category_key: str):
         bh_type = random.choice(["Stellar-Mass Black Hole", "Intermediate Black Hole", "Supermassive Black Hole"])
         if bh_type == "Stellar-Mass Black Hole":
             mass = round(random.uniform(5.0, 85.0), 1)
-            event_horizon = round(mass * 2.95, 1)  # Rs = 2.95km per M_sun
+            event_horizon = round(mass * 2.95, 1)
             spin = round(random.uniform(0.12, 0.98), 2)
+            specs = f"Mass: {mass} M_sun, Event Horizon: {event_horizon} km, Spin: {spin} Kerr"
         elif bh_type == "Intermediate Black Hole":
             mass = random.randint(100, 10000)
             event_horizon = round(mass * 2.95, 1)
             spin = round(random.uniform(0.40, 0.99), 2)
+            specs = f"Mass: {mass} M_sun, Event Horizon: {event_horizon} km, Spin: {spin} Kerr"
         else:
-            mass = round(random.uniform(0.1, 8.5), 2) # in millions
-            event_horizon = round(mass * 0.02, 3) # in AU
+            mass = round(random.uniform(0.1, 8.5), 2)
+            event_horizon = round(mass * 0.02, 3)
             spin = round(random.uniform(0.85, 0.99), 2)
-            label = bh_type
-            return category_key, bh_type, f"Mass: {mass}M M_sun, Event Horizon: {event_horizon} AU, Spin: {spin} Kerr"
+            specs = f"Mass: {mass}M M_sun, Event Horizon: {event_horizon} AU, Spin: {spin} Kerr"
         label = bh_type
-        specs = f"Mass: {mass} M_sun, Event Horizon: {event_horizon} km, Spin: {spin} Kerr"
 
     elif category_key == "neutron_stars":
         b_field = random.randint(11, 15)
@@ -105,7 +103,7 @@ def generate_unique_physics(category_key: str):
         label = "Asteroid Belt / Comet Cluster"
         specs = f"Estimated Fragment Count: {count}, Total Mass: {mass} x 10^18 kg"
 
-    else: # exotic_objects
+    else:
         label = random.choice(["Dyson Swarm Candidate", "Quark Star", "Dark Matter Core"])
         temp = random.randint(0, 1000)
         energy = round(random.uniform(1.0, 99.0), 1)
@@ -123,38 +121,21 @@ def generate_ai_object_name(category: str, physics_data: str = "") -> str:
         f"Rules: Output ONLY the name text. Do NOT use quotation marks, explanations, or punctuation."
     )
 
-    # 1. Try Groq First (If Key Present)
-    if GROQ_API_KEY:
+    if GEMINI_API_KEY:
         try:
-            res = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}], "temperature": 0.85, "max_tokens": 15},
-                timeout=5
-            )
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.85, "maxOutputTokens": 20}
+            }
+            res = requests.post(url, json=payload, timeout=5)
             if res.status_code == 200:
-                return res.json()['choices'][0]['message']['content'].strip(' "\'\n')
-        except Exception:
-            pass
-
-    # 2. Try OpenRouter Fallback
-    if OPENROUTER_API_KEY:
-        try:
-            res = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "HTTP-Referer": "https://project-origin.app",
-                    "X-Title": "Project Origin",
-                    "Content-Type": "application/json"
-                },
-                json={"model": "openrouter/free", "messages": [{"role": "user", "content": prompt}], "temperature": 0.85, "max_tokens": 15},
-                timeout=5
-            )
-            if res.status_code == 200:
-                return res.json()['choices'][0]['message']['content'].strip(' "\'\n')
-        except Exception:
-            pass
+                data = res.json()
+                text = data["candidates"][0]["content"]["parts"][0]["text"].strip(' "\'\n')
+                if text:
+                    return text
+        except Exception as err:
+            print(f"⚠️ [GEMINI NAMER ERROR]: {err}")
 
     return f"{category.replace('_', ' ').title()} #{random.randint(1000, 9999)}"
 
@@ -193,12 +174,17 @@ def run_simulation_step():
         chosen_category = random.choice(possible_spawns)
         cat_key, cat_label, physics_specs = generate_unique_physics(chosen_category)
 
-        # 3. Spawn Object & AI Naming
+        # 3. Spawn Object
         ai_name = generate_ai_object_name(cat_key, physics_specs)
         event_title = f"{ai_name} ({cat_label})"
         event_desc = f"Evolutionary shift detected at Age {new_age} Gyr. Specs: {physics_specs}."
 
-        supabase.table("events").insert({"title": event_title, "description": event_desc, "age": new_age}).execute()
+        supabase.table("events").insert({
+            "title": event_title, 
+            "description": event_desc, 
+            "age": new_age,
+            "category": cat_key
+        }).execute()
 
         # 4. Update Inventory
         current_val = stats.get(cat_key, 0)
@@ -211,7 +197,7 @@ def run_simulation_step():
         print(f"❌ [SIMULATION ERROR]: {e}")
 
 if __name__ == "__main__":
-    print("🚀 [PROJECT ORIGIN] Evolutionary Engine Active (24/7 Dynamic Physics Enabled)...")
+    print("🚀 [PROJECT ORIGIN] Evolutionary Engine Active...")
     while True:
         run_simulation_step()
         time.sleep(10)
