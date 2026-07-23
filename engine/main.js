@@ -54,6 +54,15 @@ function createWebNode(category, id) {
     };
 }
 
+// 🔭 BACKLOG FIX: Clear Selection State globally
+export function clearSelection() {
+    selectedNode = null;
+    const preview = document.getElementById('selection-card');
+    if (preview) {
+        preview.classList.remove('visible');
+    }
+}
+
 export function updateCanvasFromCatalog(stats, ageGyr) {
     if (!ctx) return;
     if (webHubs.length === 0) initWebHubs();
@@ -84,8 +93,7 @@ export function updateCanvasFromCatalog(stats, ageGyr) {
                 const index = cosmicNodes.findIndex(n => n.category === cat);
                 if (index > -1) {
                     if (selectedNode && cosmicNodes[index].id === selectedNode.id) {
-                        selectedNode = null;
-                        document.getElementById('inspector-preview')?.classList.remove('active');
+                        clearSelection();
                     }
                     cosmicNodes.splice(index, 1);
                 }
@@ -131,6 +139,11 @@ export async function initWebGPU() {
         const driftAngle = animTime * 0.02;
         const cosD = Math.cos(driftAngle);
         const sinD = Math.sin(driftAngle);
+
+        // 🔭 BACKLOG FIX: Dynamic physics-based zoom limits
+        const minDimension = Math.min(canvas.width, canvas.height);
+        const minZoomFloor = (minDimension * 0.45) / maxWebRadius;
+        cameraState.zoom = Math.max(minZoomFloor, Math.min(12.0, cameraState.zoom));
 
         const maxPanOffset = maxWebRadius * cameraState.zoom * 1.2;
         cameraState.panX = Math.max((canvas.width / 2) - maxPanOffset, Math.min((canvas.width / 2) + maxPanOffset, cameraState.panX));
@@ -195,12 +208,20 @@ export async function initWebGPU() {
             if (dist < minDist) { minDist = dist; closest = p; }
         }
 
-        const preview = document.getElementById('inspector-preview');
+        const preview = document.getElementById('selection-card');
         if (closest) {
             selectedNode = closest;
-            document.getElementById('obj-name').innerText = closest.designation;
-            document.getElementById('obj-sub').innerText = CATEGORY_STYLES[closest.category].name;
-            preview.classList.add('active');
+            const styleName = CATEGORY_STYLES[closest.category].name;
+            
+            // 🔭 BACKLOG FIX: Duplicate Naming Split (e.g. Stops "Stellar Core #375 (Stellar Core)")
+            let titleText = closest.designation;
+            if (titleText.toLowerCase().trim() === styleName.toLowerCase().trim()) {
+                titleText = `${styleName} #${closest.id}`;
+            }
+
+            document.getElementById('sel-card-title').innerText = titleText;
+            document.getElementById('sel-card-sub').innerText = styleName;
+            preview.classList.add('visible');
 
             const driftAngle = animTime * 0.02;
             const cosD = Math.cos(driftAngle);
@@ -212,8 +233,7 @@ export async function initWebGPU() {
             cameraState.panY = (canvas.height / 2) - (ry * cameraState.zoom * dpr) - (90 * dpr);
             
         } else {
-            selectedNode = null;
-            preview.classList.remove('active');
+            clearSelection();
         }
     };
 }
