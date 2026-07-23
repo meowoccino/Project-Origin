@@ -11,16 +11,16 @@ let globalNodeId = 0;
 let maxWebRadius = 600;
 
 const CATEGORY_STYLES = {
-    nebulae: { color: '#9932CC', glowColor: 'rgba(153, 50, 204, 0.35)', name: 'Nebula Gas Cloud', size: 6.0 },
+    nebulae: { color: '#00E5FF', glowColor: 'rgba(0, 229, 255, 0.4)', name: 'Nebula Cloud', size: 6.0 },
     stars: { color: '#FFD700', glowColor: 'rgba(255, 215, 0, 0.5)', name: 'Stellar Core', size: 3.0 },
     black_holes: { color: '#05050A', ringColor: '#FF8C00', name: 'Singularity', size: 4.0 },
-    neutron_stars: { color: '#00E5FF', glowColor: 'rgba(0, 229, 255, 0.6)', name: 'Neutron Core', size: 2.2 },
-    planets: { color: '#CD7F32', glowColor: 'rgba(205, 127, 50, 0.3)', name: 'Planetary Body', size: 2.0 },
+    neutron_stars: { color: '#F000FF', glowColor: 'rgba(240, 0, 255, 0.7)', name: 'Neutron Core', size: 2.2 },
+    planets: { color: '#10B981', glowColor: 'rgba(16, 185, 129, 0.3)', name: 'Planetary Body', size: 2.0 },
     moons: { color: '#8C8F9F', glowColor: 'rgba(140, 143, 159, 0.2)', name: 'Satellite Moon', size: 1.4 },
     asteroids_comets: { color: '#B0B0D0', name: 'Asteroid Fragment', size: 1.2 },
-    quasars: { color: '#FFFFFF', glowColor: 'rgba(255, 255, 255, 0.8)', name: 'Active Quasar', size: 6.0 },
-    exotic_objects: { color: '#FF69B4', glowColor: 'rgba(255, 105, 180, 0.5)', name: 'Exotic Artifact', size: 3.5 },
-    inhabited: { color: '#00E5FF', glowColor: 'rgba(0, 229, 255, 0.7)', name: 'Inhabited World', size: 3.5 }
+    quasars: { color: '#FF5722', glowColor: 'rgba(255, 87, 34, 0.8)', name: 'Active Quasar', size: 6.0 },
+    exotic_objects: { color: '#FF007A', glowColor: 'rgba(255, 0, 122, 0.5)', name: 'Exotic Artifact', size: 3.5 },
+    inhabited: { color: '#00FFB2', glowColor: 'rgba(0, 255, 178, 0.8)', name: 'Inhabited World', size: 3.5 }
 };
 
 function initWebHubs() {
@@ -94,6 +94,15 @@ export function updateCanvasFromCatalog(stats, ageGyr) {
     });
 }
 
+export function clearSelection() {
+    selectedNode = null;
+    const preview = document.getElementById('inspector-preview');
+    if (preview) {
+        preview.classList.remove('active');
+        preview.style.display = 'none';
+    }
+}
+
 export async function initWebGPU() {
     const container = document.getElementById('canvas-container');
     if (!container) return;
@@ -125,14 +134,19 @@ export async function initWebGPU() {
         animTime += 0.015;
         const dpr = window.devicePixelRatio || 1;
 
-        ctx.fillStyle = '#0A0B14';
+        ctx.fillStyle = '#05070B';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         const driftAngle = animTime * 0.02;
         const cosD = Math.cos(driftAngle);
         const sinD = Math.sin(driftAngle);
 
-        const maxPanOffset = maxWebRadius * cameraState.zoom * 1.2;
+        // Dynamic Physics-based Camera Zoom Limits
+        const minDimension = Math.min(canvas.width, canvas.height);
+        const minZoomFloor = (minDimension * 0.45) / maxWebRadius;
+        cameraState.zoom = Math.max(minZoomFloor, Math.min(12.0, cameraState.zoom));
+
+        const maxPanOffset = maxWebRadius * cameraState.zoom * 1.0;
         cameraState.panX = Math.max((canvas.width / 2) - maxPanOffset, Math.min((canvas.width / 2) + maxPanOffset, cameraState.panX));
         cameraState.panY = Math.max((canvas.height / 2) - maxPanOffset, Math.min((canvas.height / 2) + maxPanOffset, cameraState.panY));
 
@@ -198,8 +212,19 @@ export async function initWebGPU() {
         const preview = document.getElementById('inspector-preview');
         if (closest) {
             selectedNode = closest;
-            document.getElementById('obj-name').innerText = closest.designation;
-            document.getElementById('obj-sub').innerText = CATEGORY_STYLES[closest.category].name;
+            const styleName = CATEGORY_STYLES[closest.category].name;
+            
+            // Duplicate Naming Fix Logic
+            let titleText = closest.designation;
+            let subText = styleName;
+            
+            if (titleText.toLowerCase() === subText.toLowerCase()) {
+                titleText = `${styleName} #${closest.id}`;
+            }
+
+            document.getElementById('obj-name').innerText = titleText;
+            document.getElementById('obj-sub').innerText = subText;
+            preview.style.display = 'flex';
             preview.classList.add('active');
 
             const driftAngle = animTime * 0.02;
@@ -212,8 +237,7 @@ export async function initWebGPU() {
             cameraState.panY = (canvas.height / 2) - (ry * cameraState.zoom * dpr) - (90 * dpr);
             
         } else {
-            selectedNode = null;
-            preview.classList.remove('active');
+            clearSelection();
         }
     };
 }
