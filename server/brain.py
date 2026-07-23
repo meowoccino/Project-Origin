@@ -2,9 +2,9 @@ import os
 import time
 import random
 import requests
-import urllib.parse
 
 # --- ENVIRONMENT CONFIGURATION ---
+SAMBANOVA_API_KEY = os.getenv("SAMBANOVA_API_KEY", "your_sambanova_key")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
 
@@ -72,29 +72,44 @@ def analyze_matrix_data(objects):
     
     return matrix_str, life_count, max_kardashev, avg_temp
 
-def call_free_ai(prompt_data):
-    full_prompt = f"{SYSTEM_PROMPT}\n\n{prompt_data}"
-    encoded_prompt = urllib.parse.quote(full_prompt)
-    url = f"https://text.pollinations.ai/{encoded_prompt}?model=openai"
+def call_ai_observer(prompt_data):
+    if not SAMBANOVA_API_KEY or SAMBANOVA_API_KEY == "your_sambanova_key":
+        print("⚠️ [BRAIN]: SAMBANOVA_API_KEY missing from environment.")
+        return None
+
+    url = "https://api.sambanova.ai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {SAMBANOVA_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "Meta-Llama-3.1-8B-Instruct",
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt_data}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 120
+    }
 
     try:
-        res = requests.get(url, timeout=12)
-        if res.status_code == 200 and res.text:
-            text = res.text.strip()
-            if text:
-                print("✨ [AI SUCCESS via Keyless Open Engine]")
-                return text
+        res = requests.post(url, json=payload, headers=headers, timeout=15)
+        if res.status_code == 200:
+            data = res.json()
+            content = data["choices"][0]["message"]["content"].strip()
+            if content:
+                return content
         else:
-            print(f"❌ [AI ERROR] Status: {res.status_code}")
+            print(f"🛑 [SAMBANOVA API ERROR] Status: {res.status_code} | Msg: {res.text}")
     except Exception as e:
-        print(f"❌ [NETWORK ERROR] {e}")
+        print(f"🛑 [SAMBANOVA NETWORK ERROR] {e}")
 
     return None
 
 def run_full_universe_pass():
     state = fetch_universe_state()
     if not state:
-        print("brain [BRAIN] Waiting for universe state...")
+        print("🧠 [BRAIN] Waiting for universe state...")
         return
 
     stats = fetch_catalog_stats()
@@ -113,29 +128,34 @@ def run_full_universe_pass():
     )
 
     print(f"\n🧠 [DENSE MATRIX PASS AT AGE {age:.6f} Gyr | {len(all_objects)} Objects]")
-    thought = call_free_ai(prompt)
+    
+    # STRICT ENFORCEMENT
+    thought = call_ai_observer(prompt)
 
-    if thought:
-        print(f"👁️ [ORIGIN THOUGHT]: {thought}")
-        log_data = {
-            "mode": "OBSERVE",
-            "sector": f"Sector {random.randint(1, 12):02d}",
-            "subject": "Full-Universe Matrix Sweep",
-            "type_tag": "Complete Telemetry",
-            "latency_myr": round(random.uniform(0.5, 2.0), 1),
-            "data_analysis": f"Age: {age:.4f} Gyr | Bodies: {len(all_objects)} | Inhabited: {life_count} | Mean Temp: {avg_temp}K",
-            "temporal_simulation": "All thermodynamic state vectors mapped simultaneously.",
-            "resolution": thought
-        }
+    if not thought:
+        print("❌ [OBSERVER HALTED]: AI Failed. Aborting telemetry log injection.")
+        return
 
-        try:
-            requests.post(f"{SUPABASE_URL}/rest/v1/origin_logs", headers=HEADERS, json=log_data, timeout=5)
-            print("✅ Logged to Supabase origin_logs!")
-        except Exception as e:
-            print(f"❌ Failed to save log: {e}")
+    print(f"👁️ [ORIGIN THOUGHT]: {thought}")
+    log_data = {
+        "mode": "OBSERVE",
+        "sector": f"Sector {random.randint(1, 12):02d}",
+        "subject": "Full-Universe Matrix Sweep",
+        "type_tag": "Complete Telemetry",
+        "latency_myr": round(random.uniform(0.5, 2.0), 1),
+        "data_analysis": f"Age: {age:.4f} Gyr | Bodies: {len(all_objects)} | Inhabited: {life_count} | Mean Temp: {avg_temp}K",
+        "temporal_simulation": "All thermodynamic state vectors mapped simultaneously.",
+        "resolution": thought
+    }
+
+    try:
+        requests.post(f"{SUPABASE_URL}/rest/v1/origin_logs", headers=HEADERS, json=log_data, timeout=5)
+        print("✅ Logged to Supabase origin_logs!")
+    except Exception as e:
+        print(f"❌ Failed to save log: {e}")
 
 if __name__ == "__main__":
-    print("🚀 [PROJECT ORIGIN] Universal Observer Active...")
+    print("🚀 [PROJECT ORIGIN] SambaNova Observer Active...")
     while True:
         run_full_universe_pass()
-        time.sleep(60)
+        time.sleep(60) # 1 request per minute = well within free limits
