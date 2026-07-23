@@ -4,6 +4,7 @@ import * as MainEngine from '../engine/main.js';
 function initApp() {
     initWebGPU().catch(err => console.error("❌ [ENGINE INIT FAILED]:", err));
 
+    // Multi-event splash dismiss listener
     const splash = document.getElementById('splash-screen');
     if (splash) {
         const hideSplash = (e) => {
@@ -49,7 +50,7 @@ function initApp() {
             }
         }, { passive: true });
 
-        // FIXED: Only allow object selection when on Explore tab
+        // Only allow object selection when actively viewing the Explore tab
         canvasContainer.addEventListener('touchend', (e) => {
             if (e.changedTouches.length === 1 && (Date.now() - touchStart < 250)) {
                 if (window.selectParticleAt && MainEngine.isExploreActive) {
@@ -65,7 +66,7 @@ function initApp() {
     const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
     const hudContainer = document.getElementById('hud-age-container');
 
-    // FIXED: Hide floating object inspector preview bar when switching tabs
+    // Tab switcher with inspector preview auto-hiding
     function switchTab(btnId, viewId) {
         allBtns.forEach(b => b?.classList.remove('active'));
         allViews.forEach(v => v?.classList.remove('active'));
@@ -87,13 +88,19 @@ function initApp() {
     document.getElementById('btn-timeline')?.addEventListener('click', () => switchTab('btn-timeline', 'view-timeline'));
     document.getElementById('btn-catalog')?.addEventListener('click', () => switchTab('btn-catalog', 'view-catalog'));
 
+    // Local Device Earth Clock Fix
     function initEarthClock() {
         const clockEl = document.getElementById('earth-clock');
         if (!clockEl) return;
         const update = () => {
             const now = new Date();
-            const timeString = now.toISOString().replace('T', ' ').substring(0, 19);
-            clockEl.innerText = `UPLINK TIMESTAMP: ${timeString} UTC`;
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const h = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            clockEl.innerText = `UPLINK TIMESTAMP: ${y}-${m}-${d} ${h}:${min}:${s} LOCAL`;
         };
         setInterval(update, 1000);
         update();
