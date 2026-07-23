@@ -2,15 +2,18 @@ import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode } from '
 import * as MainEngine from '../engine/main.js';
 
 function initApp() {
-    // 1. Initialize Canvas Engine
     initWebGPU().catch(err => console.error("❌ [ENGINE INIT FAILED]:", err));
 
-    // 2. Fix Splash Screen Tap Listener
+    // Multi-event splash dismiss listener (Works on all mobile touch browsers)
     const splash = document.getElementById('splash-screen');
     if (splash) {
-        splash.addEventListener('click', () => {
+        const hideSplash = (e) => {
+            if (e) e.preventDefault();
             splash.classList.add('hidden');
-        });
+        };
+        splash.addEventListener('pointerdown', hideSplash);
+        splash.addEventListener('touchstart', hideSplash);
+        splash.addEventListener('click', hideSplash);
     }
 
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
@@ -380,7 +383,6 @@ function initApp() {
     setInterval(pollAll, 2500);
 }
 
-// Guaranteed execution fallback
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initApp);
 } else {
