@@ -1,4 +1,4 @@
-import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode, clearSelection } from '../engine/main.js';
+import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode } from '../engine/main.js';
 import * as MainEngine from '../engine/main.js';
 
 function initApp() {
@@ -43,7 +43,7 @@ function initApp() {
                 lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
             } else if (e.touches.length === 2 && initialPinchDist) {
                 const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                const minZoom = 0.45; 
+                const minZoom = 0.35; 
                 const maxZoom = 12.0; 
                 cameraState.zoom = Math.max(minZoom, Math.min(maxZoom, initialZoom * (dist / initialPinchDist)));
             }
@@ -64,7 +64,7 @@ function initApp() {
     const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
     const hudContainer = document.getElementById('hud-age-container');
 
-    // TAB SWITCHER
+    // Strict Tab Switcher with Complete Inspector Preview Bar Hiding
     function switchTab(btnId, viewId) {
         allBtns.forEach(b => b?.classList.remove('active'));
         allViews.forEach(v => v?.classList.remove('active'));
@@ -75,7 +75,12 @@ function initApp() {
         if (hudContainer) hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
         MainEngine.isExploreActive = (btnId === 'btn-explore');
 
-        clearSelection();
+        // Absolute hiding for inspector-preview on all non-explore views
+        const inspector = document.getElementById('inspector-preview');
+        if (inspector) {
+            inspector.classList.remove('active');
+            inspector.style.display = 'none';
+        }
     }
 
     document.getElementById('btn-explore')?.addEventListener('click', () => switchTab('btn-explore', null));
@@ -122,6 +127,7 @@ function initApp() {
         }
     }
 
+    // Dynamic Network Latency Measuring Dot (Green / Yellow / Red)
     function updatePingLatency(latencyMs, isSuccess) {
         const pingDot = document.getElementById('ping-dot');
         const pingText = document.getElementById('ping-ms');
@@ -130,13 +136,13 @@ function initApp() {
         if (pingText) pingText.innerText = `(${latencyMs} ms)`;
 
         if (!isSuccess || latencyMs > 1500) {
-            pingDot.style.background = '#FF1744';
+            pingDot.style.background = '#FF1744'; // Red
             pingDot.style.boxShadow = '0 0 8px #FF1744';
         } else if (latencyMs > 500) {
-            pingDot.style.background = '#FFEA00';
+            pingDot.style.background = '#FFEA00'; // Yellow
             pingDot.style.boxShadow = '0 0 8px #FFEA00';
         } else {
-            pingDot.style.background = '#00E676';
+            pingDot.style.background = '#00E676'; // Green
             pingDot.style.boxShadow = '0 0 8px #00E676';
         }
     }
@@ -283,7 +289,7 @@ function initApp() {
                 mass = (seed % 15 + 0.1).toFixed(2) + " M_earth"; radius = (seed % 20000 + 4000) + " km";
                 temp = node.category === 'inhabited' ? ((seed % 40) + 5) + " °C" : "-" + (seed % 150) + " °C";
                 extra = node.category === 'inhabited' 
-                    ? `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">N2/O2 Rich</span></div><div class="spec-row"><span class="spec-label">Biosphere</span><span class="spec-value" style="color:#00FFB2">Confirmed</span></div>`
+                    ? `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">N2/O2 Rich</span></div><div class="spec-row"><span class="spec-label">Biosphere</span><span class="spec-value" style="color:#00E5FF">Confirmed</span></div>`
                     : `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">CO2 / Methane</span></div>`;
                 break;
             case 'stars':
@@ -381,36 +387,35 @@ function initApp() {
         } catch (err) {}
     }
 
-    // DYNAMIC PARSER FOR EVENT CARDS (FIXES HARDCODED METRICS BUG)
+    // Design 4 Card Builder with Real Astrophysics Parameters per Category
     function renderDesign4EventCard(e) {
         const title = e.title || 'Cosmic Telemetry Event';
         const desc = e.description || 'Thermodynamic equilibrium shift detected in local space-time region.';
         const ageFormatted = formatAgeFormatted(e.age);
         
-        let hex = "#FF8C00", tag = "COSMIC EVENT";
+        let hex = "#FF8C00", rgb = "255, 140, 0", tag = "COSMIC EVENT";
         let iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
         
         const lowerTitle = title.toLowerCase();
-        const catKey = (e.category || "").toLowerCase();
 
-        if (catKey === "neutron_stars" || lowerTitle.includes("pulsar") || lowerTitle.includes("neutron")) {
-            hex = "#F000FF"; tag = "NEUTRON CORE";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`;
-        } else if (catKey === "nebulae" || lowerTitle.includes("nebula") || lowerTitle.includes("cloud")) {
-            hex = "#00E5FF"; tag = "NEBULA CLOUD";
+        if (lowerTitle.includes("cmb") || lowerTitle.includes("background") || lowerTitle.includes("decoupling")) {
+            hex = "#9C27B0"; rgb = "156, 39, 176"; tag = "DECOUPLING";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8.009 8.009 0 0 1-8 8z"/></svg>`;
+        } else if (lowerTitle.includes("nebula") || lowerTitle.includes("cloud") || lowerTitle.includes("gas")) {
+            hex = "#00E5FF"; rgb = "0, 229, 255"; tag = "NEBULA CLOUD";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>`;
-        } else if (catKey === "stars" || lowerTitle.includes("star") || lowerTitle.includes("dwarf") || lowerTitle.includes("giant")) {
-            hex = "#FFD700"; tag = "STELLAR CORE";
+        } else if (lowerTitle.includes("star") || lowerTitle.includes("protostar") || lowerTitle.includes("ignition")) {
+            hex = "#FFD700"; rgb = "255, 215, 0"; tag = "CLASS-O STAR";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>`;
-        } else if (catKey === "black_holes" || lowerTitle.includes("black hole") || lowerTitle.includes("singularity")) {
-            hex = "#8B5CF6"; tag = "SINGULARITY";
+        } else if (lowerTitle.includes("black hole") || lowerTitle.includes("singularity")) {
+            hex = "#B026FF"; rgb = "176, 38, 255"; tag = "SINGULARITY";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
-        } else if (catKey === "planets" || lowerTitle.includes("planet")) {
-            hex = "#10B981"; tag = "PLANET";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>`;
+        } else if (lowerTitle.includes("pulsar") || lowerTitle.includes("neutron")) {
+            hex = "#FF3366"; rgb = "255, 51, 102"; tag = "PULSAR BURST";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`;
         }
 
-        // Extract and parse real dynamic metrics from e.description Specs
+        // --- DYNAMIC DATA EXTRACTION FIX ---
         let m1 = { lbl: "EPOCH", val: ageFormatted };
         let m2 = { lbl: "STATUS", val: "STABLE" };
         let m3 = { lbl: "SECTOR", val: "SEC 04" };
@@ -431,14 +436,14 @@ function initApp() {
         }
 
         return `
-            <div class="d4-card" style="--c-hex: ${hex};">
+            <div class="d4-card" style="--c-hex: ${hex}; --c-rgb: ${rgb};">
                 <div class="d4-header">
                     <div class="d4-icon-box">${iconSvg}</div>
-                    <span class="d4-tag">${tag}</span>
+                    <span class="d4-tag mono">${tag}</span>
                 </div>
                 <div class="d4-title">${title}</div>
                 <div class="d4-desc">${desc}</div>
-                <div class="d4-metrics-grid">
+                <div class="d4-metrics-grid mono">
                     <div class="m-item"><span class="m-lbl">${m1.lbl}</span><span class="m-val">${m1.val}</span></div>
                     <div class="m-item"><span class="m-lbl">${m2.lbl}</span><span class="m-val">${m2.val}</span></div>
                     <div class="m-item"><span class="m-lbl">${m3.lbl}</span><span class="m-val">${m3.val}</span></div>
