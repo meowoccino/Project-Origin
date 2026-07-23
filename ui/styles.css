@@ -93,6 +93,14 @@ body, html {
   transition: opacity 0.3s ease;
 }
 
+.age-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #38BDF8;
+  box-shadow: 0 0 8px #38BDF8;
+}
+
 .hud-label {
   font-size: 10px;
   font-weight: 600;
@@ -428,6 +436,22 @@ body, html {
   padding: 14px;
 }
 
+.macro-progress-track {
+  display: flex;
+  height: 8px;
+  background: #1E293B;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.macro-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #94A3B8;
+}
+
 .catalog-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -497,11 +521,11 @@ body, html {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   color: #64748B;
   background: none;
   border: none;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   cursor: pointer;
   width: 20%;
@@ -510,6 +534,12 @@ body, html {
 
 .nav-item.active {
   color: #F97316;
+}
+
+.nav-icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
 }
 
 @keyframes pulse {
