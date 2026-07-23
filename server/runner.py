@@ -11,6 +11,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# --- DYNAMIC ASTROPHYSICS GENERATOR ---
 def generate_unique_physics(category_key: str):
     if category_key == "nebulae":
         temp = random.randint(10, 80)
@@ -110,6 +111,7 @@ def generate_unique_physics(category_key: str):
 
     return category_key, label, specs
 
+# --- AI NAMING ENGINE ---
 def generate_ai_object_name(category: str, physics_data: str = "") -> str:
     prompt = (
         f"You are naming a newly born celestial object in a cosmic simulation.\n"
@@ -121,7 +123,8 @@ def generate_ai_object_name(category: str, physics_data: str = "") -> str:
 
     if GEMINI_API_KEY:
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+            # UPDATED: gemini-3.5-flash endpoint
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={GEMINI_API_KEY}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {"temperature": 0.85, "maxOutputTokens": 20}
@@ -132,11 +135,14 @@ def generate_ai_object_name(category: str, physics_data: str = "") -> str:
                 text = data["candidates"][0]["content"]["parts"][0]["text"].strip(' "\'\n')
                 if text:
                     return text
+            else:
+                print(f"⚠️ [GEMINI NAMER ERROR]: Status {res.status_code}")
         except Exception as err:
-            print(f"⚠️ [GEMINI NAMER ERROR]: {err}")
+            print(f"⚠️ [GEMINI NAMER EXCEPTION]: {err}")
 
     return f"{category.replace('_', ' ').title()} #{random.randint(1000, 9999)}"
 
+# --- SIMULATION MAIN LOOP ---
 def run_simulation_step():
     try:
         supabase.table("universe_state").delete().neq("id", 1).execute()
