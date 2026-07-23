@@ -3,9 +3,11 @@ import time
 import random
 import requests
 
+# --- CONFIGURATION ---
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
-SAMBANOVA_API_KEY = os.getenv("SAMBANOVA_API_KEY", "YOUR_SAMBANOVA_KEY_HERE")
+# Hardcoded your provided key as default fallback
+SAMBANOVA_API_KEY = os.getenv("SAMBANOVA_API_KEY", "6695a135-b434-4b17-9de1-d0319e670d9f")
 
 HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
 
@@ -51,11 +53,11 @@ def analyze_matrix_data(objects):
     return "\n".join(matrix_lines[:50]), life_count, max_kardashev, avg_temp
 
 def call_ai_observer(prompt_data):
-    if not SAMBANOVA_API_KEY or SAMBANOVA_API_KEY == "YOUR_SAMBANOVA_KEY_HERE": return None
+    if not SAMBANOVA_API_KEY: return None
     url = "https://api.sambanova.ai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {SAMBANOVA_API_KEY}", "Content-Type": "application/json"}
     payload = {
-        "model": "Meta-Llama-3.1-8B-Instruct",
+        "model": "Meta-Llama-3.3-70B-Instruct",
         "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt_data}],
         "temperature": 0.7, "max_tokens": 120
     }
@@ -93,7 +95,7 @@ def run_full_universe_pass():
     except Exception as e: print(f"❌ Failed to save log: {e}")
 
 if __name__ == "__main__":
-    print("🚀 [ORIGIN] Strict Observer Active...")
+    print("🚀 [ORIGIN] Strict Observer Active (Llama 3.3 70B)...")
     while True:
         run_full_universe_pass()
         time.sleep(60)
