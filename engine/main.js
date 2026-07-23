@@ -84,8 +84,7 @@ export function updateCanvasFromCatalog(stats, ageGyr) {
                 const index = cosmicNodes.findIndex(n => n.category === cat);
                 if (index > -1) {
                     if (selectedNode && cosmicNodes[index].id === selectedNode.id) {
-                        selectedNode = null;
-                        document.getElementById('inspector-preview')?.classList.remove('active');
+                        clearSelection();
                     }
                     cosmicNodes.splice(index, 1);
                 }
@@ -141,7 +140,6 @@ export async function initWebGPU() {
         const cosD = Math.cos(driftAngle);
         const sinD = Math.sin(driftAngle);
 
-        // Dynamic Physics-based Camera Zoom Limits
         const minDimension = Math.min(canvas.width, canvas.height);
         const minZoomFloor = (minDimension * 0.45) / maxWebRadius;
         cameraState.zoom = Math.max(minZoomFloor, Math.min(12.0, cameraState.zoom));
@@ -214,11 +212,11 @@ export async function initWebGPU() {
             selectedNode = closest;
             const styleName = CATEGORY_STYLES[closest.category].name;
             
-            // Duplicate Naming Fix Logic
+            // Clean title/subtitle formatting
             let titleText = closest.designation;
             let subText = styleName;
             
-            if (titleText.toLowerCase() === subText.toLowerCase()) {
+            if (titleText.toLowerCase().trim() === subText.toLowerCase().trim()) {
                 titleText = `${styleName} #${closest.id}`;
             }
 
