@@ -10,7 +10,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles.css">
+  <!-- PATH FIX: Points to your /ui/ folder -->
+  <link rel="stylesheet" href="./ui/styles.css">
 </head>
 <body>
 
@@ -58,7 +59,7 @@
       <div class="tab-placeholder">Timeline Archives Loading...</div>
     </div>
 
-    <!-- TAB 5: CATALOG (TEXT HEADERS REMOVED) -->
+    <!-- TAB 5: CATALOG -->
     <div id="tab-catalog" class="tab-content">
       <div class="catalog-container">
         
@@ -108,7 +109,7 @@
 
   </div>
 
-  <!-- THE CRITICAL FIX IS ON THIS LINE -->
+  <!-- PATH FIX: Points to your /ui/ folder as a module -->
   <script type="module" src="./ui/components.js"></script>
 </body>
 </html>
