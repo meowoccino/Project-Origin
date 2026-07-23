@@ -1,4 +1,4 @@
-import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode } from '../engine/main.js';
+import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode, clearSelection } from '../engine/main.js';
 import * as MainEngine from '../engine/main.js';
 
 function initApp() {
@@ -43,7 +43,7 @@ function initApp() {
                 lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
             } else if (e.touches.length === 2 && initialPinchDist) {
                 const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                const minZoom = 0.35; 
+                const minZoom = 0.45; 
                 const maxZoom = 12.0; 
                 cameraState.zoom = Math.max(minZoom, Math.min(maxZoom, initialZoom * (dist / initialPinchDist)));
             }
@@ -64,7 +64,7 @@ function initApp() {
     const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
     const hudContainer = document.getElementById('hud-age-container');
 
-    // Strict Tab Switcher with Complete Inspector Preview Bar Hiding
+    // Tab Switcher with Auto Selection Reset
     function switchTab(btnId, viewId) {
         allBtns.forEach(b => b?.classList.remove('active'));
         allViews.forEach(v => v?.classList.remove('active'));
@@ -75,12 +75,8 @@ function initApp() {
         if (hudContainer) hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
         MainEngine.isExploreActive = (btnId === 'btn-explore');
 
-        // Absolute hiding for inspector-preview on all non-explore views
-        const inspector = document.getElementById('inspector-preview');
-        if (inspector) {
-            inspector.classList.remove('active');
-            inspector.style.display = 'none';
-        }
+        // Selection State Reset on Tab Switch
+        clearSelection();
     }
 
     document.getElementById('btn-explore')?.addEventListener('click', () => switchTab('btn-explore', null));
@@ -127,7 +123,6 @@ function initApp() {
         }
     }
 
-    // Dynamic Network Latency Measuring Dot (Green / Yellow / Red)
     function updatePingLatency(latencyMs, isSuccess) {
         const pingDot = document.getElementById('ping-dot');
         const pingText = document.getElementById('ping-ms');
@@ -136,13 +131,13 @@ function initApp() {
         if (pingText) pingText.innerText = `(${latencyMs} ms)`;
 
         if (!isSuccess || latencyMs > 1500) {
-            pingDot.style.background = '#FF1744'; // Red
+            pingDot.style.background = '#FF1744';
             pingDot.style.boxShadow = '0 0 8px #FF1744';
         } else if (latencyMs > 500) {
-            pingDot.style.background = '#FFEA00'; // Yellow
+            pingDot.style.background = '#FFEA00';
             pingDot.style.boxShadow = '0 0 8px #FFEA00';
         } else {
-            pingDot.style.background = '#00E676'; // Green
+            pingDot.style.background = '#00E676';
             pingDot.style.boxShadow = '0 0 8px #00E676';
         }
     }
@@ -289,7 +284,7 @@ function initApp() {
                 mass = (seed % 15 + 0.1).toFixed(2) + " M_earth"; radius = (seed % 20000 + 4000) + " km";
                 temp = node.category === 'inhabited' ? ((seed % 40) + 5) + " °C" : "-" + (seed % 150) + " °C";
                 extra = node.category === 'inhabited' 
-                    ? `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">N2/O2 Rich</span></div><div class="spec-row"><span class="spec-label">Biosphere</span><span class="spec-value" style="color:#00E5FF">Confirmed</span></div>`
+                    ? `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">N2/O2 Rich</span></div><div class="spec-row"><span class="spec-label">Biosphere</span><span class="spec-value" style="color:#00FFB2">Confirmed</span></div>`
                     : `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">CO2 / Methane</span></div>`;
                 break;
             case 'stars':
@@ -387,7 +382,6 @@ function initApp() {
         } catch (err) {}
     }
 
-    // Design 4 Card Builder with Real Astrophysics Parameters per Category
     function renderDesign4EventCard(e) {
         const title = e.title || 'Cosmic Telemetry Event';
         const desc = e.description || 'Thermodynamic equilibrium shift detected in local space-time region.';
@@ -398,27 +392,24 @@ function initApp() {
         let m1 = { lbl: "EPOCH", val: ageFormatted }, m2 = { lbl: "STATUS", val: "STABLE" }, m3 = { lbl: "SECTOR", val: "SEC 04" };
 
         const lowerTitle = title.toLowerCase();
+        const catKey = (e.category || "").toLowerCase();
 
-        if (lowerTitle.includes("cmb") || lowerTitle.includes("background") || lowerTitle.includes("decoupling")) {
-            hex = "#9C27B0"; rgb = "156, 39, 176"; tag = "DECOUPLING";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8.009 8.009 0 0 1-8 8z"/></svg>`;
-            m1 = { lbl: "REDSHIFT", val: "z ≈ 1100" }; m2 = { lbl: "TEMP", val: "3,000 K" }; m3 = { lbl: "EPOCH", val: "380,000 Yrs" };
-        } else if (lowerTitle.includes("nebula") || lowerTitle.includes("cloud") || lowerTitle.includes("gas")) {
+        if (catKey === "neutron_stars" || lowerTitle.includes("pulsar") || lowerTitle.includes("neutron")) {
+            hex = "#F000FF"; rgb = "240, 0, 255"; tag = "NEUTRON CORE";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`;
+            m1 = { lbl: "B-FIELD", val: "10¹⁴ Gauss" }; m2 = { lbl: "PERIOD", val: "5.8 ms" }; m3 = { lbl: "RADIUS", val: "11.2 km" };
+        } else if (catKey === "nebulae" || lowerTitle.includes("nebula") || lowerTitle.includes("cloud")) {
             hex = "#00E5FF"; rgb = "0, 229, 255"; tag = "NEBULA CLOUD";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>`;
             m1 = { lbl: "GAS TEMP", val: "18 K" }; m2 = { lbl: "DENSITY", val: "10⁴ /cm³" }; m3 = { lbl: "EPOCH", val: ageFormatted };
-        } else if (lowerTitle.includes("star") || lowerTitle.includes("protostar") || lowerTitle.includes("ignition")) {
+        } else if (catKey === "stars" || lowerTitle.includes("star")) {
             hex = "#FFD700"; rgb = "255, 215, 0"; tag = "CLASS-O STAR";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>`;
             m1 = { lbl: "MASS", val: "18.5 M_sun" }; m2 = { lbl: "TEMP", val: "33,000 K" }; m3 = { lbl: "LUMINOSITY", val: "45,000 L_sun" };
-        } else if (lowerTitle.includes("black hole") || lowerTitle.includes("singularity")) {
-            hex = "#B026FF"; rgb = "176, 38, 255"; tag = "SINGULARITY";
+        } else if (catKey === "black_holes" || lowerTitle.includes("black hole") || lowerTitle.includes("singularity")) {
+            hex = "#8B5CF6"; rgb = "139, 92, 246"; tag = "SINGULARITY";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
             m1 = { lbl: "MASS", val: "4.2M M_sun" }; m2 = { lbl: "R_SCHWARZ", val: "0.08 AU" }; m3 = { lbl: "SPIN", val: "0.94 Kerr" };
-        } else if (lowerTitle.includes("pulsar") || lowerTitle.includes("neutron")) {
-            hex = "#FF3366"; rgb = "255, 51, 102"; tag = "PULSAR BURST";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`;
-            m1 = { lbl: "B-FIELD", val: "10¹⁴ Gauss" }; m2 = { lbl: "PERIOD", val: "5.8 ms" }; m3 = { lbl: "RADIUS", val: "11.2 km" };
         }
 
         return `
