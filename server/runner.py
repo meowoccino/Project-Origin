@@ -33,7 +33,7 @@ def generate_ai_object_name(category: str, physics_data: str = "") -> str:
                 "Content-Type": "application/json"
             },
             json={
-                "model": "meta-llama/llama-3.2-3b-instruct:free",
+                "model": "google/gemma-2-9b-it:free",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.85,
                 "max_tokens": 15
