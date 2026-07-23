@@ -10,8 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 
-  <!-- PATH FIX: Ensures Vite finds your CSS in the root -->
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./ui/styles.css">
 </head>
 <body>
 
@@ -46,38 +45,33 @@
 
     <!-- TAB 2: EVENTS -->
     <div id="tab-events" class="tab-content">
-      <div id="events-container" class="events-feed" style="padding: 16px;"></div>
+      <div class="tab-placeholder">Events Feed Loading...</div>
+      <div id="events-container"></div>
     </div>
 
     <!-- TAB 3: ORIGIN -->
     <div id="tab-origin" class="tab-content">
-      <div id="observer-ui" class="state-observe" style="margin: 16px;">
-        <div class="status-box">
-          <span id="ping-dot"></span>
-          <span id="status-label">OBSERVER ONLINE</span>
-          <span id="ping-ms">(0 ms)</span>
-        </div>
-        <div id="earth-clock"></div>
-      </div>
-      <div id="logs-container" style="padding: 0 16px;"></div>
-      <button id="btn-load-more" class="load-btn" style="margin: 0 16px 80px 16px; width: calc(100% - 32px);">QUERY PAST TELEMETRY</button>
+      <div class="tab-placeholder">Origin Logs Loading...</div>
+      <div id="logs-container"></div>
+      <button id="btn-load-more" style="display:none;"></button>
     </div>
 
     <!-- TAB 4: TIMELINE -->
     <div id="tab-timeline" class="tab-content">
-      <div id="timeline-container" style="padding: 16px 16px 80px 16px;"></div>
+      <div class="tab-placeholder">Timeline Archives Loading...</div>
+      <div id="timeline-container"></div>
     </div>
 
-    <!-- TAB 5: CATALOG (TEXT HEADERS REMOVED) -->
+    <!-- TAB 5: CATALOG -->
     <div id="tab-catalog" class="tab-content">
       <div class="catalog-container">
         
         <!-- MACRO COSMOLOGICAL STATE BAR -->
         <div class="macro-bar-card">
           <div class="macro-progress-track">
-            <div id="bar-de" class="macro-segment" style="width: 68.5%; background: #8B5CF6;"></div>
-            <div id="bar-dm" class="macro-segment" style="width: 26.4%; background: #F97316;"></div>
-            <div id="bar-baryon" class="macro-segment" style="width: 5.1%; background: #FACC15;"></div>
+            <div class="macro-segment" id="bar-de" style="width: 68.5%; background: #8B5CF6;"></div>
+            <div class="macro-segment" id="bar-dm" style="width: 26.4%; background: #F97316;"></div>
+            <div class="macro-segment" id="bar-baryon" style="width: 5.1%; background: #FACC15;"></div>
           </div>
           <div class="macro-legend">
             <div class="legend-item"><div class="legend-dot" style="background:#8B5CF6;"></div>Dark Energy <span id="cat-de-val">68.5%</span></div>
@@ -101,7 +95,7 @@
             <div class="card-cat-count" id="cat-bh-val">0</div>
           </div>
           <div class="catalog-card">
-            <div class="card-cat-name" style="color:#F000FF">Neutron Stars</div>
+            <div class="card-cat-name" style="color:#FF3366">Neutron Cores</div>
             <div class="card-cat-count" id="cat-degenerate-val">0</div>
           </div>
           <div class="catalog-card">
@@ -134,7 +128,7 @@
     </div>
 
     <!-- MODAL OBJECT DETAIL -->
-    <div id="modal-object-detail" class="tab-content" style="z-index: 200; background: #05070B;">
+    <div id="modal-object-detail" class="tab-content">
       <div style="padding: 20px;">
         <h2 id="inspect-title" style="margin-bottom: 16px;">Detailed Telemetry</h2>
         <div id="spec-name"></div>
@@ -144,23 +138,23 @@
 
     <!-- BOTTOM NAVIGATION BAR -->
     <nav class="nav-bar">
-      <button class="nav-item active" onclick="switchTab('explore')">
+      <button class="nav-item active" id="btn-explore">
         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
         Explore
       </button>
-      <button class="nav-item" onclick="switchTab('events')">
+      <button class="nav-item" id="btn-events">
         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10z"/></svg>
         Events
       </button>
-      <button class="nav-item" onclick="switchTab('origin')">
+      <button class="nav-item" id="btn-origin">
         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-7.5-3.75l-2.5 1.25L12 16l10-5l-2.5-1.25L12 13.5z"/></svg>
         Origin
       </button>
-      <button class="nav-item" onclick="switchTab('timeline')">
+      <button class="nav-item" id="btn-timeline">
         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
         Timeline
       </button>
-      <button class="nav-item" onclick="switchTab('catalog')">
+      <button class="nav-item" id="btn-catalog">
         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
         Catalog
       </button>
@@ -168,7 +162,6 @@
 
   </div>
 
-  <!-- PATH FIX: Explicitly set to components.js as a module in root -->
-  <script type="module" src="./components.js"></script>
+  <script type="module" src="./ui/components.js"></script>
 </body>
 </html>
