@@ -11,7 +11,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- DYNAMIC ASTROPHYSICS GENERATOR ---
 def generate_unique_physics(category_key: str):
     if category_key == "nebulae":
         temp = random.randint(10, 80)
@@ -111,7 +110,6 @@ def generate_unique_physics(category_key: str):
 
     return category_key, label, specs
 
-# --- AI NAMING ENGINE ---
 def generate_ai_object_name(category: str, physics_data: str = "") -> str:
     prompt = (
         f"You are naming a newly born celestial object in a cosmic simulation.\n"
@@ -139,12 +137,10 @@ def generate_ai_object_name(category: str, physics_data: str = "") -> str:
 
     return f"{category.replace('_', ' ').title()} #{random.randint(1000, 9999)}"
 
-# --- SIMULATION MAIN LOOP ---
 def run_simulation_step():
     try:
         supabase.table("universe_state").delete().neq("id", 1).execute()
 
-        # 1. Advance Age
         res = supabase.table("universe_state").select("*").eq("id", 1).execute()
         current_age = float(res.data[0].get("age", 0.001)) if (res.data and len(res.data) > 0) else 0.001
         new_age = round(current_age + 0.005, 3)
@@ -153,7 +149,6 @@ def run_simulation_step():
             "id": 1, "age": new_age, "de_pct": 68.5, "dm_pct": 26.4, "baryon_pct": 5.1
         }).execute()
 
-        # 2. Fetch Catalog
         cat_res = supabase.table("catalog_stats").select("*").eq("id", 1).execute()
         stats = cat_res.data[0] if (cat_res.data and len(cat_res.data) > 0) else {}
         
@@ -174,7 +169,6 @@ def run_simulation_step():
         chosen_category = random.choice(possible_spawns)
         cat_key, cat_label, physics_specs = generate_unique_physics(chosen_category)
 
-        # 3. Spawn Object
         ai_name = generate_ai_object_name(cat_key, physics_specs)
         event_title = f"{ai_name} ({cat_label})"
         event_desc = f"Evolutionary shift detected at Age {new_age} Gyr. Specs: {physics_specs}."
@@ -186,7 +180,6 @@ def run_simulation_step():
             "category": cat_key
         }).execute()
 
-        # 4. Update Inventory
         current_val = stats.get(cat_key, 0)
         if stats:
             supabase.table("catalog_stats").update({cat_key: current_val + 1}).eq("id", stats["id"]).execute()
