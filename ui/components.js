@@ -19,7 +19,7 @@ function initApp() {
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0";
     const FETCH_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
 
-    const canvasContainer = document.getElementById('universe-canvas');
+    const canvasContainer = document.getElementById('canvas-container');
     let isDragging = false, lastX = 0, lastY = 0, initialPinchDist = null, initialZoom = 1.0, touchStart = 0;
     let localCurrentAge = 0.0;
 
@@ -60,31 +60,34 @@ function initApp() {
         }, { passive: true });
     }
 
-    const switchTab = function(tabName) {
-        document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-        const targetTab = document.getElementById(`tab-${tabName}`);
-        if (targetTab) targetTab.classList.add('active');
+    const allBtns = ['btn-explore', 'btn-events', 'btn-ai', 'btn-timeline', 'btn-catalog'].map(id => document.getElementById(id));
+    const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
+    const hudContainer = document.getElementById('hud-age-container');
 
-        const navMap = { 'explore': 0, 'events': 1, 'origin': 2, 'timeline': 3, 'catalog': 4 };
-        const navItems = document.querySelectorAll('.nav-item');
-        if (navItems[navMap[tabName]]) navItems[navMap[tabName]].classList.add('active');
+    // Strict Tab Switcher with Complete Inspector Preview Bar Hiding
+    function switchTab(btnId, viewId) {
+        allBtns.forEach(b => b?.classList.remove('active'));
+        allViews.forEach(v => v?.classList.remove('active'));
+        
+        if (btnId) document.getElementById(btnId)?.classList.add('active');
+        if (viewId) document.getElementById(viewId)?.classList.add('active');
+        
+        if (hudContainer) hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
+        MainEngine.isExploreActive = (btnId === 'btn-explore');
 
-        const hudContainer = document.querySelector('.universe-age-pill');
-        if (hudContainer) hudContainer.style.opacity = (tabName === 'explore') ? '1' : '0';
-        MainEngine.isExploreActive = (tabName === 'explore');
-
-        const selectionCard = document.getElementById('selection-card');
-        if (selectionCard && tabName !== 'explore') {
-            selectionCard.classList.remove('visible');
+        // Absolute hiding for inspector-preview on all non-explore views
+        const inspector = document.getElementById('inspector-preview');
+        if (inspector) {
+            inspector.classList.remove('active');
+            inspector.style.display = 'none';
         }
-    };
+    }
 
-    document.getElementById('btn-explore')?.addEventListener('click', () => switchTab('explore'));
-    document.getElementById('btn-events')?.addEventListener('click', () => switchTab('events'));
-    document.getElementById('btn-origin')?.addEventListener('click', () => switchTab('origin'));
-    document.getElementById('btn-timeline')?.addEventListener('click', () => switchTab('timeline'));
-    document.getElementById('btn-catalog')?.addEventListener('click', () => switchTab('catalog'));
+    document.getElementById('btn-explore')?.addEventListener('click', () => switchTab('btn-explore', null));
+    document.getElementById('btn-events')?.addEventListener('click', () => switchTab('btn-events', 'view-events'));
+    document.getElementById('btn-ai')?.addEventListener('click', () => switchTab('btn-ai', 'view-ai'));
+    document.getElementById('btn-timeline')?.addEventListener('click', () => switchTab('btn-timeline', 'view-timeline'));
+    document.getElementById('btn-catalog')?.addEventListener('click', () => switchTab('btn-catalog', 'view-catalog'));
 
     function initEarthClock() {
         const clockEl = document.getElementById('earth-clock');
@@ -124,6 +127,7 @@ function initApp() {
         }
     }
 
+    // Dynamic Network Latency Measuring Dot (Green / Yellow / Red)
     function updatePingLatency(latencyMs, isSuccess) {
         const pingDot = document.getElementById('ping-dot');
         const pingText = document.getElementById('ping-ms');
@@ -132,13 +136,13 @@ function initApp() {
         if (pingText) pingText.innerText = `(${latencyMs} ms)`;
 
         if (!isSuccess || latencyMs > 1500) {
-            pingDot.style.background = '#FF1744'; 
+            pingDot.style.background = '#FF1744'; // Red
             pingDot.style.boxShadow = '0 0 8px #FF1744';
         } else if (latencyMs > 500) {
-            pingDot.style.background = '#FFEA00'; 
+            pingDot.style.background = '#FFEA00'; // Yellow
             pingDot.style.boxShadow = '0 0 8px #FFEA00';
         } else {
-            pingDot.style.background = '#00E676'; 
+            pingDot.style.background = '#00E676'; // Green
             pingDot.style.boxShadow = '0 0 8px #00E676';
         }
     }
@@ -257,7 +261,7 @@ function initApp() {
     function renderAgeHUD(ageGyr) {
         cameraState.currentAge = ageGyr;
         const totalYears = Math.floor(ageGyr * 1000000000);
-        const hudAge = document.getElementById('universe-age-val');
+        const hudAge = document.getElementById('hud-age');
         if (hudAge) {
             hudAge.innerText = totalYears >= 1000000000 
                 ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` 
@@ -312,16 +316,16 @@ function initApp() {
         `;
     }
 
-    document.querySelector('.analyze-btn')?.addEventListener('click', (e) => {
+    document.getElementById('btn-expand-inspect')?.addEventListener('click', (e) => {
         e.stopPropagation();
         if (selectedNode) {
             document.getElementById('inspect-title').innerText = selectedNode.designation;
             document.getElementById('spec-name').innerHTML = generatePhysics(selectedNode, localCurrentAge);
-            switchTab('modal-object-detail');
+            switchTab(null, 'modal-object-detail');
         }
     });
 
-    document.getElementById('btn-close-inspect')?.addEventListener('click', () => switchTab('explore'));
+    document.getElementById('btn-close-inspect')?.addEventListener('click', () => switchTab('btn-explore', null));
 
     function formatAgeFormatted(ageGyr) {
         if (!ageGyr || ageGyr < 0.001) return "< 0.001 Gyr";
@@ -383,6 +387,7 @@ function initApp() {
         } catch (err) {}
     }
 
+    // Design 4 Card Builder with Real Astrophysics Parameters per Category
     function renderDesign4EventCard(e) {
         const title = e.title || 'Cosmic Telemetry Event';
         const desc = e.description || 'Thermodynamic equilibrium shift detected in local space-time region.';
@@ -390,41 +395,30 @@ function initApp() {
         
         let hex = "#FF8C00", rgb = "255, 140, 0", tag = "COSMIC EVENT";
         let iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
-        
+        let m1 = { lbl: "EPOCH", val: ageFormatted }, m2 = { lbl: "STATUS", val: "STABLE" }, m3 = { lbl: "SECTOR", val: "SEC 04" };
+
         const lowerTitle = title.toLowerCase();
 
         if (lowerTitle.includes("cmb") || lowerTitle.includes("background") || lowerTitle.includes("decoupling")) {
             hex = "#9C27B0"; rgb = "156, 39, 176"; tag = "DECOUPLING";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8.009 8.009 0 0 1-8 8z"/></svg>`;
+            m1 = { lbl: "REDSHIFT", val: "z ≈ 1100" }; m2 = { lbl: "TEMP", val: "3,000 K" }; m3 = { lbl: "EPOCH", val: "380,000 Yrs" };
         } else if (lowerTitle.includes("nebula") || lowerTitle.includes("cloud") || lowerTitle.includes("gas")) {
             hex = "#00E5FF"; rgb = "0, 229, 255"; tag = "NEBULA CLOUD";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>`;
+            m1 = { lbl: "GAS TEMP", val: "18 K" }; m2 = { lbl: "DENSITY", val: "10⁴ /cm³" }; m3 = { lbl: "EPOCH", val: ageFormatted };
         } else if (lowerTitle.includes("star") || lowerTitle.includes("protostar") || lowerTitle.includes("ignition")) {
             hex = "#FFD700"; rgb = "255, 215, 0"; tag = "CLASS-O STAR";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>`;
+            m1 = { lbl: "MASS", val: "18.5 M_sun" }; m2 = { lbl: "TEMP", val: "33,000 K" }; m3 = { lbl: "LUMINOSITY", val: "45,000 L_sun" };
         } else if (lowerTitle.includes("black hole") || lowerTitle.includes("singularity")) {
             hex = "#B026FF"; rgb = "176, 38, 255"; tag = "SINGULARITY";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
+            m1 = { lbl: "MASS", val: "4.2M M_sun" }; m2 = { lbl: "R_SCHWARZ", val: "0.08 AU" }; m3 = { lbl: "SPIN", val: "0.94 Kerr" };
         } else if (lowerTitle.includes("pulsar") || lowerTitle.includes("neutron")) {
             hex = "#FF3366"; rgb = "255, 51, 102"; tag = "PULSAR BURST";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`;
-        }
-
-        let m1 = { lbl: "EPOCH", val: ageFormatted }, m2 = { lbl: "STATUS", val: "STABLE" }, m3 = { lbl: "SECTOR", val: "SEC 04" };
-
-        const specsMatch = desc.match(/Specs:\s*(.*)/i);
-        if (specsMatch && specsMatch[1]) {
-            const rawSpecs = specsMatch[1].split(",");
-            const parsed = [];
-            rawSpecs.forEach(part => {
-                const kv = part.split(":");
-                if (kv.length === 2) {
-                    parsed.push({ lbl: kv[0].trim().toUpperCase(), val: kv[1].trim() });
-                }
-            });
-            if (parsed.length >= 1) m1 = parsed[0];
-            if (parsed.length >= 2) m2 = parsed[1];
-            if (parsed.length >= 3) m3 = parsed[2];
+            m1 = { lbl: "B-FIELD", val: "10¹⁴ Gauss" }; m2 = { lbl: "PERIOD", val: "5.8 ms" }; m3 = { lbl: "RADIUS", val: "11.2 km" };
         }
 
         return `
