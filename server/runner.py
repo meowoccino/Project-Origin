@@ -1,71 +1,126 @@
-import time, math, random, requests
+import os
+import time
+import random
+import requests
+from supabase import create_client, Client
 
-SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0"
-HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json", "Prefer": "return=minimal"}
+# --- ENVIRONMENT & SUPABASE CONFIGURATION ---
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
-def calculate_cosmology(age):
-    m = 0.315 / (1.0 + (age * 0.25)**3)
-    l = 1.0 - m
-    return round(l * 100, 1), round(m * 84, 1), round(100 - (l * 100) - (m * 84), 1)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def seed_celestial_object(age):
-    t = random.uniform(-200, 400)
-    has_life, bio = False, None
-    if 0 <= t <= 50 and random.random() < 0.1: has_life, bio = True, "Carbon/Water"
-    elif t < -100 and random.random() < 0.6: has_life, bio = True, "Carbon/Methane"
-    elif t > 100 and random.random() < 0.3: has_life, bio = True, "Carbon/Sulfur"
-    p_age = random.uniform(0.1, max(0.1, age / 2.0)) if age > 0.2 else 0
-    prog = round(min((p_age / 4.0) ** 0.5, 2.5), 3) if has_life and p_age >= 0.1 else 0.0
-    w = 10 ** random.uniform(10, 26) if prog > 0.8 else 0
-    k = round(max(0.0, (math.log10(w) - 6.0) / 10.0), 3) if w > 0 else 0.0
-    return {"name": f"Exoplanet {random.randint(1000, 9999)}-{random.choice('abcdef')}", "object_type": "Planet", "surface_temp": round(t, 1), "has_life": has_life, "biochemistry_class": bio, "progress_index": prog, "kardashev_scale": k}
+# --- AI NAMING ENGINE (LLAMA 3 VIA OPENROUTER) ---
+def generate_ai_object_name(category: str, physics_data: str = "") -> str:
+    """
+    Asks Llama 3 70B via OpenRouter to generate a unique, scientifically 
+    evocative or astronomical name for EVERY object created in the universe.
+    """
+    if not OPENROUTER_API_KEY:
+        fallback_num = random.randint(100, 999)
+        return f"{category.replace('_', ' ').title()} #{fallback_num}"
 
-def update_catalog_stats(age):
-    stars = int(min(500000, age * 35000)) if age >= 0.1 else 0
-    planets = int(min(120000, age * 8000)) if age >= 0.2 else 0
-    nebulae = int(min(150, age * 12)) if age >= 0.05 else 2
-    bh = int(min(450, age * 30)) if age >= 0.2 else 0
-    data = {"id": 1, "nebulae": nebulae, "stars": stars, "black_holes": bh, "neutron_stars": int(bh * 2.5), "planets": planets, "moons": int(planets * 2.1), "asteroids_comets": int(planets * 15), "quasars": int(min(50, age * 5)) if age < 3.0 else 2, "exotic_objects": int(age * 3)}
+    prompt = (
+        f"You are naming a newly born celestial object in a cosmic simulation.\n"
+        f"Category: {category}\n"
+        f"Physical Properties: {physics_data}\n\n"
+        f"Task: Generate ONE unique, scientifically evocative, astronomical, or atmospheric name for this object "
+        f"(e.g. 'The Veil of Caelum', 'Aurelia-9', 'The Blind Singularity', 'Helios-X', 'Chrono-Disk').\n"
+        f"Rules: Output ONLY the name text. Do NOT use quotation marks, explanations, or punctuation."
+    )
+
     try:
-        requests.post(f"{SUPABASE_URL}/rest/v1/catalog_stats", headers={**HEADERS, "Prefer": "resolution=merge-duplicates"}, json=data, timeout=5)
-    except Exception: pass
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "meta-llama/llama-3-70b-instruct",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.85,
+                "max_tokens": 15
+            },
+            timeout=4
+        )
+        if response.status_code == 200:
+            ai_name = response.json()['choices'][0]['message']['content'].strip(' "\'\n')
+            if ai_name:
+                return ai_name
+    except Exception as err:
+        print(f"⚠️ [AI NAMER TIMEOUT/ERROR]: {err} — Using procedural fallback.")
 
-def log_milestone_event(age, title, desc):
+    fallback_num = random.randint(100, 999)
+    return f"{category.replace('_', ' ').title()} #{fallback_num}"
+
+
+# --- SIMULATION MAIN LOOP ---
+def run_simulation_step():
     try:
-        requests.post(f"{SUPABASE_URL}/rest/v1/events", headers=HEADERS, json={"age": age, "title": title, "description": desc}, timeout=5)
-    except Exception: pass
+        # 1. Fetch current universe age & macro state
+        res = supabase.table("universe_state").select("*").order("id", desc=True).limit(1).execute()
+        current_age = 0.001
+        de_pct, dm_pct, baryon_pct = 68.5, 26.4, 5.1
 
-def run():
-    print("[PROJECT ORIGIN] Physics Engine Initialized with Real-Time Clock...")
-    age, tick = 0.0, 0
-    events_logged = set()
-    while True:
-        tick += 1
-        sprint = age < 0.1
-        dt = 0.00005555 if sprint else 0.001
-        age += dt
-        
-        de, dm, b = calculate_cosmology(age)
-        
-        # Log major cosmic milestones
-        if 0.00035 <= age <= 0.00045 and "CMB" not in events_logged:
-            log_milestone_event(age, "Cosmic Microwave Background", "Photons decouple from baryonic matter; universe cools below 3,000 K.")
-            events_logged.add("CMB")
-        elif age >= 0.1 and "COSMIC_DAWN" not in events_logged:
-            log_milestone_event(age, "Cosmic Dawn (Pop-III Stars)", "First generation of massive stars ignite out of primordial Hydrogen gas.")
-            events_logged.add("COSMIC_DAWN")
+        if res.data and len(res.data) > 0:
+            current_age = float(res.data[0].get("age", 0.001))
+            de_pct = float(res.data[0].get("de_pct", 68.5))
+            dm_pct = float(res.data[0].get("dm_pct", 26.4))
+            baryon_pct = float(res.data[0].get("baryon_pct", 5.1))
 
-        try:
-            requests.post(f"{SUPABASE_URL}/rest/v1/universe_state", headers=HEADERS, json={"age": age, "de_pct": de, "dm_pct": dm, "baryon_pct": b}, timeout=5)
-            if age >= 0.1 and random.random() < 0.2:
-                requests.post(f"{SUPABASE_URL}/rest/v1/celestial_objects", headers=HEADERS, json=seed_celestial_object(age), timeout=5)
-            update_catalog_stats(age)
-            print(f"[{'SPRINT (1h)' if sprint else 'CRUISE (30d)'} | Tick {tick}] Age: {age:.6f} Gyr")
-        except Exception as e:
-            print(f"[Tick {tick}] Network error: {e}")
-            
-        time.sleep(2 if sprint else 60)
+        # Advance universe age by +0.005 Gyr each step
+        new_age = round(current_age + 0.005, 3)
+
+        # Update universe state table
+        supabase.table("universe_state").upsert({
+            "id": 1,
+            "age": new_age,
+            "de_pct": de_pct,
+            "dm_pct": dm_pct,
+            "baryon_pct": baryon_pct
+        }).execute()
+
+        # 2. Celestial Object Categories & Realistic Physics Profiles
+        categories = [
+            ("nebulae", "Nebula Cloud", "Gas Temp: 18 K, Density: 10^4/cm³, H2/He Composition"),
+            ("stars", "Class-O Star", "Mass: 18.5 M_sun, Core Temp: 33,000 K, Luminosity: 45,000 L_sun"),
+            ("black_holes", "Supermassive Black Hole", "Mass: 4.2M M_sun, Schwarzschild Radius: 0.08 AU"),
+            ("neutron_stars", "Pulsar Burst", "B-Field: 10^14 Gauss, Spin Period: 5.8 ms, Radius: 11.2 km"),
+            ("planets", "Terrestrial Planet", "Surface Gravity: 1.12 g, Pressure: 1.18 bar")
+        ]
+
+        category_key, category_label, physics_specs = random.choice(categories)
+
+        # 3. Generate AI Name for EVERY object
+        ai_name = generate_ai_object_name(category_key, physics_specs)
+
+        # 4. Insert formatted Event Card into Supabase
+        event_title = f"{ai_name} ({category_label})"
+        event_desc = f"Thermodynamic equilibrium shift detected at Age {new_age} Gyr. Physical specs: {physics_specs}."
+
+        supabase.table("events").insert({
+            "title": event_title,
+            "description": event_desc,
+            "age": new_age
+        }).execute()
+
+        # 5. Increment Catalog Inventory Count
+        cat_res = supabase.table("catalog_stats").select("*").limit(1).execute()
+        if cat_res.data and len(cat_res.data) > 0:
+            stats = cat_res.data[0]
+            current_val = stats.get(category_key, 0) or 0
+            supabase.table("catalog_stats").update({category_key: current_val + 1}).eq("id", stats["id"]).execute()
+
+        print(f"✅ [SIMULATION ADVANCED]: Age {new_age} Gyr | Spawned: '{event_title}'")
+
+    except Exception as e:
+        print(f"❌ [SIMULATION ERROR]: {e}")
+
 
 if __name__ == "__main__":
-    run()
+    print("🚀 [PROJECT ORIGIN] Physics Engine Started. Running 24/7...")
+    while True:
+        run_simulation_step()
+        time.sleep(10)  # Runs cycle every 10 seconds
