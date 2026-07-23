@@ -20,13 +20,12 @@ You analyze physical state matrices, thermodynamic shifts, entropy levels, and b
 Task: Provide a 2-sentence philosophical and thermodynamic synthesis of the universe's current state. 
 Focus on entropy, stellar evolution, and biological emergence (if present). Tone: Cold, scientific, profound, omniscient. Output ONLY the 2-sentence text."""
 
-# Candidate free AI models to rotate through
 FREE_AI_MODELS = [
-    "meta-llama/llama-3.1-8b-instruct:free",
+    "openrouter/free",
     "google/gemma-2-9b-it:free",
+    "meta-llama/llama-3.1-8b-instruct:free",
     "qwen/qwen-2.5-72b-instruct:free",
-    "mistralai/mistral-7b-instruct:free",
-    "openrouter/free"
+    "mistralai/mistral-7b-instruct:free"
 ]
 
 def fetch_universe_state():
@@ -86,12 +85,14 @@ def call_openrouter_chain(prompt_data):
         print("⚠️ [BRAIN]: OPENROUTER_API_KEY missing.")
         return None
 
+    # HTTP-Referer and X-Title are strictly required by OpenRouter for free models!
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "HTTP-Referer": "https://project-origin.app",
+        "X-Title": "Project Origin Simulation",
         "Content-Type": "application/json"
     }
 
-    # Loop through real free AI models until ONE succeeds
     for model_id in FREE_AI_MODELS:
         payload = {
             "model": model_id,
@@ -104,16 +105,20 @@ def call_openrouter_chain(prompt_data):
         }
         
         try:
-            res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=6)
+            res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=8)
             if res.status_code == 200:
-                content = res.json()["choices"][0]["message"]["content"].strip()
-                if content:
-                    print(f"✨ [AI SUCCESS via {model_id}]")
-                    return content
-            else:
-                print(f"⚠️ [{model_id}] Status {res.status_code}, trying next model...")
+                data = res.json()
+                choices = data.get("choices", [])
+                if choices and len(choices) > 0:
+                    content = choices[0].get("message", {}).get("content")
+                    if content and isinstance(content, str):
+                        content = content.strip()
+                        if content:
+                            print(f"✨ [AI SUCCESS via {model_id}]")
+                            return content
+            print(f"⚠️ [{model_id}] Status {res.status_code}, trying next model...")
         except Exception as e:
-            print(f"⚠️ [{model_id}] Network timeout/error, trying next model...")
+            print(f"⚠️ [{model_id}] Exception ({e}), trying next model...")
 
     print("❌ [BRAIN]: All free AI models failed on this pass. Skipping log entry.")
     return None
@@ -142,7 +147,6 @@ def run_full_universe_pass():
     print(f"\n🧠 [DENSE MATRIX PASS AT AGE {age:.6f} Gyr | {len(all_objects)} Objects]")
     thought = call_openrouter_chain(prompt)
 
-    # ONLY log if an actual AI gave us a thought
     if thought:
         print(f"👁️ [ORIGIN THOUGHT]: {thought}")
         log_data = {
