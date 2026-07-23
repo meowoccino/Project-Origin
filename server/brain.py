@@ -4,8 +4,7 @@ import random
 import requests
 
 # --- ENVIRONMENT CONFIGURATION ---
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
 
@@ -73,57 +72,35 @@ def analyze_matrix_data(objects):
     
     return matrix_str, life_count, max_kardashev, avg_temp
 
-def call_ai_providers(prompt_data):
-    # 1. Try Groq API (High Speed, Free Key)
-    if GROQ_API_KEY:
-        try:
-            res = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json={
-                    "model": "llama-3.1-8b-instant",
-                    "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt_data}],
-                    "temperature": 0.8,
-                    "max_tokens": 100
-                },
-                timeout=8
-            )
-            if res.status_code == 200:
-                content = res.json()["choices"][0]["message"]["content"].strip()
-                if content:
-                    print("✨ [AI SUCCESS via Groq API]")
-                    return content
-        except Exception as e:
-            print(f"⚠️ [Groq Error]: {e}")
+def call_gemini_api(prompt_data):
+    if not GEMINI_API_KEY:
+        print("⚠️ [BRAIN]: GEMINI_API_KEY missing from environment.")
+        return None
 
-    # 2. Try OpenRouter API
-    if OPENROUTER_API_KEY:
-        try:
-            res = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "HTTP-Referer": "https://project-origin.app",
-                    "X-Title": "Project Origin",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "openrouter/free",
-                    "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": prompt_data}],
-                    "temperature": 0.8,
-                    "max_tokens": 100
-                },
-                timeout=8
-            )
-            if res.status_code == 200:
-                content = res.json()["choices"][0]["message"]["content"].strip()
-                if content:
-                    print("✨ [AI SUCCESS via OpenRouter]")
-                    return content
-        except Exception as e:
-            print(f"⚠️ [OpenRouter Error]: {e}")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    payload = {
+        "contents": [{
+            "parts": [{"text": f"{SYSTEM_PROMPT}\n\n{prompt_data}"}]
+        }],
+        "generationConfig": {
+            "temperature": 0.8,
+            "maxOutputTokens": 100
+        }
+    }
 
-    print("❌ [BRAIN]: All AI calls failed or rate-limited on this pass.")
+    try:
+        res = requests.post(url, json=payload, timeout=8)
+        if res.status_code == 200:
+            data = res.json()
+            content = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            if content:
+                print("✨ [AI SUCCESS via Gemini 1.5 Flash]")
+                return content
+        else:
+            print(f"❌ [GEMINI API ERROR] Status: {res.status_code}")
+    except Exception as e:
+        print(f"❌ [GEMINI NETWORK ERROR] {e}")
+
     return None
 
 def run_full_universe_pass():
@@ -148,7 +125,7 @@ def run_full_universe_pass():
     )
 
     print(f"\n🧠 [DENSE MATRIX PASS AT AGE {age:.6f} Gyr | {len(all_objects)} Objects]")
-    thought = call_ai_providers(prompt)
+    thought = call_gemini_api(prompt)
 
     if thought:
         print(f"👁️ [ORIGIN THOUGHT]: {thought}")
@@ -165,12 +142,12 @@ def run_full_universe_pass():
 
         try:
             requests.post(f"{SUPABASE_URL}/rest/v1/origin_logs", headers=HEADERS, json=log_data, timeout=5)
-            print("✅ Real AI thought logged to Supabase origin_logs!")
+            print("✅ Logged to Supabase origin_logs!")
         except Exception as e:
             print(f"❌ Failed to save log: {e}")
 
 if __name__ == "__main__":
-    print("🚀 [PROJECT ORIGIN] Observer Active (1-Minute Cadence)...")
+    print("🚀 [PROJECT ORIGIN] Gemini Observer Active...")
     while True:
         run_full_universe_pass()
         time.sleep(60)
