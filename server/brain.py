@@ -83,7 +83,7 @@ def call_cerebras_api(prompt_data):
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "llama-3.3-70b",
+        "model": "gemma-4-31b",
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt_data}
@@ -98,7 +98,7 @@ def call_cerebras_api(prompt_data):
             data = res.json()
             content = data["choices"][0]["message"]["content"].strip()
             if content:
-                print("✨ [AI SUCCESS via Cerebras Llama-3.3-70B]")
+                print("✨ [AI SUCCESS via Cerebras Gemma-4-31B]")
                 return content
         else:
             print(f"❌ [CEREBRAS API ERROR] Status: {res.status_code} | Msg: {res.text}")
