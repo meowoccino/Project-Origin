@@ -1,226 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Project Origin</title>
-    <link rel="stylesheet" href="ui/styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Project Origin</title>
+
+  <!-- Google Sans / System Font Fallbacks -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-    <!-- SPLASH SCREEN -->
-    <div id="splash-screen">
-        <div class="splash-content">
-            <svg class="splash-logo" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,140,0,0.15)" stroke-width="1"/>
-                <circle class="orbit-anim" cx="50" cy="50" r="30" fill="none" stroke="rgba(255,140,0,0.4)" stroke-width="1.5" stroke-dasharray="4 8"/>
-                <circle class="orbit-anim" cx="50" cy="20" r="4" fill="#FF8C00"/>
-                <circle cx="50" cy="50" r="6" fill="#FFFFFF"/>
-            </svg>
-            <h1 class="splash-title">PROJECT <span style="color: var(--accent);">ORIGIN</span></h1>
-            <p class="splash-subtitle">AN AI-DIRECTED UNIVERSE</p>
-        </div>
-        <div class="splash-prompt data-font">tap to observe _</div>
+  <!-- SPLASH SCREEN -->
+  <div id="splash-screen">
+    <div class="splash-logo"></div>
+    <div class="splash-title">PROJECT ORIGIN</div>
+  </div>
+
+  <!-- APP ROOT -->
+  <div id="app">
+
+    <!-- REDESIGNED SLEEK UNIVERSE AGE PILL -->
+    <div class="universe-age-pill">
+      <div class="age-dot"></div>
+      <div class="age-text" id="universe-age-val">12.402 Billion Years</div>
     </div>
 
-    <!-- CANVAS CONTAINER -->
-    <div id="canvas-container"></div>
-
-    <!-- HUD AGE OVERLAY -->
-    <div id="hud-age-container" class="glass-panel">
-        <div class="hud-label">Universe Age</div>
-        <div id="hud-age" class="hud-value data-font">0 Years</div>
+    <!-- TAB 1: EXPLORE -->
+    <div id="tab-explore" class="tab-content active">
+      <canvas id="universe-canvas"></canvas>
+      
+      <!-- SELECTION OVERLAY CARD -->
+      <div id="selection-card">
+        <div class="card-info">
+          <div class="card-title" id="sel-card-title">Astraea Prime</div>
+          <div class="card-subtitle" id="sel-card-sub">Inhabited World</div>
+        </div>
+        <button class="analyze-btn">Analyze</button>
+      </div>
     </div>
 
-    <!-- INSPECTOR PREVIEW BAR (FLOATING OVERLAY STRICTLY ON EXPLORE) -->
-    <div id="inspector-preview" class="glass-panel">
-        <div>
-            <div id="obj-name">Celestial Body</div>
-            <div id="obj-sub" class="data-font">Object Selected</div>
-        </div>
-        <button id="btn-expand-inspect" style="background: var(--accent); border: none; color: #fff; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer;">Analyze</button>
+    <!-- TAB 2: EVENTS -->
+    <div id="tab-events" class="tab-content">
+      <div class="tab-placeholder">Events Feed Loading...</div>
     </div>
 
-    <!-- VIEW: EVENTS TAB -->
-    <div id="view-events" class="view-panel">
-        <div id="events-container" style="max-width: 500px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;"></div>
+    <!-- TAB 3: ORIGIN -->
+    <div id="tab-origin" class="tab-content">
+      <div class="tab-placeholder">Origin Logs Loading...</div>
     </div>
 
-    <!-- VIEW: ORIGIN TAB (AI OBSERVER) -->
-    <div id="view-ai" class="view-panel">
-        <div class="observer-module">
-            <div id="observer-ui" class="eye-container state-observe">
-                <div class="eye-ring-outer"></div>
-                <div class="eye-ring-inner"></div>
-                <div class="eye-core"></div>
-            </div>
-            <div class="status-header-row">
-                <div id="ping-dot" class="ping-dot"></div>
-                <span id="status-label" class="status-text data-font">OBSERVER ONLINE</span>
-                <span id="ping-ms" class="data-font" style="font-size: 10px; color: var(--text-muted); margin-left: 4px;">(-- ms)</span>
-            </div>
-            <div id="earth-clock" class="earth-sync data-font">UPLINK TIMESTAMP: INITIALIZING...</div>
-        </div>
-
-        <div id="logs-container"></div>
-        <button id="btn-load-more" class="btn-history data-font">QUERY PAST TELEMETRY</button>
+    <!-- TAB 4: TIMELINE -->
+    <div id="tab-timeline" class="tab-content">
+      <div class="tab-placeholder">Timeline Archives Loading...</div>
     </div>
 
-    <!-- VIEW: TIMELINE TAB -->
-    <div id="view-timeline" class="view-panel">
-        <div id="timeline-container" class="timeline-wrapper"></div>
+    <!-- TAB 5: CATALOG (TEXT HEADERS REMOVED) -->
+    <div id="tab-catalog" class="tab-content">
+      <div class="catalog-container">
+        
+        <!-- MACRO COSMOLOGICAL STATE BAR -->
+        <div class="macro-bar-card">
+          <div class="macro-progress-track">
+            <div class="macro-segment" style="width: 68.5%; background: #8B5CF6;"></div>
+            <div class="macro-segment" style="width: 26.4%; background: #F97316;"></div>
+            <div class="macro-segment" style="width: 5.1%; background: #FACC15;"></div>
+          </div>
+          <div class="macro-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#8B5CF6;"></div>Dark Energy 68.5%</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#F97316;"></div>Dark Matter 26.4%</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#FACC15;"></div>Baryonic 5.1%</div>
+          </div>
+        </div>
+
+        <!-- 10-CATEGORY CELESTIAL INVENTORY GRID -->
+        <div class="catalog-grid" id="catalog-grid-items"></div>
+
+      </div>
     </div>
 
-    <!-- VIEW: CATALOG TAB -->
-    <div id="view-catalog" class="view-panel">
-        <div class="catalog-viewport">
-            <!-- MACRO COSMOLOGICAL STATE -->
-            <div class="macro-container">
-                <div class="hud-label" style="margin-bottom: 10px;">Macro Cosmological State</div>
-                <div class="macro-bar-visual">
-                    <div id="bar-de" class="bar-de"></div>
-                    <div id="bar-dm" class="bar-dm"></div>
-                    <div id="bar-baryon" class="bar-baryonic"></div>
-                </div>
-                <div class="macro-grid">
-                    <div class="macro-item">
-                        <div class="dot" style="background: #8A2BE2;"></div>
-                        <div>
-                            <div class="macro-label">Dark Energy</div>
-                            <div id="cat-de-val" class="macro-val data-font">68.5%</div>
-                        </div>
-                    </div>
-                    <div class="macro-item">
-                        <div class="dot" style="background: #FF8C00;"></div>
-                        <div>
-                            <div class="macro-label">Dark Matter</div>
-                            <div id="cat-dm-val" class="macro-val data-font">26.4%</div>
-                        </div>
-                    </div>
-                    <div class="macro-item">
-                        <div class="dot" style="background: #FFD700;"></div>
-                        <div>
-                            <div class="macro-label">Baryonic Matter</div>
-                            <div id="cat-baryon-val" class="macro-val data-font">5.1%</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- INVENTORY GRID -->
-            <div class="hud-label" style="margin: 20px 0 10px 0;">Celestial Inventory</div>
-            <div class="inventory-grid">
-                <div class="inv-card">
-                    <div class="inv-header">
-                        <div class="dot" style="background: #00E5FF;"></div>
-                        <div class="inv-title">Nebulae & Clouds</div>
-                    </div>
-                    <div id="cat-nebulae-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header">
-                        <div class="dot" style="background: #FFD700;"></div>
-                        <div class="inv-title">Active Stars</div>
-                    </div>
-                    <div id="cat-stars-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header">
-                        <div class="dot" style="background: #B026FF;"></div>
-                        <div class="inv-title">Black Holes</div>
-                    </div>
-                    <div id="cat-bh-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header">
-                        <div class="dot" style="background: #FF3366;"></div>
-                        <div class="inv-title">Neutron Stars</div>
-                    </div>
-                    <div id="cat-degenerate-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header">
-                        <div class="dot" style="background: #4CAF50;"></div>
-                        <div class="inv-title">Planets</div>
-                    </div>
-                    <div id="cat-planets-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header">
-                        <div class="dot" style="background: #A0AEC0;"></div>
-                        <div class="inv-title">Moons</div>
-                    </div>
-                    <div id="cat-moons-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header">
-                        <div class="dot" style="background: #888888;"></div>
-                        <div class="inv-title">Asteroids & Comets</div>
-                    </div>
-                    <div id="cat-asteroids-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header">
-                        <div class="dot" style="background: #FF8C00;"></div>
-                        <div class="inv-title">Quasars</div>
-                    </div>
-                    <div id="cat-quasars-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header">
-                        <div class="dot" style="background: #E91E63;"></div>
-                        <div class="inv-title">Exotic Objects</div>
-                    </div>
-                    <div id="cat-exotic-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header">
-                        <div class="dot" style="background: #00E5FF; box-shadow: 0 0 6px #00E5FF;"></div>
-                        <div class="inv-title">Inhabited Worlds</div>
-                    </div>
-                    <div id="cat-inhabited-val" class="inv-val data-font">0</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: OBJECT DETAIL VIEW -->
-    <div id="modal-object-detail" class="view-panel">
-        <div class="modal-header">
-            <button id="btn-close-inspect" class="btn-back" aria-label="Go Back">
-                <svg viewBox="0 0 24 24">
-                    <path d="M19 12H5M12 19l-7-7 7-7"/>
-                </svg>
-            </button>
-            <span id="inspect-title">Celestial Body</span>
-        </div>
-        <div id="spec-name" class="glass-panel" style="padding: 20px;"></div>
-    </div>
-
-    <!-- SLEEK DOCKED BOTTOM NAVIGATION BAR -->
-    <nav id="bottom-nav">
-        <div id="btn-explore" class="nav-btn active">
-            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
-            <span>Explore</span>
-        </div>
-        <div id="btn-events" class="nav-btn">
-            <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
-            <span>Events</span>
-        </div>
-        <div id="btn-ai" class="nav-btn">
-            <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-            <span>Origin</span>
-        </div>
-        <div id="btn-timeline" class="nav-btn">
-            <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
-            <span>Timeline</span>
-        </div>
-        <div id="btn-catalog" class="nav-btn">
-            <svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
-            <span>Catalog</span>
-        </div>
+    <!-- BOTTOM NAVIGATION BAR -->
+    <nav class="nav-bar">
+      <button class="nav-item active" onclick="switchTab('explore')">
+        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+        Explore
+      </button>
+      <button class="nav-item" onclick="switchTab('events')">
+        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10z"/></svg>
+        Events
+      </button>
+      <button class="nav-item" onclick="switchTab('origin')">
+        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-7.5-3.75l-2.5 1.25L12 16l10-5l-2.5-1.25L12 13.5z"/></svg>
+        Origin
+      </button>
+      <button class="nav-item" onclick="switchTab('timeline')">
+        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+        Timeline
+      </button>
+      <button class="nav-item" onclick="switchTab('catalog')">
+        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
+        Catalog
+      </button>
     </nav>
 
-    <script type="module" src="ui/components.js"></script>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
