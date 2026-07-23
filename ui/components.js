@@ -1,4 +1,4 @@
-import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode, clearSelection } from '../engine/main.js';
+import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode } from '../engine/main.js';
 import * as MainEngine from '../engine/main.js';
 
 function initApp() {
@@ -60,31 +60,272 @@ function initApp() {
         }, { passive: true });
     }
 
-    // 🔭 BACKLOG FIX: Global Tab Switcher (hooks correctly into your backup HTML)
-    window.switchTab = function(tabName) {
-        // Reset all buttons and views
-        document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    const allBtns = ['btn-explore', 'btn-events', 'btn-ai', 'btn-timeline', 'btn-catalog'].map(id => document.getElementById(id));
+    const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
+    const hudContainer = document.getElementById('hud-age-container');
 
-        // Activate specific tab (targeting your specific HTML IDs: tab-explore, tab-events, etc.)
-        const targetTab = document.getElementById(`tab-${tabName}`);
-        if (targetTab) targetTab.classList.add('active');
+    // Strict Tab Switcher with Complete Inspector Preview Bar Hiding
+    function switchTab(btnId, viewId) {
+        allBtns.forEach(b => b?.classList.remove('active'));
+        allViews.forEach(v => v?.classList.remove('active'));
+        
+        if (btnId) document.getElementById(btnId)?.classList.add('active');
+        if (viewId) document.getElementById(viewId)?.classList.add('active');
+        
+        if (hudContainer) hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
+        MainEngine.isExploreActive = (btnId === 'btn-explore');
 
-        // Highlight matching button
-        const navMap = { 'explore': 0, 'events': 1, 'origin': 2, 'timeline': 3, 'catalog': 4 };
-        const navItems = document.querySelectorAll('.nav-item');
-        if (navItems[navMap[tabName]]) navItems[navMap[tabName]].classList.add('active');
-
-        // Manage Explore State
-        const hudContainer = document.querySelector('.universe-age-pill');
-        if (hudContainer) hudContainer.style.opacity = (tabName === 'explore') ? '1' : '0';
-        MainEngine.isExploreActive = (tabName === 'explore');
-
-        // 🔭 BACKLOG FIX: Unselect active object when switching tabs
-        if (tabName !== 'explore') {
-            MainEngine.clearSelection();
+        // Absolute hiding for inspector-preview on all non-explore views
+        const inspector = document.getElementById('inspector-preview');
+        if (inspector) {
+            inspector.classList.remove('active');
+            inspector.style.display = 'none';
         }
-    };
+    }
+
+    document.getElementById('btn-explore')?.addEventListener('click', () => switchTab('btn-explore', null));
+    document.getElementById('btn-events')?.addEventListener('click', () => switchTab('btn-events', 'view-events'));
+    document.getElementById('btn-ai')?.addEventListener('click', () => switchTab('btn-ai', 'view-ai'));
+    document.getElementById('btn-timeline')?.addEventListener('click', () => switchTab('btn-timeline', 'view-timeline'));
+    document.getElementById('btn-catalog')?.addEventListener('click', () => switchTab('btn-catalog', 'view-catalog'));
+
+    function initEarthClock() {
+        const clockEl = document.getElementById('earth-clock');
+        if (!clockEl) return;
+        const update = () => {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const h = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            clockEl.innerText = `UPLINK TIMESTAMP: ${y}-${m}-${d} ${h}:${min}:${s} LOCAL`;
+        };
+        setInterval(update, 1000);
+        update();
+    }
+    initEarthClock();
+
+    function setObserverEyeState(mode) {
+        const ui = document.getElementById('observer-ui');
+        const label = document.getElementById('status-label');
+        if (!ui || !label) return;
+
+        ui.classList.remove('state-observe', 'state-intervene', 'state-error');
+        const m = (mode || '').toUpperCase();
+
+        if (m === 'INTERVENE') {
+            ui.classList.add('state-intervene');
+            label.innerText = 'EXECUTING INTERVENTION';
+        } else if (m === 'ERROR' || m === 'OFFLINE') {
+            ui.classList.add('state-error');
+            label.innerText = 'CONNECTION SEVERED';
+        } else {
+            ui.classList.add('state-observe');
+            label.innerText = 'OBSERVER ONLINE';
+        }
+    }
+
+    // Dynamic Network Latency Measuring Dot (Green / Yellow / Red)
+    function updatePingLatency(latencyMs, isSuccess) {
+        const pingDot = document.getElementById('ping-dot');
+        const pingText = document.getElementById('ping-ms');
+        if (!pingDot) return;
+
+        if (pingText) pingText.innerText = `(${latencyMs} ms)`;
+
+        if (!isSuccess || latencyMs > 1500) {
+            pingDot.style.background = '#FF1744'; // Red
+            pingDot.style.boxShadow = '0 0 8px #FF1744';
+        } else if (latencyMs > 500) {
+            pingDot.style.background = '#FFEA00'; // Yellow
+            pingDot.style.boxShadow = '0 0 8px #FFEA00';
+        } else {
+            pingDot.style.background = '#00E676'; // Green
+            pingDot.style.boxShadow = '0 0 8px #00E676';
+        }
+    }
+
+    function createLogCard(log) {
+        const mode = (log.mode || 'OBSERVE').toLowerCase();
+        const sector = log.sector || "Sector 04";
+        const title = log.subject || "Cosmic System";
+        const typeTag = log.type_tag || "Telemetry Event";
+        const timeLabel = log.latency_myr ? `LATENCY: ${log.latency_myr.toFixed(1)} MYR` : "LATENCY: 1.0 MYR";
+
+        const card = document.createElement("div");
+        card.className = `log-card log-${mode}`;
+        
+        card.innerHTML = `
+            <div class="breadcrumb-bar data-font">
+                <span class="bc-item" style="flex-shrink: 0;">${sector}</span>
+                <span class="bc-sep">►</span>
+                <span class="bc-item">${title}</span>
+                <span class="bc-sep">►</span>
+                <span class="bc-tag">${typeTag}</span>
+            </div>
+            <div class="log-meta data-font">
+                <span>${timeLabel}</span>
+            </div>
+            <div class="logic-step">
+                <div class="logic-icon">▶</div>
+                <div class="logic-text"><strong>Data Analysis:</strong> ${log.data_analysis || 'Analyzing local thermodynamic density.'}</div>
+            </div>
+            <div class="logic-step">
+                <div class="logic-icon">▶</div>
+                <div class="logic-text"><strong>Simulation:</strong> ${log.temporal_simulation || 'Gravitational trajectories within normal distribution.'}</div>
+            </div>
+            <div class="logic-decision logic-step">
+                <div class="logic-icon">■</div>
+                <div class="logic-text">${log.resolution || 'Standard procedural evolution permitted.'}</div>
+            </div>
+        `;
+        return card;
+    }
+
+    let oldestLoadedId = null;
+    let isLoadingLogs = false;
+
+    async function loadNextBatch() {
+        if (isLoadingLogs) return;
+        isLoadingLogs = true;
+
+        const btn = document.getElementById("btn-load-more");
+        const container = document.getElementById("logs-container");
+        if (btn) btn.innerText = "QUERYING ARCHIVE...";
+
+        try {
+            let url = `${SUPABASE_URL}/rest/v1/origin_logs?select=*&order=id.desc&limit=4`;
+            if (oldestLoadedId) url += `&id=lt.${oldestLoadedId}`;
+
+            const res = await fetch(url, { headers: FETCH_HEADERS });
+            let logs = [];
+            if (res.ok) logs = await res.json();
+
+            if (logs.length === 0) {
+                if (btn) btn.innerText = "END OF TELEMETRY ARCHIVE";
+                isLoadingLogs = false;
+                return;
+            }
+
+            if (!oldestLoadedId && logs.length > 0) {
+                setObserverEyeState(logs[0].mode);
+            }
+
+            logs.forEach(log => {
+                oldestLoadedId = log.id;
+                const card = createLogCard(log);
+                container?.appendChild(card);
+            });
+
+            if (btn) btn.innerText = "QUERY PAST TELEMETRY";
+        } catch (err) {
+            console.error("Failed to fetch telemetry logs:", err);
+            setObserverEyeState('ERROR');
+            if (btn) btn.innerText = "RETRY TELEMETRY QUERY";
+        } finally {
+            isLoadingLogs = false;
+        }
+    }
+
+    document.getElementById("btn-load-more")?.addEventListener("click", loadNextBatch);
+    loadNextBatch();
+
+    const TIMELINE_EPOCHS = [
+        { title: "Primordial Inflation", start: 0, end: 100000, desc: "Exponential space-time expansion driven by quantum vacuum inflaton field decay." },
+        { title: "Recombination & Decoupling", start: 100000, end: 100000000, desc: "Thermal baryonic gas cools below 3,000 K, releasing Cosmic Microwave Background radiation." },
+        { title: "Pop-III Star Reionization", start: 100000000, end: 1000000000, desc: "Zero-metallicity primordial gas collapses into hypermassive stars, ionising neutral hydrogen." },
+        { title: "Galactic Disk Accretion", start: 1000000000, end: 13800000000, desc: "Angular momentum conservation forms flat spinning galactic disks with MHD turbulence." },
+        { title: "Degenerate & Far Cosmic Era", start: 13800000000, end: Infinity, desc: "Interstellar gas depletion, white dwarf dominance, and open-ended thermodynamic entropy decay." }
+    ];
+
+    function updateTimelineUI(totalYears) {
+        const container = document.getElementById('timeline-container');
+        if (!container) return;
+        container.innerHTML = TIMELINE_EPOCHS.map(epoch => {
+            const isActive = totalYears >= epoch.start && totalYears < epoch.end;
+            const actClass = isActive ? 'active' : '';
+            const endLabel = (epoch.end === Infinity) ? "∞" : epoch.end.toLocaleString();
+            return `
+                <div class="timeline-node">
+                  <div class="node-marker ${actClass}"></div>
+                  <div class="node-title ${actClass}">${epoch.title}</div>
+                  <div class="node-time data-font ${actClass}">${epoch.start.toLocaleString()} - ${endLabel} Yrs</div>
+                  <div class="node-desc ${actClass}">${epoch.desc}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderAgeHUD(ageGyr) {
+        cameraState.currentAge = ageGyr;
+        const totalYears = Math.floor(ageGyr * 1000000000);
+        const hudAge = document.getElementById('hud-age');
+        if (hudAge) {
+            hudAge.innerText = totalYears >= 1000000000 
+                ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` 
+                : `${totalYears.toLocaleString()} Years`;
+        }
+        updateTimelineUI(totalYears);
+    }
+
+    function generatePhysics(node, age) {
+        let mass, radius, temp, extra;
+        const seed = node.id * 13;
+        const epochLabel = age < 0.1 ? `${(age * 1000).toFixed(2)} Myr` : `${age.toFixed(3)} Gyr`;
+
+        switch (node.category) {
+            case 'asteroids_comets':
+                mass = (seed % 90 + 1) + " × 10^15 kg"; radius = (seed % 150 + 5) + " km"; temp = (seed % 100 + 40) + " K";
+                extra = `<div class="spec-row"><span class="spec-label">Composition</span><span class="spec-value">Silicates / Nickel-Iron</span></div>`;
+                break;
+            case 'moons':
+                mass = "0." + (seed % 99 + 1) + " M_lunar"; radius = (seed % 2000 + 500) + " km"; temp = (seed % 150 + 50) + " K";
+                extra = `<div class="spec-row"><span class="spec-label">Tidal State</span><span class="spec-value">Tidally Locked</span></div>`;
+                break;
+            case 'planets':
+            case 'inhabited':
+                mass = (seed % 15 + 0.1).toFixed(2) + " M_earth"; radius = (seed % 20000 + 4000) + " km";
+                temp = node.category === 'inhabited' ? ((seed % 40) + 5) + " °C" : "-" + (seed % 150) + " °C";
+                extra = node.category === 'inhabited' 
+                    ? `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">N2/O2 Rich</span></div><div class="spec-row"><span class="spec-label">Biosphere</span><span class="spec-value" style="color:#00E5FF">Confirmed</span></div>`
+                    : `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">CO2 / Methane</span></div>`;
+                break;
+            case 'stars':
+                mass = (seed % 25 + 0.5).toFixed(2) + " M_sun"; radius = (seed % 15 + 0.8).toFixed(2) + " R_sun"; temp = (seed % 30000 + 3000).toLocaleString() + " K";
+                extra = `<div class="spec-row"><span class="spec-label">Luminosity</span><span class="spec-value">${(seed % 1000 + 1).toFixed(1)} L_sun</span></div>`;
+                break;
+            case 'black_holes':
+                mass = (seed % 50 + 5).toFixed(2) + " M_sun"; radius = ((seed % 50 + 5) * 2.95).toFixed(1) + " km (Schwarzschild)"; temp = "0.000" + (seed % 9 + 1) + " K (Hawking)";
+                extra = `<div class="spec-row"><span class="spec-label">Accretion</span><span class="spec-value">${(seed % 5 * 0.1).toFixed(3)} M_sun/yr</span></div>`;
+                break;
+            default:
+                mass = (seed % 5000 + 1000) + " M_sun"; radius = (seed % 150 + 10) + " Lightyears"; temp = "10 - 50 K";
+                extra = `<div class="spec-row"><span class="spec-label">Composition</span><span class="spec-value">H II Region / Plasma</span></div>`;
+                break;
+        }
+
+        return `
+            <div class="spec-row"><span class="spec-label">Designation</span><span class="spec-value" style="font-weight:bold; color:#fff;">${node.designation}</span></div>
+            <div class="spec-row"><span class="spec-label">Mass</span><span class="spec-value">${mass}</span></div>
+            <div class="spec-row"><span class="spec-label">Radius</span><span class="spec-value">${radius}</span></div>
+            <div class="spec-row"><span class="spec-label">Surface Temp</span><span class="spec-value">${temp}</span></div>
+            ${extra}
+            <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Formation Epoch</span><span class="spec-value">${epochLabel}</span></div>
+        `;
+    }
+
+    document.getElementById('btn-expand-inspect')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (selectedNode) {
+            document.getElementById('inspect-title').innerText = selectedNode.designation;
+            document.getElementById('spec-name').innerHTML = generatePhysics(selectedNode, localCurrentAge);
+            switchTab(null, 'modal-object-detail');
+        }
+    });
+
+    document.getElementById('btn-close-inspect')?.addEventListener('click', () => switchTab('btn-explore', null));
 
     function formatAgeFormatted(ageGyr) {
         if (!ageGyr || ageGyr < 0.001) return "< 0.001 Gyr";
@@ -92,22 +333,31 @@ function initApp() {
     }
 
     async function pollUniverseState() {
+        const t0 = performance.now();
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`, { headers: FETCH_HEADERS });
+            const latency = Math.round(performance.now() - t0);
+            updatePingLatency(latency, res.ok);
+
             if (res.ok) {
                 const data = await res.json();
                 if (data.length > 0) {
                     localCurrentAge = Number(data[0].age || 0.0);
-                    const totalYears = Math.floor(localCurrentAge * 1000000000);
-                    const hudAge = document.getElementById('universe-age-val');
-                    if (hudAge) {
-                        hudAge.innerText = totalYears >= 1000000000 
-                            ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` 
-                            : `${totalYears.toLocaleString()} Years`;
-                    }
+                    renderAgeHUD(localCurrentAge);
+                    
+                    if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = `${data[0].de_pct || 68.5}%`;
+                    if (document.getElementById('cat-dm-val')) document.getElementById('cat-dm-val').innerText = `${data[0].dm_pct || 26.4}%`;
+                    if (document.getElementById('cat-baryon-val')) document.getElementById('cat-baryon-val').innerText = `${data[0].baryon_pct || 5.1}%`;
+                    
+                    const barDe = document.getElementById('bar-de'), barDm = document.getElementById('bar-dm'), barBaryon = document.getElementById('bar-baryon');
+                    if(barDe) barDe.style.width = `${data[0].de_pct || 68.5}%`;
+                    if(barDm) barDm.style.width = `${data[0].dm_pct || 26.4}%`;
+                    if(barBaryon) barBaryon.style.width = `${data[0].baryon_pct || 5.1}%`;
                 }
             }
-        } catch (err) {}
+        } catch (err) {
+            updatePingLatency(9999, false);
+        }
     }
 
     async function pollCatalog() {
@@ -118,12 +368,26 @@ function initApp() {
                 if (data.length > 0) {
                     const stats = data[0];
                     updateCanvasFromCatalog(stats, localCurrentAge);
+                    
+                    if (document.getElementById('cat-nebulae-val')) document.getElementById('cat-nebulae-val').innerText = (stats.nebulae || 0).toLocaleString();
+                    if (document.getElementById('cat-stars-val')) document.getElementById('cat-stars-val').innerText = (stats.stars || 0).toLocaleString();
+                    if (document.getElementById('cat-bh-val')) document.getElementById('cat-bh-val').innerText = (stats.black_holes || 0).toLocaleString();
+                    if (document.getElementById('cat-degenerate-val')) document.getElementById('cat-degenerate-val').innerText = (stats.neutron_stars || 0).toLocaleString();
+                    if (document.getElementById('cat-planets-val')) document.getElementById('cat-planets-val').innerText = (stats.planets || 0).toLocaleString();
+                    if (document.getElementById('cat-moons-val')) document.getElementById('cat-moons-val').innerText = (stats.moons || 0).toLocaleString();
+                    if (document.getElementById('cat-asteroids-val')) document.getElementById('cat-asteroids-val').innerText = (stats.asteroids_comets || 0).toLocaleString();
+                    if (document.getElementById('cat-quasars-val')) document.getElementById('cat-quasars-val').innerText = (stats.quasars || 0).toLocaleString();
+                    if (document.getElementById('cat-exotic-val')) document.getElementById('cat-exotic-val').innerText = (stats.exotic_objects || 0).toLocaleString();
+                    if (document.getElementById('cat-inhabited-val')) {
+                        const inhabited = (localCurrentAge > 0.5) ? Math.floor((stats.planets || 0) * 0.012) : 0;
+                        document.getElementById('cat-inhabited-val').innerText = inhabited.toLocaleString();
+                    }
                 }
             }
         } catch (err) {}
     }
 
-    // 🎨 BACKLOG FIX: Dynamic Parser to render REAL stats + Fixed Colors for Neutron/Nebulae
+    // Design 4 Card Builder with Real Astrophysics Parameters per Category
     function renderDesign4EventCard(e) {
         const title = e.title || 'Cosmic Telemetry Event';
         const desc = e.description || 'Thermodynamic equilibrium shift detected in local space-time region.';
@@ -131,46 +395,30 @@ function initApp() {
         
         let hex = "#FF8C00", rgb = "255, 140, 0", tag = "COSMIC EVENT";
         let iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
-        
+        let m1 = { lbl: "EPOCH", val: ageFormatted }, m2 = { lbl: "STATUS", val: "STABLE" }, m3 = { lbl: "SECTOR", val: "SEC 04" };
+
         const lowerTitle = title.toLowerCase();
 
-        // Color and Icon Assignments
-        if (lowerTitle.includes("nebula") || lowerTitle.includes("cloud") || lowerTitle.includes("gas")) {
+        if (lowerTitle.includes("cmb") || lowerTitle.includes("background") || lowerTitle.includes("decoupling")) {
+            hex = "#9C27B0"; rgb = "156, 39, 176"; tag = "DECOUPLING";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8.009 8.009 0 0 1-8 8z"/></svg>`;
+            m1 = { lbl: "REDSHIFT", val: "z ≈ 1100" }; m2 = { lbl: "TEMP", val: "3,000 K" }; m3 = { lbl: "EPOCH", val: "380,000 Yrs" };
+        } else if (lowerTitle.includes("nebula") || lowerTitle.includes("cloud") || lowerTitle.includes("gas")) {
             hex = "#00E5FF"; rgb = "0, 229, 255"; tag = "NEBULA CLOUD";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>`;
-        } else if (lowerTitle.includes("star") || lowerTitle.includes("protostar") || lowerTitle.includes("dwarf") || lowerTitle.includes("giant")) {
+            m1 = { lbl: "GAS TEMP", val: "18 K" }; m2 = { lbl: "DENSITY", val: "10⁴ /cm³" }; m3 = { lbl: "EPOCH", val: ageFormatted };
+        } else if (lowerTitle.includes("star") || lowerTitle.includes("protostar") || lowerTitle.includes("ignition")) {
             hex = "#FFD700"; rgb = "255, 215, 0"; tag = "CLASS-O STAR";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>`;
+            m1 = { lbl: "MASS", val: "18.5 M_sun" }; m2 = { lbl: "TEMP", val: "33,000 K" }; m3 = { lbl: "LUMINOSITY", val: "45,000 L_sun" };
         } else if (lowerTitle.includes("black hole") || lowerTitle.includes("singularity")) {
             hex = "#B026FF"; rgb = "176, 38, 255"; tag = "SINGULARITY";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
+            m1 = { lbl: "MASS", val: "4.2M M_sun" }; m2 = { lbl: "R_SCHWARZ", val: "0.08 AU" }; m3 = { lbl: "SPIN", val: "0.94 Kerr" };
         } else if (lowerTitle.includes("pulsar") || lowerTitle.includes("neutron")) {
-            // UNIQUE PURPLE NEUTRON COLOR SO IT DOESN'T BLEND WITH NEBULAE
-            hex = "#FF3366"; rgb = "255, 51, 102"; tag = "NEUTRON CORE";
+            hex = "#FF3366"; rgb = "255, 51, 102"; tag = "PULSAR BURST";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`;
-        } else if (lowerTitle.includes("planet") || lowerTitle.includes("world")) {
-            hex = "#10B981"; rgb = "16, 185, 129"; tag = "PLANETARY BODY";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>`;
-        }
-
-        // Dynamic Parsing
-        let m1 = { lbl: "EPOCH", val: ageFormatted };
-        let m2 = { lbl: "STATUS", val: "STABLE" };
-        let m3 = { lbl: "SECTOR", val: "SEC 04" };
-
-        const specsMatch = desc.match(/Specs:\s*(.*)/i);
-        if (specsMatch && specsMatch[1]) {
-            const rawSpecs = specsMatch[1].split(",");
-            const parsed = [];
-            rawSpecs.forEach(part => {
-                const kv = part.split(":");
-                if (kv.length === 2) {
-                    parsed.push({ lbl: kv[0].trim().toUpperCase(), val: kv[1].trim() });
-                }
-            });
-            if (parsed.length >= 1) m1 = parsed[0];
-            if (parsed.length >= 2) m2 = parsed[1];
-            if (parsed.length >= 3) m3 = parsed[2];
+            m1 = { lbl: "B-FIELD", val: "10¹⁴ Gauss" }; m2 = { lbl: "PERIOD", val: "5.8 ms" }; m3 = { lbl: "RADIUS", val: "11.2 km" };
         }
 
         return `
@@ -195,9 +443,9 @@ function initApp() {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const events = await res.json();
-                const container = document.getElementById('tab-events'); // TARGETING YOUR BACKUP HTML ID
+                const container = document.getElementById('events-container');
                 if (container && events.length > 0) {
-                    container.innerHTML = `<div class="catalog-container">` + events.map(e => renderDesign4EventCard(e)).join('') + `</div>`;
+                    container.innerHTML = events.map(e => renderDesign4EventCard(e)).join('');
                 }
             }
         } catch (err) {}
