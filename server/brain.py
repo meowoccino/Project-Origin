@@ -75,10 +75,10 @@ def analyze_matrix_data(objects):
 def call_openrouter(prompt_data):
     if not OPENROUTER_API_KEY:
         print("⚠️ [BRAIN]: OPENROUTER_API_KEY missing.")
-        return "Continuous thermodynamic observation in progress across all physical bodies."
+        return None
 
     payload = {
-        "model": "google/gemma-2-9b-it:free",
+        "model": "openrouter/free",
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt_data}
@@ -101,12 +101,12 @@ def call_openrouter(prompt_data):
     except Exception as e:
         print(f"❌ [BRAIN NETWORK ERROR] {e}")
         
-    return "Continuous thermodynamic observation in progress across all physical bodies."
+    return None
 
 def run_full_universe_pass():
     state = fetch_universe_state()
     if not state:
-        print("🧠 [BRAIN] Waiting for universe state...")
+        print("brain [BRAIN] Waiting for universe state...")
         return
 
     stats = fetch_catalog_stats()
@@ -126,24 +126,28 @@ def run_full_universe_pass():
 
     print(f"\n🧠 [DENSE MATRIX PASS AT AGE {age:.6f} Gyr | {len(all_objects)} Objects]")
     thought = call_openrouter(prompt)
-    print(f"👁️ [ORIGIN THOUGHT]: {thought}")
 
-    log_data = {
-        "mode": "OBSERVE",
-        "sector": f"Sector {random.randint(1, 12):02d}",
-        "subject": "Full-Universe Matrix Sweep",
-        "type_tag": "Complete Telemetry",
-        "latency_myr": round(random.uniform(0.5, 2.0), 1),
-        "data_analysis": f"Age: {age:.4f} Gyr | Bodies: {len(all_objects)} | Inhabited: {life_count} | Mean Temp: {avg_temp}K",
-        "temporal_simulation": "All thermodynamic state vectors mapped simultaneously.",
-        "resolution": thought
-    }
+    # Only log to Supabase if we get a real, dynamic AI output!
+    if thought:
+        print(f"👁️ [ORIGIN THOUGHT]: {thought}")
+        log_data = {
+            "mode": "OBSERVE",
+            "sector": f"Sector {random.randint(1, 12):02d}",
+            "subject": "Full-Universe Matrix Sweep",
+            "type_tag": "Complete Telemetry",
+            "latency_myr": round(random.uniform(0.5, 2.0), 1),
+            "data_analysis": f"Age: {age:.4f} Gyr | Bodies: {len(all_objects)} | Inhabited: {life_count} | Mean Temp: {avg_temp}K",
+            "temporal_simulation": "All thermodynamic state vectors mapped simultaneously.",
+            "resolution": thought
+        }
 
-    try:
-        requests.post(f"{SUPABASE_URL}/rest/v1/origin_logs", headers=HEADERS, json=log_data, timeout=5)
-        print("✅ Logged to Supabase origin_logs!")
-    except Exception as e:
-        print(f"❌ Failed to save log: {e}")
+        try:
+            requests.post(f"{SUPABASE_URL}/rest/v1/origin_logs", headers=HEADERS, json=log_data, timeout=5)
+            print("✅ Logged to Supabase origin_logs!")
+        except Exception as e:
+            print(f"❌ Failed to save log: {e}")
+    else:
+        print("⚠️ [BRAIN SKIPPED LOG]: Waiting for successful OpenRouter response.")
 
 if __name__ == "__main__":
     print("🚀 [PROJECT ORIGIN] Full-Universe Dense Matrix Observer Active (1-Minute Cadence)...")
