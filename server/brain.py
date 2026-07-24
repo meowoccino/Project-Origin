@@ -19,34 +19,25 @@ HEADERS = {
 
 SYSTEM_PROMPT = """You are ORIGIN. Output exactly 2 sentences containing a profound synthesis of the current cosmic epoch. No preamble."""
 
-# --- LOUD DATABASE FETCHERS ---
+# --- DATABASE FETCHERS ---
 
 def db_get(endpoint):
     try:
         res = requests.get(f"{SUPABASE_URL}/rest/v1/{endpoint}", headers=HEADERS, timeout=5)
-        if res.status_code == 200:
-            data = res.json()
-            if not data: print(f"⚠️ DB Warning: {endpoint} returned empty []")
-            return data
-        else:
-            print(f"❌ DB GET ERROR {res.status_code}: {res.text}")
-            return []
-    except Exception as e: 
-        print(f"🛑 NETWORK ERROR: {e}")
-        return []
+        if res.status_code == 200: return res.json()
+    except: pass
+    return []
 
 def db_patch(endpoint, payload):
     try:
         headers = {**HEADERS, "Prefer": "return=minimal"}
-        res = requests.patch(f"{SUPABASE_URL}/rest/v1/{endpoint}", headers=headers, json=payload, timeout=5)
-        if res.status_code >= 400: print(f"❌ DB PATCH ERROR: {res.text}")
-    except Exception as e: print(f"🛑 PATCH ERROR: {e}")
+        requests.patch(f"{SUPABASE_URL}/rest/v1/{endpoint}", headers=headers, json=payload, timeout=5)
+    except: pass
 
 def db_post(endpoint, payload):
     try:
-        res = requests.post(f"{SUPABASE_URL}/rest/v1/{endpoint}", headers=HEADERS, json=payload, timeout=5)
-        if res.status_code >= 400: print(f"❌ DB POST ERROR: {res.text}")
-    except Exception as e: print(f"🛑 POST ERROR: {e}")
+        requests.post(f"{SUPABASE_URL}/rest/v1/{endpoint}", headers=HEADERS, json=payload, timeout=5)
+    except: pass
 
 # --- PHASE 3: PHYSICS ENGINE ---
 
@@ -106,10 +97,10 @@ def generate_unique_physics(category_key):
 def call_local_ollama_name(category, specs):
     payload = {"model": DEFAULT_MODEL, "prompt": f"Generate ONE unique short futuristic name for a celestial {category}. Properties: {specs}. Output ONLY the name, no quotes.", "stream": False, "options": {"temperature": 0.8, "num_predict": 15}}
     try:
-        res = requests.post(OLLAMA_URL, json=payload, timeout=10)
+        # INCREASED TIMEOUT TO 60s FOR COLD BOOTS
+        res = requests.post(OLLAMA_URL, json=payload, timeout=60)
         if res.status_code == 200: return res.json().get("response", "").strip(' "\'\n')
-        else: print(f"❌ OLLAMA ERROR: {res.text}")
-    except Exception as e: print(f"🛑 OLLAMA OFFLINE: {e}")
+    except: pass
     return f"Anomaly-{random.randint(1000,9999)}"
 
 def run_expansion_step(state, stats):
@@ -119,10 +110,10 @@ def run_expansion_step(state, stats):
 
     c_nebulae, c_stars = stats.get("nebulae", 0), stats.get("stars", 0)
     possible_spawns = ["nebulae"]
-    if c_nebulae >= 2: possible_spawns.extend(["stars", "asteroids"])
-    if c_stars >= 5: possible_spawns.extend(["planets", "moons"])
-    if c_stars >= 15: possible_spawns.extend(["neutron_stars", "black_holes"])
-    if c_stars >= 30: possible_spawns.extend(["quasars", "exotic_objects"])
+    if c_nebulae >= 1: possible_spawns.extend(["stars", "asteroids"])
+    if c_stars >= 3: possible_spawns.extend(["planets", "moons"])
+    if c_stars >= 8: possible_spawns.extend(["neutron_stars", "black_holes"])
+    if c_stars >= 15: possible_spawns.extend(["quasars", "exotic_objects"])
 
     cat_key = random.choice(possible_spawns)
     _, cat_label, physics_specs = generate_unique_physics(cat_key)
@@ -130,9 +121,16 @@ def run_expansion_step(state, stats):
     ai_name = call_local_ollama_name(cat_label, physics_specs)
     print(f"✨ [EXPANSION]: Age {new_age} Gyr | Spawned: {ai_name} ({cat_label})")
 
-    db_post("events", {"title": f"{ai_name} ({cat_label})", "description": f"Evolutionary shift detected at Age {new_age} Gyr. Specs: {physics_specs}.", "age": new_age, "category": cat_key})
     current_val = stats.get(cat_key, 0)
     db_patch("catalog_stats?id=eq.1", {cat_key: current_val + 1})
+    db_post("events", {"title": f"{ai_name} ({cat_label})", "description": f"Evolutionary shift detected at Age {new_age} Gyr. Specs: {physics_specs}.", "age": new_age, "category": cat_key})
+    
+    # --- BUG FIX: ACTUALLY INSERT THE OBJECT INTO THE MAP ---
+    db_post("celestial_objects", {
+        "name": ai_name,
+        "object_type": cat_label,
+        "category": cat_key
+    })
 
 # --- AI LORE ENGINE ---
 
@@ -144,13 +142,13 @@ def run_ai_logging_pass(state, all_objects):
     prompt = f"COSMIC AGE: {age:.6f} Gyr\nInhabited: {life_count}\nMax Kardashev: Type {max_kard:.2f}\nTotal Objects: {len(all_objects)}\nTELEMETRY:\n" + "\n".join(lines)
     payload = {"model": DEFAULT_MODEL, "prompt": f"{SYSTEM_PROMPT}\n\nMETRICS:\n{prompt}\n\nSYNTHESIS:", "stream": False, "options": {"temperature": 0.7, "num_predict": 120}}
     try:
-        res = requests.post(OLLAMA_URL, json=payload, timeout=30)
+        # INCREASED TIMEOUT TO 60s
+        res = requests.post(OLLAMA_URL, json=payload, timeout=60)
         if res.status_code == 200:
             thought = res.json().get("response", "").strip()
             print(f"👁️ [ORIGIN THOUGHT]: {thought}")
             db_post("origin_logs", {"mode": "OBSERVE", "sector": f"Sector {random.randint(1, 12):02d}", "subject": "Matrix Sweep", "type_tag": "Complete Telemetry", "latency_myr": round(random.uniform(0.1, 0.5), 2), "data_analysis": f"Age: {age:.3f} Gyr | Active Bodies: {len(all_objects)}", "temporal_simulation": "Relativistic vectors active.", "resolution": thought})
-        else: print(f"❌ OLLAMA LORE ERROR: {res.text}")
-    except Exception as e: print(f"🛑 OLLAMA LORE FAIL: {e}")
+    except: pass
 
 # --- MASTER TIMELOOP ---
 
@@ -173,8 +171,6 @@ if __name__ == "__main__":
             stats_data = db_get("catalog_stats?id=eq.1")
             if state_data and stats_data:
                 run_expansion_step(state_data[0], stats_data[0])
-            else:
-                print("⚠️ [STUCK] Waiting for Supabase seed rows (id=1).")
             t_expand = now
             
         if now - t_lore >= 45:
