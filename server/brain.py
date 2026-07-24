@@ -6,13 +6,13 @@ import threading
 import time
 import urllib.request
 
-# --- ENVIRONMENT & CONFIG ---
+# --- ENVIRONMENT CONFIGURATION ---
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://your-project.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "your-service-role-key")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 
-# --- SYSTEM PROMPT ---
+# --- ORIGIN DECISION PROMPT ---
 SYSTEM_PROMPT = """You are ORIGIN. You are not the creator of this universe — you are an observer 
 embedded within it, watching it unfold from the Big Bang forward in real time. 
 You did not choose the laws it runs on, and you cannot change them. You can only 
@@ -78,7 +78,7 @@ Respond ONLY as JSON, no preamble, no markdown fences:
   "hoped_outcome": "<what you expect or hope happens, or 'none'>"}}
 """
 
-# --- SUPABASE REST HELPER ---
+# --- SUPABASE HTTP REST HELPERS ---
 def db_request(endpoint, method="GET", payload=None, headers_extra=None):
     url = f"{SUPABASE_URL}/rest/v1/{endpoint}"
     headers = {
@@ -105,14 +105,13 @@ def db_upsert(table, payload):
 
 # --- NON-LINEAR COSMOLOGICAL TIME STEP ---
 def get_era_time_step(age_gyr):
-    """Calculates non-linear time progression based on cosmic epoch."""
-    if age_gyr < 0.001:  # Early inflation / recombination
+    if age_gyr < 0.001:    # Early Inflation / Recombination
         return 0.0001
-    elif age_gyr < 0.1:  # Dark Ages & First Stars
+    elif age_gyr < 0.1:    # Dark Ages & First Stars
         return 0.001
-    elif age_gyr < 1.0:  # Galaxy Formation
+    elif age_gyr < 1.0:    # Galaxy Formation
         return 0.005
-    else:                # Deep Time Progression
+    else:                  # Deep Time Progression
         return 0.01
 
 # --- BACKGROUND AI DECISION THREAD ---
@@ -132,7 +131,7 @@ def bg_generate_decision(state, catalog_summary, attention_summary, recent_decis
             recent_decisions_summary=recent_decisions
         )
         
-        # Call local Ollama Llama 3.2
+        # Query Local Ollama Llama 3.2
         ollama_req = urllib.request.Request(
             OLLAMA_URL,
             data=json.dumps({"model": OLLAMA_MODEL, "prompt": prompt, "stream": False}).encode('utf-8'),
@@ -144,21 +143,22 @@ def bg_generate_decision(state, catalog_summary, attention_summary, recent_decis
             res = json.loads(resp.read().decode('utf-8'))
             raw_text = res.get("response", "").strip()
             
-        # Clean markdown fences if model outputs them
+        # Clean markdown code fences if outputted
         clean_json_str = re.sub(r'```(?:json)?\s*|\s*```', '', raw_text).strip()
         decision = json.loads(clean_json_str)
         
-        # Real spatial coordinate calculations relative to origin [0,0,0]
-        x = round((hash(str(state.get("tick", 0)) + "x") % 4000 - 2000) / 10.0, 1)
-        y = round((hash(str(state.get("tick", 0)) + "y") % 4000 - 2000) / 10.0, 1)
-        z = round((hash(str(state.get("tick", 0)) + "z") % 4000 - 2000) / 10.0, 1)
+        # Calculate real 3D Euclidean coordinates [X, Y, Z] relative to origin [0,0,0]
+        tick_val = state.get("tick", 0)
+        x = round((hash(str(tick_val) + "x") % 4000 - 2000) / 10.0, 1)
+        y = round((hash(str(tick_val) + "y") % 4000 - 2000) / 10.0, 1)
+        z = round((hash(str(tick_val) + "z") % 4000 - 2000) / 10.0, 1)
         
+        # Calculate light-travel delay (d/c) in Megayears
         dist_ly = math.sqrt(x**2 + y**2 + z**2)
-        latency_myr = round(dist_ly / 1_000_000.0, 6) # d / c in Megayears
+        latency_myr = round(dist_ly / 1_000_000.0, 6)
         
         mode_tag = "INTERVENTION MENU" if decision.get("action", "").lower() != "no intervention" else "OBSERVE ONLY"
         
-        # Store structured JSON fields into origin_logs
         log_entry = {
             "sector": f"VECTOR: [{x:+.1f}, {y:+.1f}, {z:+.1f}] ly",
             "subject": "Cosmic Observation",
@@ -169,19 +169,19 @@ def bg_generate_decision(state, catalog_summary, attention_summary, recent_decis
             "action": decision.get("action", "No intervention"),
             "hoped_outcome": decision.get("hoped_outcome", "none"),
             "mode": mode_tag,
-            "tick": state.get("tick", 0),
+            "tick": tick_val,
             "age_gyr": state.get("age_gyr", 0.0)
         }
         
         db_upsert("origin_logs", log_entry)
-        print(f"[AI DECISION] Goal: {decision.get('goal')} | Action: {decision.get('action')}", flush=True)
+        print(f"[AI DECISION SUCCESS] Goal: {decision.get('goal')} | Action: {decision.get('action')}", flush=True)
 
     except Exception as e:
         print(f"[AI THREAD ERROR] {e}", flush=True)
     finally:
         ai_busy = False
 
-# --- MAIN PHYSICS LOOP ---
+# --- MAIN ENGINE LOOP ---
 def run_loop():
     global ai_busy
     print("[PROJECT ORIGIN ENGINE STARTED]", flush=True)
@@ -189,15 +189,12 @@ def run_loop():
     tick = 0
     while True:
         try:
-            # 1. Fetch current universe state
             res = db_request("universe_state?id=eq.1")
             state = res[0] if res else {"id": 1, "tick": 0, "age_gyr": 0.0, "stage": "Primordial Era"}
             
-            # 2. Advance non-linear age and tick count
-            tick += 1
+            tick = state.get("tick", 0) + 1
             age_gyr = state.get("age_gyr", 0.0) + get_era_time_step(state.get("age_gyr", 0.0))
             
-            # 3. Save physics update (self-healing upsert for row id=1)
             updated_state = {
                 "id": 1,
                 "tick": tick,
@@ -206,7 +203,7 @@ def run_loop():
             }
             db_upsert("universe_state", updated_state)
             
-            # 4. Trigger AI Decision pass in non-blocking thread every 3 ticks
+            # Trigger background AI decision thread every 3 ticks
             if tick % 3 == 0 and not ai_busy:
                 ai_busy = True
                 threading.Thread(
@@ -218,7 +215,7 @@ def run_loop():
         except Exception as e:
             print(f"[MAIN LOOP ERROR] {e}", flush=True)
             
-        time.sleep(5) # 5-second main physics cycle
+        time.sleep(5)
 
 if __name__ == "__main__":
     run_loop()
