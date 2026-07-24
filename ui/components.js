@@ -113,7 +113,7 @@ async function loadOriginLogs() {
         const logs = await dbFetch('origin_logs?select=*&order=created_at.desc&limit=10');
 
         if (!logs || logs.length === 0) {
-            container.innerHTML = `<div style="text-align:center; color:#64748B; padding:20px; font-family:monospace;">NO TELEMETRY LOGS RECORDED YET</div>`;
+            container.innerHTML = `<div style="text-align:center; color:#64748B; padding:20px; font-family:'Space Mono', monospace; font-size:11px;">[ NO TELEMETRY LOGS RECORDED ]</div>`;
             return;
         }
 
@@ -147,7 +147,7 @@ async function loadOriginLogs() {
                 </div>
 
                 <div style="font-family: 'Space Mono', monospace; font-size: 11px; color: #00E5FF; font-weight: 700;">
-                    LIGHT DELAY: ${log.latency_myr ? log.latency_myr.toFixed(3) : '0.000'} MYR
+                    LIGHT DELAY: ${log.latency_myr ? Number(log.latency_myr).toFixed(3) : '0.000'} MYR
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
@@ -210,28 +210,35 @@ async function loadCatalogStats() {
     }
 }
 
-// --- FETCH & RENDER TIMELINE ---
+// --- FETCH & RENDER TIMELINE TAB (SUPABASE "timeline" TABLE) ---
 async function loadTimelineData() {
     const container = document.getElementById('timeline-container');
     if (!container) return;
 
     try {
-        const events = await dbFetch('events?select=*&order=timestamp_gyr.asc');
-        const currentAge = cameraState.currentAge || 0;
+        // Reads directly from the distinct "timeline" table
+        const timelineEntries = await dbFetch('timeline?select=*&order=timestamp_gyr.asc');
+        const currentAge = Number(cameraState.currentAge || 0);
 
-        if (!events || events.length === 0) {
-            container.innerHTML = `<div style="text-align:center; color:#64748B; padding:20px; font-family:monospace;">NO COSMIC TIMELINE EVENTS RECORDED</div>`;
+        if (!timelineEntries || timelineEntries.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; color: #64748B; padding: 40px 20px; font-family: 'Space Mono', monospace; font-size: 11px;">
+                    [ TIMELINE EMPTY — AWAITING DATABASE ROWS ]
+                </div>
+            `;
             return;
         }
 
-        container.innerHTML = events.map(evt => {
-            const isActive = evt.timestamp_gyr <= currentAge;
+        container.innerHTML = timelineEntries.map(item => {
+            const itemAge = Number(item.timestamp_gyr || 0);
+            const isActive = itemAge <= currentAge;
+
             return `
                 <div class="timeline-node ${isActive ? 'active' : ''}">
                     <div class="node-marker ${isActive ? 'active' : ''}"></div>
-                    <div class="node-title ${isActive ? 'active' : ''}">${evt.title || 'Cosmic Epoch'}</div>
-                    <div class="node-time data-font ${isActive ? 'active' : ''}">${(evt.timestamp_gyr || 0).toFixed(3)} Gyr</div>
-                    <div class="node-desc ${isActive ? 'active' : ''}">${evt.description || ''}</div>
+                    <div class="node-title ${isActive ? 'active' : ''}">${item.title || 'Cosmic Epoch'}</div>
+                    <div class="node-time data-font ${isActive ? 'active' : ''}">${itemAge.toFixed(4)} Gyr</div>
+                    <div class="node-desc ${isActive ? 'active' : ''}">${item.description || ''}</div>
                 </div>
             `;
         }).join('');
@@ -241,24 +248,29 @@ async function loadTimelineData() {
     }
 }
 
-// --- FETCH & RENDER EVENTS TAB ---
+// --- FETCH & RENDER EVENTS TAB (SUPABASE "events" TABLE) ---
 async function loadEventsData() {
     const container = document.getElementById('events-container');
     if (!container) return;
 
     try {
-        const events = await dbFetch('events?select=*&order=created_at.desc&limit=15');
+        // Reads directly from the distinct "events" table
+        const eventsList = await dbFetch('events?select=*&order=created_at.desc&limit=15');
 
-        if (!events || events.length === 0) {
-            container.innerHTML = `<div style="text-align:center; color:#64748B; padding:20px; font-family:monospace;">NO RECENT EVENTS DETECTED</div>`;
+        if (!eventsList || eventsList.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; color: #64748B; padding: 40px 20px; font-family: 'Space Mono', monospace; font-size: 11px;">
+                    [ NO RECENT EVENTS RECORDED ]
+                </div>
+            `;
             return;
         }
 
-        container.innerHTML = events.map(evt => `
+        container.innerHTML = eventsList.map(evt => `
             <div class="d4-card" style="--c-rgb: 0, 229, 255; --c-hex: #00E5FF; margin-bottom: 12px;">
                 <div class="d4-header">
                     <span class="d4-tag data-font">${evt.type || 'COSMIC EVENT'}</span>
-                    <span style="font-size: 10px; color: var(--text-muted);">${(evt.timestamp_gyr || 0).toFixed(3)} Gyr</span>
+                    <span style="font-size: 10px; color: var(--text-muted);">${Number(evt.timestamp_gyr || 0).toFixed(3)} Gyr</span>
                 </div>
                 <div class="d4-title">${evt.title || 'Phenomenon Detected'}</div>
                 <div class="d4-desc">${evt.description || ''}</div>
