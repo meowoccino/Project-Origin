@@ -1,8 +1,12 @@
-// --- CONFIGURATION ---
-const SUPABASE_URL = "https://your-project.supabase.co"; 
-const SUPABASE_ANON_KEY = "your-anon-public-key";      
+import { initWebGPU, updateCanvasFromCatalog, cameraState } from '../main.js';
 
-// --- 10 SCIENTIFIC CATALOG CATEGORIES (MAPPED TO INDEX.HTML IDs) ---
+// ==========================================
+// 🔑 SUPABASE LIVE CREDENTIALS
+// ==========================================
+const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co"; 
+const SUPABASE_ANON_KEY = "sb_publishable_O5qr-6UD-6wTzi51j3tYtw_00N9Q4ja";              
+
+// Catalog mapping to index.html card IDs
 const CATALOG_MAP = [
     { dbKey: "nebulae", elementId: "cat-nebulae-val" },
     { dbKey: "stars", elementId: "cat-stars-val" },
@@ -16,20 +20,29 @@ const CATALOG_MAP = [
     { dbKey: "inhabited", elementId: "cat-inhabited-val" }
 ];
 
-// --- 1. SPLASH SCREEN DISMISSAL ---
+// Helper for Supabase REST API
+async function dbFetch(endpoint) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, {
+        headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        }
+    });
+    if (!res.ok) throw new Error(`Fetch error: ${res.status}`);
+    return await res.json();
+}
+
+// --- SPLASH SCREEN DISMISSAL ---
 function dismissSplash() {
     const splash = document.getElementById('splash-screen');
     if (splash) {
         splash.classList.add('hidden');
-        setTimeout(() => {
-            splash.style.display = 'none';
-        }, 400);
+        setTimeout(() => { splash.style.display = 'none'; }, 400);
     }
 }
 
-// --- 2. TAB NAVIGATION & INSPECTOR CONTROL ---
+// --- TAB NAVIGATION & INSPECTOR AUTO-COLLAPSE ---
 export function switchTab(tabName) {
-    // Tab mapping matching index.html IDs
     const tabMap = {
         'explore': { view: null, btn: 'btn-explore' },
         'events': { view: 'view-events', btn: 'btn-events' },
@@ -46,7 +59,6 @@ export function switchTab(tabName) {
         if (viewEl) {
             if (key === tabName) {
                 viewEl.style.display = 'block';
-                // Trigger transition animation
                 requestAnimationFrame(() => viewEl.classList.add('active'));
             } else {
                 viewEl.classList.remove('active');
@@ -59,7 +71,7 @@ export function switchTab(tabName) {
         }
     });
 
-    // Auto-collapse bottom inspector preview if navigating away from Explore
+    // Auto-collapse bottom inspector preview when leaving Explore
     const inspectorPreview = document.getElementById('inspector-preview');
     if (inspectorPreview) {
         if (tabName !== 'explore') {
@@ -68,30 +80,37 @@ export function switchTab(tabName) {
         }
     }
 
-    // Trigger tab data loads
-    if (tabName === 'origin') {
-        loadOriginLogs();
-    } else if (tabName === 'catalog') {
-        loadCatalogStats();
+    // Load data for active tab
+    if (tabName === 'origin') loadOriginLogs();
+    else if (tabName === 'catalog') loadCatalogStats();
+    else if (tabName === 'timeline') loadTimelineData();
+    else if (tabName === 'events') loadEventsData();
+}
+
+// --- FETCH & RENDER UNIVERSE AGE (HUD) ---
+async function loadUniverseState() {
+    try {
+        const data = await dbFetch('universe_state?select=*&id=eq.1');
+        if (data && data[0]) {
+            const ageGyr = data[0].age_gyr || 0;
+            cameraState.currentAge = ageGyr;
+            const hudAge = document.getElementById('hud-age');
+            if (hudAge) {
+                hudAge.innerText = `${ageGyr.toFixed(3)} Gyr`;
+            }
+        }
+    } catch (err) {
+        console.error('[STATE LOAD ERROR]', err);
     }
 }
 
-// --- 3. FETCH & RENDER ORIGIN TELEMETRY CARDS ---
+// --- FETCH & RENDER ORIGIN TELEMETRY CARDS ---
 async function loadOriginLogs() {
-    // HTML ID is logs-container
     const container = document.getElementById('logs-container');
     if (!container) return;
 
     try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/origin_logs?select=*&order=created_at.desc&limit=10`, {
-            headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-            }
-        });
-
-        if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
-        const logs = await response.json();
+        const logs = await dbFetch('origin_logs?select=*&order=created_at.desc&limit=10');
 
         if (!logs || logs.length === 0) {
             container.innerHTML = `<div style="text-align:center; color:#64748B; padding:20px; font-family:monospace;">NO TELEMETRY LOGS RECORDED YET</div>`;
@@ -171,35 +190,92 @@ async function loadOriginLogs() {
     }
 }
 
-// --- 4. FETCH & RENDER CATALOG STATS ---
+// --- FETCH & RENDER CATALOG STATS ---
 async function loadCatalogStats() {
     try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/catalog_stats?select=*&id=eq.1`, {
-            headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-            }
-        });
-
-        const data = await response.json();
+        const data = await dbFetch('catalog_stats?select=*&id=eq.1');
         const stats = (data && data[0]) ? data[0] : {};
 
-        // Update each static card in index.html
+        // Update static cards in index.html
         CATALOG_MAP.forEach(item => {
             const el = document.getElementById(item.elementId);
-            if (el) {
-                el.innerText = stats[item.dbKey] || 0;
-            }
+            if (el) el.innerText = (stats[item.dbKey] || 0).toLocaleString();
         });
+
+        // Update particle canvas nodes
+        updateCanvasFromCatalog(stats, cameraState.currentAge || 0);
 
     } catch (err) {
         console.error('[CATALOG LOAD ERROR]', err);
     }
 }
 
-// --- 5. INITIALIZATION & EVENT BINDING ---
+// --- FETCH & RENDER TIMELINE ---
+async function loadTimelineData() {
+    const container = document.getElementById('timeline-container');
+    if (!container) return;
+
+    try {
+        const events = await dbFetch('events?select=*&order=timestamp_gyr.asc');
+        const currentAge = cameraState.currentAge || 0;
+
+        if (!events || events.length === 0) {
+            container.innerHTML = `<div style="text-align:center; color:#64748B; padding:20px; font-family:monospace;">NO COSMIC TIMELINE EVENTS RECORDED</div>`;
+            return;
+        }
+
+        container.innerHTML = events.map(evt => {
+            const isActive = evt.timestamp_gyr <= currentAge;
+            return `
+                <div class="timeline-node ${isActive ? 'active' : ''}">
+                    <div class="node-marker ${isActive ? 'active' : ''}"></div>
+                    <div class="node-title ${isActive ? 'active' : ''}">${evt.title || 'Cosmic Epoch'}</div>
+                    <div class="node-time data-font ${isActive ? 'active' : ''}">${(evt.timestamp_gyr || 0).toFixed(3)} Gyr</div>
+                    <div class="node-desc ${isActive ? 'active' : ''}">${evt.description || ''}</div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error('[TIMELINE LOAD ERROR]', err);
+    }
+}
+
+// --- FETCH & RENDER EVENTS TAB ---
+async function loadEventsData() {
+    const container = document.getElementById('events-container');
+    if (!container) return;
+
+    try {
+        const events = await dbFetch('events?select=*&order=created_at.desc&limit=15');
+
+        if (!events || events.length === 0) {
+            container.innerHTML = `<div style="text-align:center; color:#64748B; padding:20px; font-family:monospace;">NO RECENT EVENTS DETECTED</div>`;
+            return;
+        }
+
+        container.innerHTML = events.map(evt => `
+            <div class="d4-card" style="--c-rgb: 0, 229, 255; --c-hex: #00E5FF; margin-bottom: 12px;">
+                <div class="d4-header">
+                    <span class="d4-tag data-font">${evt.type || 'COSMIC EVENT'}</span>
+                    <span style="font-size: 10px; color: var(--text-muted);">${(evt.timestamp_gyr || 0).toFixed(3)} Gyr</span>
+                </div>
+                <div class="d4-title">${evt.title || 'Phenomenon Detected'}</div>
+                <div class="d4-desc">${evt.description || ''}</div>
+            </div>
+        `).join('');
+
+    } catch (err) {
+        console.error('[EVENTS LOAD ERROR]', err);
+    }
+}
+
+// --- INITIALIZATION & EVENT BINDING ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Bind Splash Screen click/tap
+    // Start WebGPU 2D Canvas Engine
+    initWebGPU();
+
+    // Bind Splash Screen tap
     const splash = document.getElementById('splash-screen');
     if (splash) {
         splash.addEventListener('click', dismissSplash);
@@ -217,11 +293,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     navButtons.forEach(btn => {
         const el = document.getElementById(btn.id);
-        if (el) {
-            el.addEventListener('click', () => switchTab(btn.tab));
-        }
+        if (el) el.addEventListener('click', () => switchTab(btn.tab));
     });
+
+    // Initial load
+    loadUniverseState();
+    loadCatalogStats();
 });
 
-// Auto-poll Origin logs every 10 seconds
-setInterval(loadOriginLogs, 10000);
+// Periodic background polling (every 5 seconds)
+setInterval(() => {
+    loadUniverseState();
+    loadCatalogStats();
+}, 5000);
