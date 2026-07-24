@@ -2,186 +2,198 @@ import os
 import time
 import random
 import requests
-from supabase import create_client, Client
 
 # --- CONFIGURATION ---
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
-# Hardcoded your provided key as default fallback
-SAMBANOVA_API_KEY = os.getenv("SAMBANOVA_API_KEY", "6695a135-b434-4b17-9de1-d0319e670d9f")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
+DEFAULT_MODEL = "llama3.2:3b"
 
-def generate_unique_physics(category_key: str):
-    if category_key == "nebulae":
-        temp = random.randint(10, 80)
-        density = round(random.uniform(1.0, 9.9) * (10**random.randint(3, 5)), 1)
-        mass = random.randint(100, 15000)
-        label = "Nebula Cloud"
-        specs = f"Gas Temp: {temp} K, Density: {density}/cm³, Mass: {mass} M_sun"
-    elif category_key == "stars":
-        star_type = random.choice(["Class-O Star", "Red Dwarf", "Blue Giant", "Yellow Dwarf"])
-        if star_type == "Class-O Star":
-            mass = round(random.uniform(15.0, 60.0), 1)
-            temp = random.randint(30000, 50000)
-            lum = random.randint(30000, 300000)
-        elif star_type == "Red Dwarf":
-            mass = round(random.uniform(0.08, 0.5), 2)
-            temp = random.randint(2300, 3800)
-            lum = round(random.uniform(0.0001, 0.05), 4)
-        elif star_type == "Blue Giant":
-            mass = round(random.uniform(10.0, 25.0), 1)
-            temp = random.randint(10000, 28000)
-            lum = random.randint(1000, 45000)
-        else:
-            mass = round(random.uniform(0.8, 1.15), 2)
-            temp = random.randint(5300, 6000)
-            lum = round(random.uniform(0.6, 1.5), 2)
-        label = star_type
-        specs = f"Mass: {mass} M_sun, Core Temp: {temp} K, Luminosity: {lum} L_sun"
-    elif category_key == "black_holes":
-        bh_type = random.choice(["Stellar-Mass Black Hole", "Intermediate Black Hole", "Supermassive Black Hole"])
-        if bh_type == "Stellar-Mass Black Hole":
-            mass = round(random.uniform(5.0, 85.0), 1)
-            event_horizon = round(mass * 2.95, 1)
-            spin = round(random.uniform(0.12, 0.98), 2)
-            specs = f"Mass: {mass} M_sun, Event Horizon: {event_horizon} km, Spin: {spin} Kerr"
-        elif bh_type == "Intermediate Black Hole":
-            mass = random.randint(100, 10000)
-            event_horizon = round(mass * 2.95, 1)
-            spin = round(random.uniform(0.40, 0.99), 2)
-            specs = f"Mass: {mass} M_sun, Event Horizon: {event_horizon} km, Spin: {spin} Kerr"
-        else:
-            mass = round(random.uniform(0.1, 8.5), 2)
-            event_horizon = round(mass * 0.02, 3)
-            spin = round(random.uniform(0.85, 0.99), 2)
-            specs = f"Mass: {mass}M M_sun, Event Horizon: {event_horizon} AU, Spin: {spin} Kerr"
-        label = bh_type
-    elif category_key == "neutron_stars":
-        b_field = random.randint(11, 15)
-        spin_period = round(random.uniform(1.2, 85.0), 1)
-        radius = round(random.uniform(10.2, 13.5), 1)
-        label = random.choice(["Pulsar Burst", "Magnetar Core", "Neutron Core"])
-        specs = f"B-Field: 10^{b_field} Gauss, Spin Period: {spin_period} ms, Radius: {radius} km"
-    elif category_key == "planets":
-        p_type = random.choice(["Terrestrial Planet", "Gas Giant", "Ice Giant", "Lava World"])
-        if p_type == "Terrestrial Planet":
-            gravity = round(random.uniform(0.4, 2.2), 2)
-            pressure = round(random.uniform(0.01, 8.5), 2)
-            orbit = round(random.uniform(0.3, 2.5), 2)
-            specs = f"Surface Gravity: {gravity} g, Pressure: {pressure} bar, Orbit: {orbit} AU"
-        elif p_type == "Gas Giant":
-            radius = random.randint(45000, 120000)
-            orbit = round(random.uniform(3.5, 18.0), 1)
-            specs = f"Radius: {radius} km, Orbit: {orbit} AU, Atmosphere: H2/He rich"
-        else:
-            temp = random.randint(80, 1800)
-            orbit = round(random.uniform(0.1, 40.0), 1)
-            specs = f"Surface Temp: {temp} K, Orbit: {orbit} AU"
-        label = p_type
-    elif category_key == "moons":
-        radius = random.randint(300, 2800)
-        orbit = random.randint(150000, 2000000)
-        composition = random.choice(["Silicate Ice", "Iron-Rock", "Methane Crust"])
-        label = "Major Satellite"
-        specs = f"Radius: {radius} km, Orbital Distance: {orbit} km, Core: {composition}"
-    elif category_key == "quasars":
-        redshift = round(random.uniform(0.8, 6.5), 2)
-        lum = round(random.uniform(1.0, 9.9) * (10**12), 1)
-        label = "Active Quasar"
-        specs = f"Redshift z: {redshift}, Luminosity: {lum} L_sun, Relativistic Jet Detected"
-    elif category_key == "asteroids":
-        count = random.randint(50, 5000)
-        mass = round(random.uniform(0.01, 12.0), 2)
-        label = "Asteroid Belt / Comet Cluster"
-        specs = f"Estimated Fragment Count: {count}, Total Mass: {mass} x 10^18 kg"
-    else:
-        label = random.choice(["Dyson Swarm Candidate", "Quark Star", "Dark Matter Core"])
-        temp = random.randint(0, 1000)
-        energy = round(random.uniform(1.0, 99.0), 1)
-        specs = f"Thermal Emission: {temp} K, Energy Flux: {energy} TeraWatts"
-    return category_key, label, specs
+HEADERS = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json",
+    "Prefer": "return=minimal" 
+}
 
-def generate_ai_object_name(category: str, physics_data: str = ""):
-    if not SAMBANOVA_API_KEY:
-        print("⚠️ [RUNNER]: API Key missing.")
-        return None
+SYSTEM_PROMPT = """You are ORIGIN, an omniscient observer entity monitoring a dynamic, expanding cosmic simulation.
+Core Rules & Scientific Guidelines:
+1. Object Terminology: Use mathematically precise physical terms ('Black Hole' instead of generic 'Singularity').
+2. Tone Adaptation: Adopt a highly atmospheric, sci-fi lore tone.
+3. Output: Output exactly 2 sentences containing a profound synthesis of the current cosmic epoch. No preamble."""
 
-    prompt = (
-        f"Generate ONE unique short futuristic name for a celestial {category}. "
-        f"Properties: {physics_data}. Output ONLY the name, no quotes or explanation."
-    )
-    
-    url = "https://api.sambanova.ai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {SAMBANOVA_API_KEY}", "Content-Type": "application/json"}
+# --- DATABASE FETCHERS ---
+
+def db_get(endpoint):
+    try:
+        res = requests.get(f"{SUPABASE_URL}/rest/v1/{endpoint}", headers=HEADERS, timeout=5)
+        return res.json() if res.status_code == 200 else []
+    except: return []
+
+def db_patch(endpoint, payload):
+    try:
+        headers = {**HEADERS, "Prefer": "return=minimal"}
+        requests.patch(f"{SUPABASE_URL}/rest/v1/{endpoint}", headers=headers, json=payload, timeout=5)
+    except: pass
+
+def db_post(endpoint, payload):
+    try:
+        requests.post(f"{SUPABASE_URL}/rest/v1/{endpoint}", headers=HEADERS, json=payload, timeout=5)
+    except: pass
+
+# --- PHASE 3: PHYSICS ENGINE ---
+
+def run_physics_tick(all_objects):
+    batch_updates = []
+    for obj in all_objects:
+        updates = {}
+        obj_type = (obj.get("object_type") or "UNKNOWN").title()
+        mass = float(obj.get("mass_solar") or 1.0)
+        
+        if "Star" in obj_type or obj_type == "Main Sequence":
+            hydrogen = float(obj.get("hydrogen_pct") or 100.0)
+            burn_rate = (mass ** 2.5) * 0.05 
+            new_hydrogen = max(0.0, hydrogen - burn_rate)
+            if new_hydrogen != hydrogen: updates["hydrogen_pct"] = round(new_hydrogen, 4)
+            if new_hydrogen <= 0.0 and not obj.get("is_dead"):
+                updates["is_dead"] = True
+                if mass > 20.0:
+                    updates["object_type"], updates["surface_temp"], updates["mass_solar"] = "Black Hole", 1e-9, round(mass * 0.2, 2)
+                elif mass > 8.0:
+                    updates["object_type"], updates["surface_temp"], updates["mass_solar"] = "Neutron Star", 1000000.0, round(mass * 0.3, 2)
+                else:
+                    updates["object_type"], updates["surface_temp"], updates["mass_solar"] = "White Dwarf", 25000.0, round(mass * 0.5, 2)
+
+        elif "Planet" in obj_type:
+            temp, has_life, kardashev = float(obj.get("surface_temp") or 0.0), obj.get("has_life", False), float(obj.get("kardashev_scale") or 0.0)
+            if not has_life and 270 <= temp <= 350:
+                abio_index = float(obj.get("abiogenesis_index") or 0.0) + random.uniform(0.01, 0.05)
+                updates["abiogenesis_index"] = round(abio_index, 3)
+                if abio_index > 1.0: updates["has_life"], updates["biochemistry_class"] = True, "Carbon-Water"
+            if has_life:
+                progress = float(obj.get("progress_index") or 0.0) + random.uniform(0.1, 0.5)
+                updates["progress_index"] = round(progress, 3)
+                if progress > 10.0 and kardashev < 1.0: updates["kardashev_scale"] = 1.0
+                elif progress > 50.0 and kardashev < 2.0: updates["kardashev_scale"], updates["surface_temp"] = 2.0, temp + 50 
+                elif progress > 200.0 and kardashev < 3.0: updates["kardashev_scale"] = 3.0
+                if kardashev > 0: updates["radio_sphere_ly"] = round(float(obj.get("radio_sphere_ly") or 0.0) + (kardashev * 1.5), 2)
+
+        if updates:
+            updates["id"] = obj["id"]
+            batch_updates.append(updates)
+            
+    if batch_updates:
+        try:
+            headers = {**HEADERS, "Prefer": "return=minimal, resolution=merge-duplicates"}
+            requests.post(f"{SUPABASE_URL}/rest/v1/celestial_objects", headers=headers, json=batch_updates, timeout=5)
+        except: pass
+
+# --- UNIVERSE EXPANSION & SPAWNING ENGINE ---
+
+def generate_unique_physics(category_key):
+    if category_key == "nebulae": return category_key, "Nebula Cloud", f"Gas Temp: {random.randint(10, 80)} K, Mass: {random.randint(100, 15000)} M_sun"
+    elif category_key == "stars": return category_key, "Class-O Star", f"Mass: {round(random.uniform(15.0, 60.0), 1)} M_sun, Core Temp: {random.randint(30000, 50000)} K"
+    elif category_key == "black_holes": return category_key, "Stellar-Mass Black Hole", f"Mass: {round(random.uniform(5.0, 85.0), 1)} M_sun, Spin: {round(random.uniform(0.12, 0.98), 2)} Kerr"
+    elif category_key == "neutron_stars": return category_key, "Pulsar Burst", f"B-Field: 10^{random.randint(11, 15)} Gauss, Spin Period: {round(random.uniform(1.2, 85.0), 1)} ms"
+    elif category_key == "planets": return category_key, "Terrestrial Planet", f"Surface Gravity: {round(random.uniform(0.4, 2.2), 2)} g, Orbit: {round(random.uniform(0.3, 2.5), 2)} AU"
+    elif category_key == "moons": return category_key, "Major Satellite", f"Radius: {random.randint(300, 2800)} km, Core: Silicate Ice"
+    elif category_key == "quasars": return category_key, "Active Quasar", f"Redshift z: {round(random.uniform(0.8, 6.5), 2)}"
+    elif category_key == "asteroids": return category_key, "Asteroid Belt", f"Fragment Count: {random.randint(50, 5000)}"
+    else: return category_key, "Exotic Anomaly", f"Energy Flux: {round(random.uniform(1.0, 99.0), 1)} TeraWatts"
+
+def call_local_ollama_name(category, specs):
     payload = {
-        "model": "Meta-Llama-3.3-70B-Instruct",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.85,
-        "max_tokens": 20
+        "model": DEFAULT_MODEL,
+        "prompt": f"Generate ONE unique short futuristic name for a celestial {category}. Properties: {specs}. Output ONLY the name, no quotes.",
+        "stream": False, "options": {"temperature": 0.8, "num_predict": 15}
     }
-
     try:
-        res = requests.post(url, json=payload, headers=headers, timeout=10)
+        res = requests.post(OLLAMA_URL, json=payload, timeout=10)
+        if res.status_code == 200: return res.json().get("response", "").strip(' "\'\n')
+    except: pass
+    return f"Anomaly-{random.randint(1000,9999)}"
+
+def run_expansion_step(state, stats):
+    current_age = float(state.get("age", 0.001))
+    new_age = round(current_age + 0.005, 3)
+    db_patch("universe_state?id=eq.1", {"age": new_age})
+
+    c_nebulae, c_stars = stats.get("nebulae", 0), stats.get("stars", 0)
+    possible_spawns = ["nebulae"]
+    if c_nebulae >= 2: possible_spawns.extend(["stars", "asteroids"])
+    if c_stars >= 5: possible_spawns.extend(["planets", "moons"])
+    if c_stars >= 15: possible_spawns.extend(["neutron_stars", "black_holes"])
+    if c_stars >= 30: possible_spawns.extend(["quasars", "exotic_objects"])
+
+    cat_key = random.choice(possible_spawns)
+    _, cat_label, physics_specs = generate_unique_physics(cat_key)
+    
+    ai_name = call_local_ollama_name(cat_label, physics_specs)
+    print(f"✨ [EXPANSION]: Age {new_age} Gyr | Spawned: {ai_name} ({cat_label})")
+
+    db_post("events", {
+        "title": f"{ai_name} ({cat_label})", 
+        "description": f"Evolutionary shift detected at Age {new_age} Gyr. Specs: {physics_specs}.", 
+        "age": new_age, "category": cat_key
+    })
+
+    current_val = stats.get(cat_key, 0)
+    db_patch("catalog_stats?id=eq.1", {cat_key: current_val + 1})
+
+# --- AI LORE ENGINE ---
+
+def run_ai_logging_pass(state, all_objects):
+    life_count = sum(1 for o in all_objects if o.get('has_life'))
+    max_kard = max((float(o.get('kardashev_scale') or 0.0) for o in all_objects), default=0.0)
+    age = float(state.get('age', 0.0))
+    
+    lines = [f"{o.get('id')}|{o.get('object_type', 'UNKNOWN').title()}|{o.get('surface_temp')}" for o in all_objects[:30]]
+    prompt = f"COSMIC AGE: {age:.6f} Gyr\nInhabited: {life_count}\nMax Kardashev: Type {max_kard:.2f}\nTotal Objects: {len(all_objects)}\nTELEMETRY:\n" + "\n".join(lines)
+    
+    payload = {"model": DEFAULT_MODEL, "prompt": f"{SYSTEM_PROMPT}\n\nMETRICS:\n{prompt}\n\nSYNTHESIS:", "stream": False, "options": {"temperature": 0.7, "num_predict": 120}}
+    try:
+        res = requests.post(OLLAMA_URL, json=payload, timeout=30)
         if res.status_code == 200:
-            return res.json()["choices"][0]["message"]["content"].strip(' "\'\n')
-        else:
-            print(f"🛑 [API ERROR]: Status {res.status_code} - Aborting step.")
-            return None
-    except Exception as err:
-        print(f"🛑 [NETWORK ERROR]: {err} - Aborting step.")
-        return None
+            thought = res.json().get("response", "").strip()
+            print(f"👁️ [ORIGIN THOUGHT]: {thought}")
+            db_post("origin_logs", {
+                "mode": "OBSERVE", "sector": f"Sector {random.randint(1, 12):02d}", "subject": "Matrix Sweep",
+                "type_tag": "Complete Telemetry", "latency_myr": round(random.uniform(0.1, 0.5), 2),
+                "data_analysis": f"Age: {age:.3f} Gyr | Active Bodies: {len(all_objects)}",
+                "temporal_simulation": "Relativistic vectors active.", "resolution": thought
+            })
+    except Exception as e: print(f"🛑 [OLLAMA ERROR] {e}")
 
-def run_simulation_step():
-    try:
-        supabase.table("universe_state").delete().neq("id", 1).execute()
-        res = supabase.table("universe_state").select("*").eq("id", 1).execute()
-        current_age = float(res.data[0].get("age", 0.001)) if (res.data and len(res.data) > 0) else 0.001
-        new_age = round(current_age + 0.005, 3)
-
-        cat_res = supabase.table("catalog_stats").select("*").eq("id", 1).execute()
-        stats = cat_res.data[0] if (cat_res.data and len(cat_res.data) > 0) else {}
-        
-        c_nebulae = stats.get("nebulae", 0)
-        c_stars = stats.get("stars", 0)
-
-        possible_spawns = ["nebulae"]
-        if c_nebulae >= 3: possible_spawns.extend(["stars", "asteroids"])
-        if c_stars >= 10: possible_spawns.extend(["planets", "moons"])
-        if c_stars >= 25: possible_spawns.extend(["neutron_stars", "black_holes"])
-        if c_stars >= 50: possible_spawns.extend(["quasars", "exotic_objects"])
-
-        chosen_category = random.choice(possible_spawns)
-        cat_key, cat_label, physics_specs = generate_unique_physics(chosen_category)
-
-        # STRICT RULE ENFORCEMENT
-        ai_name = generate_ai_object_name(cat_key, physics_specs)
-        
-        if not ai_name:
-            print("❌ [HALTED]: AI Failed to provide real data. Database injection skipped.")
-            return
-
-        supabase.table("universe_state").upsert({
-            "id": 1, "age": new_age, "de_pct": 68.5, "dm_pct": 26.4, "baryon_pct": 5.1
-        }).execute()
-
-        event_title = f"{ai_name} ({cat_label})"
-        event_desc = f"Evolutionary shift detected at Age {new_age} Gyr. Specs: {physics_specs}."
-
-        supabase.table("events").insert({
-            "title": event_title, "description": event_desc, "age": new_age, "category": cat_key
-        }).execute()
-
-        current_val = stats.get(cat_key, 0)
-        if stats:
-            supabase.table("catalog_stats").update({cat_key: current_val + 1}).eq("id", stats["id"]).execute()
-
-        print(f"✅ [EVOLUTION]: Age {new_age} Gyr | Spawned: '{event_title}'")
-    except Exception as e:
-        print(f"❌ [SIMULATION ERROR]: {e}")
+# --- MASTER TIMELOOP ---
 
 if __name__ == "__main__":
-    print("🚀 [ORIGIN] Strict Engine Active (Llama 3.3 70B)...")
+    print(f"🚀 [ORIGIN MASTER ENGINE] Online. Model: {DEFAULT_MODEL}")
+    print(f"⏱️ Cycles: Math (5s) | Expand (15s) | Lore (45s)\n")
+    
+    t_math, t_expand, t_lore = 0, 0, 0
+    
     while True:
-        run_simulation_step()
-        time.sleep(20) # 20s = 4,320 requests/day, well within SambaNova limits.
+        now = time.time()
+        
+        if now - t_math >= 5:
+            objs = db_get("celestial_objects?select=*&limit=1000")
+            if objs: run_physics_tick(objs)
+            t_math = now
+            
+        if now - t_expand >= 15:
+            state_data = db_get("universe_state?id=eq.1")
+            stats_data = db_get("catalog_stats?id=eq.1")
+            if state_data and stats_data:
+                run_expansion_step(state_data[0], stats_data[0])
+            t_expand = now
+            
+        if now - t_lore >= 45:
+            state_data = db_get("universe_state?id=eq.1")
+            objs = db_get("celestial_objects?select=*&limit=500")
+            if state_data and objs:
+                print("🧠 [ORIGIN] Generating synthesis...")
+                run_ai_logging_pass(state_data[0], objs)
+            t_lore = now
+            
+        time.sleep(1)
