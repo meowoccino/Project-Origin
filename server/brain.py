@@ -8,7 +8,6 @@ import threading
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-# Crash loudly if secret key environment variable is omitted
 if not SUPABASE_KEY:
     raise RuntimeError("❌ CRITICAL: 'SUPABASE_KEY' environment variable is not set!")
 
@@ -23,7 +22,7 @@ HEADERS = {
 
 SYSTEM_PROMPT = """You are ORIGIN. Output exactly 2 sentences containing a profound synthesis of the current cosmic epoch. No preamble."""
 
-# --- DATABASE OPERATIONS (SELF-HEALING UPSERTS & LOUD LOGGING) ---
+# --- DATABASE OPERATIONS ---
 
 def db_get(endpoint):
     try:
@@ -36,7 +35,6 @@ def db_get(endpoint):
     return []
 
 def db_upsert(table, payload):
-    """Self-healing upsert using POST + resolution=merge-duplicates"""
     try:
         headers = {**HEADERS, "Prefer": "resolution=merge-duplicates, return=minimal"}
         body = payload if isinstance(payload, list) else [payload]
@@ -88,8 +86,12 @@ def run_physics_tick(all_objects):
                 elif progress > 50.0 and kardashev < 2.0: updates["kardashev_scale"], updates["surface_temp"] = 2.0, temp + 50 
                 elif progress > 200.0 and kardashev < 3.0: updates["kardashev_scale"] = 3.0
                 if kardashev > 0: updates["radio_sphere_ly"] = round(float(obj.get("radio_sphere_ly") or 0.0) + (kardashev * 1.5), 2)
+        
         if updates:
             updates["id"] = obj["id"]
+            updates["name"] = obj.get("name") or "Unknown Anomaly"
+            updates["object_type"] = obj.get("object_type") or "Cosmic Body"
+            updates["category"] = obj.get("category") or "stars"
             batch_updates.append(updates)
             
     if batch_updates:
@@ -125,7 +127,6 @@ def run_expansion_step(state, stats):
     current_age = float(state.get("age", 0.001))
     new_age = round(current_age + 0.005, 3)
 
-    # Self-healing upsert for Universe State
     db_upsert("universe_state", {"id": 1, "age": new_age, "de_pct": 68.5, "dm_pct": 26.4, "baryon_pct": 5.1})
 
     c_nebulae, c_stars = stats.get("nebulae", 0), stats.get("stars", 0)
@@ -142,8 +143,6 @@ def run_expansion_step(state, stats):
     print(f"✨ [EXPANSION]: Age {new_age} Gyr | Spawned: {ai_name} ({cat_label})")
 
     current_val = stats.get(cat_key, 0)
-    
-    # Self-healing upsert for Catalog Stats
     updated_stats = {**stats, "id": 1, cat_key: current_val + 1}
     db_upsert("catalog_stats", updated_stats)
 
@@ -208,7 +207,6 @@ if __name__ == "__main__":
             state_data = db_get("universe_state?id=eq.1")
             stats_data = db_get("catalog_stats?id=eq.1")
             
-            # Fallback initialization dicts if table reads return empty
             st = state_data[0] if state_data else {"id": 1, "age": 0.001}
             sp = stats_data[0] if stats_data else {"id": 1}
             
