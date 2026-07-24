@@ -10,7 +10,6 @@ const NUM_HUBS = 30;
 let globalNodeId = 0;
 let maxWebRadius = 600;
 
-// Scaled map rendering (Phase 4 Updates applied)
 const CATEGORY_STYLES = {
     nebulae: { color: 'rgba(0, 229, 255, 0.2)', glowColor: 'rgba(0, 229, 255, 0.5)', name: 'Nebula Cloud', size: 12.0 },
     stars: { color: '#FFD700', glowColor: 'rgba(255, 215, 0, 0.5)', name: 'Stellar Core', size: 3.0 },
@@ -186,9 +185,34 @@ export async function initWebGPU() {
             }
 
             if (selectedNode === p) {
+                const tgtSize = radius + (6 * dpr);
+                const len = 6 * dpr; 
+                
                 ctx.strokeStyle = '#FF8C00'; 
                 ctx.lineWidth = 2.0 * dpr;
-                ctx.beginPath(); ctx.arc(p.screenX, p.screenY, radius * 3.5 + 8, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath();
+                // Top Left
+                ctx.moveTo(p.screenX - tgtSize, p.screenY - tgtSize + len);
+                ctx.lineTo(p.screenX - tgtSize, p.screenY - tgtSize);
+                ctx.lineTo(p.screenX - tgtSize + len, p.screenY - tgtSize);
+                // Top Right
+                ctx.moveTo(p.screenX + tgtSize - len, p.screenY - tgtSize);
+                ctx.lineTo(p.screenX + tgtSize, p.screenY - tgtSize);
+                ctx.lineTo(p.screenX + tgtSize, p.screenY - tgtSize + len);
+                // Bottom Left
+                ctx.moveTo(p.screenX - tgtSize, p.screenY + tgtSize - len);
+                ctx.lineTo(p.screenX - tgtSize, p.screenY + tgtSize);
+                ctx.lineTo(p.screenX - tgtSize + len, p.screenY + tgtSize);
+                // Bottom Right
+                ctx.moveTo(p.screenX + tgtSize - len, p.screenY + tgtSize);
+                ctx.lineTo(p.screenX + tgtSize, p.screenY + tgtSize);
+                ctx.lineTo(p.screenX + tgtSize, p.screenY + tgtSize - len);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(p.screenX, p.screenY, tgtSize + (Math.sin(animTime * 5) * 2), 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255, 140, 0, 0.3)';
+                ctx.stroke();
             }
         }
     }
@@ -212,13 +236,10 @@ export async function initWebGPU() {
             selectedNode = closest;
             const styleName = CATEGORY_STYLES[closest.category].name;
             
-            // Phase 4: Fix duplicate labels
             document.getElementById('obj-name').innerText = closest.designation;
             document.getElementById('obj-sub').innerText = (closest.designation.includes(styleName)) ? "Simulated Cosmic Object" : styleName;
             
             preview.style.display = 'flex';
-            
-            // Force reflow for animation
             void preview.offsetWidth; 
             preview.classList.add('active');
 
