@@ -1,4 +1,4 @@
-import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode } from '../engine/main.js';
+import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode, clearSelection } from '../engine/main.js';
 import * as MainEngine from '../engine/main.js';
 
 function initApp() {
@@ -64,7 +64,7 @@ function initApp() {
     const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
     const hudContainer = document.getElementById('hud-age-container');
 
-    // Strict Tab Switcher with Complete Inspector Preview Bar Hiding
+    // Strict Tab Switcher with Complete Inspector Hiding (Phase 4 Fix)
     function switchTab(btnId, viewId) {
         allBtns.forEach(b => b?.classList.remove('active'));
         allViews.forEach(v => v?.classList.remove('active'));
@@ -76,10 +76,8 @@ function initApp() {
         MainEngine.isExploreActive = (btnId === 'btn-explore');
 
         // Absolute hiding for inspector-preview on all non-explore views
-        const inspector = document.getElementById('inspector-preview');
-        if (inspector) {
-            inspector.classList.remove('active');
-            inspector.style.display = 'none';
+        if (btnId !== 'btn-explore' && viewId !== 'modal-object-detail') {
+            clearSelection();
         }
     }
 
@@ -127,22 +125,20 @@ function initApp() {
         }
     }
 
-    // Dynamic Network Latency Measuring Dot (Green / Yellow / Red)
     function updatePingLatency(latencyMs, isSuccess) {
         const pingDot = document.getElementById('ping-dot');
         const pingText = document.getElementById('ping-ms');
         if (!pingDot) return;
-
         if (pingText) pingText.innerText = `(${latencyMs} ms)`;
 
         if (!isSuccess || latencyMs > 1500) {
-            pingDot.style.background = '#FF1744'; // Red
+            pingDot.style.background = '#FF1744';
             pingDot.style.boxShadow = '0 0 8px #FF1744';
         } else if (latencyMs > 500) {
-            pingDot.style.background = '#FFEA00'; // Yellow
+            pingDot.style.background = '#FFEA00';
             pingDot.style.boxShadow = '0 0 8px #FFEA00';
         } else {
-            pingDot.style.background = '#00E676'; // Green
+            pingDot.style.background = '#00E676';
             pingDot.style.boxShadow = '0 0 8px #00E676';
         }
     }
@@ -165,9 +161,7 @@ function initApp() {
                 <span class="bc-sep">►</span>
                 <span class="bc-tag">${typeTag}</span>
             </div>
-            <div class="log-meta data-font">
-                <span>${timeLabel}</span>
-            </div>
+            <div class="log-meta data-font"><span>${timeLabel}</span></div>
             <div class="logic-step">
                 <div class="logic-icon">▶</div>
                 <div class="logic-text"><strong>Data Analysis:</strong> ${log.data_analysis || 'Analyzing local thermodynamic density.'}</div>
@@ -193,7 +187,7 @@ function initApp() {
 
         const btn = document.getElementById("btn-load-more");
         const container = document.getElementById("logs-container");
-        if (btn) btn.innerText = "QUERYING ARCHIVE...";
+        if (btn) btn.innerText = "QUERYING Llama3.2 ARCHIVE...";
 
         try {
             let url = `${SUPABASE_URL}/rest/v1/origin_logs?select=*&order=id.desc&limit=4`;
@@ -278,41 +272,41 @@ function initApp() {
         switch (node.category) {
             case 'asteroids_comets':
                 mass = (seed % 90 + 1) + " × 10^15 kg"; radius = (seed % 150 + 5) + " km"; temp = (seed % 100 + 40) + " K";
-                extra = `<div class="spec-row"><span class="spec-label">Composition</span><span class="spec-value">Silicates / Nickel-Iron</span></div>`;
+                extra = `<div class="spec-row"><span class="spec-label">Composition</span><span class="spec-value data-font">Silicates / Nickel-Iron</span></div>`;
                 break;
             case 'moons':
                 mass = "0." + (seed % 99 + 1) + " M_lunar"; radius = (seed % 2000 + 500) + " km"; temp = (seed % 150 + 50) + " K";
-                extra = `<div class="spec-row"><span class="spec-label">Tidal State</span><span class="spec-value">Tidally Locked</span></div>`;
+                extra = `<div class="spec-row"><span class="spec-label">Tidal State</span><span class="spec-value data-font">Tidally Locked</span></div>`;
                 break;
             case 'planets':
             case 'inhabited':
                 mass = (seed % 15 + 0.1).toFixed(2) + " M_earth"; radius = (seed % 20000 + 4000) + " km";
                 temp = node.category === 'inhabited' ? ((seed % 40) + 5) + " °C" : "-" + (seed % 150) + " °C";
                 extra = node.category === 'inhabited' 
-                    ? `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">N2/O2 Rich</span></div><div class="spec-row"><span class="spec-label">Biosphere</span><span class="spec-value" style="color:#00E5FF">Confirmed</span></div>`
-                    : `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value">CO2 / Methane</span></div>`;
+                    ? `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value data-font">N2/O2 Rich</span></div><div class="spec-row"><span class="spec-label">Biosphere</span><span class="spec-value data-font" style="color:#00E5FF">Confirmed</span></div>`
+                    : `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value data-font">CO2 / Methane</span></div>`;
                 break;
             case 'stars':
                 mass = (seed % 25 + 0.5).toFixed(2) + " M_sun"; radius = (seed % 15 + 0.8).toFixed(2) + " R_sun"; temp = (seed % 30000 + 3000).toLocaleString() + " K";
-                extra = `<div class="spec-row"><span class="spec-label">Luminosity</span><span class="spec-value">${(seed % 1000 + 1).toFixed(1)} L_sun</span></div>`;
+                extra = `<div class="spec-row"><span class="spec-label">Luminosity</span><span class="spec-value data-font">${(seed % 1000 + 1).toFixed(1)} L_sun</span></div>`;
                 break;
             case 'black_holes':
-                mass = (seed % 50 + 5).toFixed(2) + " M_sun"; radius = ((seed % 50 + 5) * 2.95).toFixed(1) + " km (Schwarzschild)"; temp = "0.000" + (seed % 9 + 1) + " K (Hawking)";
-                extra = `<div class="spec-row"><span class="spec-label">Accretion</span><span class="spec-value">${(seed % 5 * 0.1).toFixed(3)} M_sun/yr</span></div>`;
+                mass = (seed % 50 + 5).toFixed(2) + " M_sun"; radius = ((seed % 50 + 5) * 2.95).toFixed(1) + " km"; temp = "0.000" + (seed % 9 + 1) + " K";
+                extra = `<div class="spec-row"><span class="spec-label">Accretion</span><span class="spec-value data-font">${(seed % 5 * 0.1).toFixed(3)} M_sun/yr</span></div>`;
                 break;
             default:
                 mass = (seed % 5000 + 1000) + " M_sun"; radius = (seed % 150 + 10) + " Lightyears"; temp = "10 - 50 K";
-                extra = `<div class="spec-row"><span class="spec-label">Composition</span><span class="spec-value">H II Region / Plasma</span></div>`;
+                extra = `<div class="spec-row"><span class="spec-label">Composition</span><span class="spec-value data-font">H II Region / Plasma</span></div>`;
                 break;
         }
 
         return `
-            <div class="spec-row"><span class="spec-label">Designation</span><span class="spec-value" style="font-weight:bold; color:#fff;">${node.designation}</span></div>
-            <div class="spec-row"><span class="spec-label">Mass</span><span class="spec-value">${mass}</span></div>
-            <div class="spec-row"><span class="spec-label">Radius</span><span class="spec-value">${radius}</span></div>
-            <div class="spec-row"><span class="spec-label">Surface Temp</span><span class="spec-value">${temp}</span></div>
+            <div class="spec-row"><span class="spec-label">Designation</span><span class="spec-value data-font" style="font-weight:bold; color:#fff;">${node.designation}</span></div>
+            <div class="spec-row"><span class="spec-label">Mass</span><span class="spec-value data-font">${mass}</span></div>
+            <div class="spec-row"><span class="spec-label">Radius</span><span class="spec-value data-font">${radius}</span></div>
+            <div class="spec-row"><span class="spec-label">Surface Temp</span><span class="spec-value data-font">${temp}</span></div>
             ${extra}
-            <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Formation Epoch</span><span class="spec-value">${epochLabel}</span></div>
+            <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Formation Epoch</span><span class="spec-value data-font">${epochLabel}</span></div>
         `;
     }
 
@@ -387,7 +381,6 @@ function initApp() {
         } catch (err) {}
     }
 
-    // Design 4 Card Builder with Real Astrophysics Parameters per Category
     function renderDesign4EventCard(e) {
         const title = e.title || 'Cosmic Telemetry Event';
         const desc = e.description || 'Thermodynamic equilibrium shift detected in local space-time region.';
@@ -401,23 +394,18 @@ function initApp() {
 
         if (lowerTitle.includes("cmb") || lowerTitle.includes("background") || lowerTitle.includes("decoupling")) {
             hex = "#9C27B0"; rgb = "156, 39, 176"; tag = "DECOUPLING";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8.009 8.009 0 0 1-8 8z"/></svg>`;
             m1 = { lbl: "REDSHIFT", val: "z ≈ 1100" }; m2 = { lbl: "TEMP", val: "3,000 K" }; m3 = { lbl: "EPOCH", val: "380,000 Yrs" };
         } else if (lowerTitle.includes("nebula") || lowerTitle.includes("cloud") || lowerTitle.includes("gas")) {
             hex = "#00E5FF"; rgb = "0, 229, 255"; tag = "NEBULA CLOUD";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>`;
             m1 = { lbl: "GAS TEMP", val: "18 K" }; m2 = { lbl: "DENSITY", val: "10⁴ /cm³" }; m3 = { lbl: "EPOCH", val: ageFormatted };
         } else if (lowerTitle.includes("star") || lowerTitle.includes("protostar") || lowerTitle.includes("ignition")) {
             hex = "#FFD700"; rgb = "255, 215, 0"; tag = "CLASS-O STAR";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>`;
             m1 = { lbl: "MASS", val: "18.5 M_sun" }; m2 = { lbl: "TEMP", val: "33,000 K" }; m3 = { lbl: "LUMINOSITY", val: "45,000 L_sun" };
         } else if (lowerTitle.includes("black hole") || lowerTitle.includes("singularity")) {
-            hex = "#B026FF"; rgb = "176, 38, 255"; tag = "SINGULARITY";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
+            hex = "#B026FF"; rgb = "176, 38, 255"; tag = "BLACK HOLE";
             m1 = { lbl: "MASS", val: "4.2M M_sun" }; m2 = { lbl: "R_SCHWARZ", val: "0.08 AU" }; m3 = { lbl: "SPIN", val: "0.94 Kerr" };
         } else if (lowerTitle.includes("pulsar") || lowerTitle.includes("neutron")) {
             hex = "#FF3366"; rgb = "255, 51, 102"; tag = "PULSAR BURST";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`;
             m1 = { lbl: "B-FIELD", val: "10¹⁴ Gauss" }; m2 = { lbl: "PERIOD", val: "5.8 ms" }; m3 = { lbl: "RADIUS", val: "11.2 km" };
         }
 
@@ -425,11 +413,11 @@ function initApp() {
             <div class="d4-card" style="--c-hex: ${hex}; --c-rgb: ${rgb};">
                 <div class="d4-header">
                     <div class="d4-icon-box">${iconSvg}</div>
-                    <span class="d4-tag mono">${tag}</span>
+                    <span class="d4-tag data-font">${tag}</span>
                 </div>
                 <div class="d4-title">${title}</div>
                 <div class="d4-desc">${desc}</div>
-                <div class="d4-metrics-grid mono">
+                <div class="d4-metrics-grid data-font">
                     <div class="m-item"><span class="m-lbl">${m1.lbl}</span><span class="m-val">${m1.val}</span></div>
                     <div class="m-item"><span class="m-lbl">${m2.lbl}</span><span class="m-val">${m2.val}</span></div>
                     <div class="m-item"><span class="m-lbl">${m3.lbl}</span><span class="m-val">${m3.val}</span></div>
