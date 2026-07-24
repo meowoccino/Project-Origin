@@ -64,7 +64,7 @@ function initApp() {
     const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
     const hudContainer = document.getElementById('hud-age-container');
 
-    // Strict Tab Switcher with Complete Inspector Hiding (Phase 4 Fix)
+    // Strict Tab Switcher with Complete Inspector Hiding
     function switchTab(btnId, viewId) {
         allBtns.forEach(b => b?.classList.remove('active'));
         allViews.forEach(v => v?.classList.remove('active'));
@@ -75,9 +75,17 @@ function initApp() {
         if (hudContainer) hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
         MainEngine.isExploreActive = (btnId === 'btn-explore');
 
-        // Absolute hiding for inspector-preview on all non-explore views
-        if (btnId !== 'btn-explore' && viewId !== 'modal-object-detail') {
-            clearSelection();
+        const inspector = document.getElementById('inspector-preview');
+        if (inspector) {
+            if (btnId !== 'btn-explore') {
+                // Instantly hide the bar if we leave the map
+                inspector.classList.remove('active');
+                inspector.style.display = 'none';
+            } else if (MainEngine.selectedNode) {
+                // Bring it back if we return to the map and something is selected
+                inspector.style.display = 'flex';
+                setTimeout(() => inspector.classList.add('active'), 10);
+            }
         }
     }
 
