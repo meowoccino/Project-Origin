@@ -21,10 +21,15 @@
             }
         }
     </script>
+    <style>
+        /* Restoring solid backgrounds to stop canvas bleed */
+        .view-panel { background-color: var(--bg-deep, #050914); min-height: 100vh; padding-bottom: 80px; }
+        #view-explore { background-color: transparent; } /* Only explore shows the canvas */
+    </style>
 </head>
 <body>
 
-    <!-- SPLASH SCREEN (WITH INSTANT NATIVE BYPASS) -->
+    <!-- SPLASH SCREEN -->
     <div id="splash-screen" 
          onclick="forceDismissSplash()" 
          ontouchstart="forceDismissSplash()" 
@@ -48,10 +53,10 @@
     <!-- HUD AGE OVERLAY -->
     <div id="hud-age-container" class="glass-panel">
         <div class="hud-label">Universe Age</div>
-        <div id="hud-age" class="hud-value data-font">0 Years</div>
+        <div id="hud-age" class="hud-value data-font">0.000 Gyr</div>
     </div>
 
-    <!-- INSPECTOR PREVIEW BAR (FLOATING OVERLAY ON EXPLORE) -->
+    <!-- INSPECTOR PREVIEW BAR -->
     <div id="inspector-preview" class="glass-panel">
         <div>
             <div id="obj-name">Celestial Body</div>
@@ -61,12 +66,12 @@
     </div>
 
     <!-- VIEW: EVENTS TAB -->
-    <div id="view-events" class="view-panel">
-        <div id="events-container" style="max-width: 500px; margin: 0 auto;"></div>
+    <div id="view-events" class="view-panel" style="display:none;">
+        <div id="events-container" style="max-width: 500px; margin: 0 auto; padding: 20px;"></div>
     </div>
 
-    <!-- VIEW: ORIGIN TAB (AI OBSERVER) -->
-    <div id="view-ai" class="view-panel">
+    <!-- VIEW: ORIGIN TAB -->
+    <div id="view-ai" class="view-panel" style="display:none;">
         <div class="observer-module">
             <div id="observer-ui" class="eye-container state-observe">
                 <div class="eye-ring-outer"></div>
@@ -79,107 +84,46 @@
             </div>
             <div id="earth-clock" class="earth-sync data-font">UPLINK TIMESTAMP: INITIALIZING...</div>
         </div>
-
-        <div id="logs-container"></div>
-        <button id="btn-load-more" class="btn-history data-font">QUERY PAST TELEMETRY</button>
+        <div id="logs-container" style="padding: 0 20px;"></div>
     </div>
 
     <!-- VIEW: TIMELINE TAB -->
-    <div id="view-timeline" class="view-panel">
-        <div id="timeline-container" class="timeline-wrapper"></div>
+    <div id="view-timeline" class="view-panel" style="display:none;">
+        <div id="timeline-container" class="timeline-wrapper" style="padding: 20px;"></div>
     </div>
 
     <!-- VIEW: CATALOG TAB -->
-    <div id="view-catalog" class="view-panel">
-        <div class="catalog-viewport">
+    <div id="view-catalog" class="view-panel" style="display:none;">
+        <div class="catalog-viewport" style="padding: 20px;">
             
-            <!-- MACRO COSMOLOGICAL STATE -->
-            <div class="macro-container">
-                <div class="macro-bar-visual">
-                    <div id="bar-de" class="bar-de"></div>
-                    <div id="bar-dm" class="bar-dm"></div>
-                    <div id="bar-baryon" class="bar-baryonic"></div>
+            <!-- MACRO COSMOLOGICAL STATE (Restored Original Layout) -->
+            <div class="macro-container" style="margin-bottom: 20px;">
+                <div class="macro-bar-visual" style="display:flex; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 15px;">
+                    <div id="bar-de" style="width: 68.5%; background: #8A2BE2;"></div>
+                    <div id="bar-dm" style="width: 26.4%; background: #FF8C00;"></div>
+                    <div id="bar-baryon" style="width: 5.1%; background: #FFD700;"></div>
                 </div>
-                <div class="macro-grid">
-                    <div class="macro-item">
-                        <div class="dot" style="background: #8A2BE2;"></div>
-                        <div>
-                            <div class="macro-label">Dark Energy</div>
-                            <div id="cat-de-val" class="macro-val data-font">68.5%</div>
-                        </div>
-                    </div>
-                    <div class="macro-item">
-                        <div class="dot" style="background: #FF8C00;"></div>
-                        <div>
-                            <div class="macro-label">Dark Matter</div>
-                            <div id="cat-dm-val" class="macro-val data-font">26.4%</div>
-                        </div>
-                    </div>
-                    <div class="macro-item">
-                        <div class="dot" style="background: #FFD700;"></div>
-                        <div>
-                            <div class="macro-label">Baryonic Matter</div>
-                            <div id="cat-baryon-val" class="macro-val data-font">5.1%</div>
-                        </div>
-                    </div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                    <div><span style="color:#8A2BE2;">■</span> DARK ENERGY: <span id="cat-de-val" class="data-font">68.5%</span></div>
+                    <div><span style="color:#FF8C00;">■</span> DARK MATTER: <span id="cat-dm-val" class="data-font">26.4%</span></div>
+                    <div><span style="color:#FFD700;">■</span> BARYONIC: <span id="cat-baryon-val" class="data-font">5.1%</span></div>
                 </div>
             </div>
 
             <!-- INVENTORY GRID -->
             <div class="inventory-grid">
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #00E5FF;"></div><div class="inv-title">Nebulae & Clouds</div></div>
-                    <div id="cat-nebulae-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #FFD700;"></div><div class="inv-title">Active Stars</div></div>
-                    <div id="cat-stars-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #B026FF;"></div><div class="inv-title">Black Holes</div></div>
-                    <div id="cat-bh-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #FF3366;"></div><div class="inv-title">Neutron Stars</div></div>
-                    <div id="cat-degenerate-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #4CAF50;"></div><div class="inv-title">Planets</div></div>
-                    <div id="cat-planets-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #A0AEC0;"></div><div class="inv-title">Moons</div></div>
-                    <div id="cat-moons-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #888888;"></div><div class="inv-title">Asteroids & Comets</div></div>
-                    <div id="cat-asteroids-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #FF8C00;"></div><div class="inv-title">Quasars</div></div>
-                    <div id="cat-quasars-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #E91E63;"></div><div class="inv-title">Exotic Objects</div></div>
-                    <div id="cat-exotic-val" class="inv-val data-font">0</div>
-                </div>
-                <div class="inv-card">
-                    <div class="inv-header"><div class="dot" style="background: #00E5FF; box-shadow: 0 0 6px #00E5FF;"></div><div class="inv-title">Inhabited Worlds</div></div>
-                    <div id="cat-inhabited-val" class="inv-val data-font">0</div>
-                </div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #00E5FF;"></div><div class="inv-title">Nebulae & Clouds</div></div><div id="cat-nebulae-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #FFD700;"></div><div class="inv-title">Active Stars</div></div><div id="cat-stars-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #B026FF;"></div><div class="inv-title">Black Holes</div></div><div id="cat-bh-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #FF3366;"></div><div class="inv-title">Neutron Stars</div></div><div id="cat-degenerate-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #4CAF50;"></div><div class="inv-title">Planets</div></div><div id="cat-planets-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #A0AEC0;"></div><div class="inv-title">Moons</div></div><div id="cat-moons-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #888888;"></div><div class="inv-title">Asteroids & Comets</div></div><div id="cat-asteroids-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #FF8C00;"></div><div class="inv-title">Quasars</div></div><div id="cat-quasars-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #E91E63;"></div><div class="inv-title">Exotic Objects</div></div><div id="cat-exotic-val" class="inv-val data-font">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #00E5FF;"></div><div class="inv-title">Inhabited Worlds</div></div><div id="cat-inhabited-val" class="inv-val data-font">0</div></div>
             </div>
         </div>
-    </div>
-
-    <!-- MODAL: OBJECT DETAIL VIEW -->
-    <div id="modal-object-detail" class="view-panel">
-        <div class="modal-header">
-            <button id="btn-close-inspect" class="btn-back" aria-label="Go Back">
-                <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            </button>
-            <span id="inspect-title">Celestial Body</span>
-        </div>
-        <div id="spec-name" class="glass-panel" style="padding: 20px;"></div>
     </div>
 
     <!-- BOTTOM NAVIGATION BAR -->
