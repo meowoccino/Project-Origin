@@ -21,11 +21,6 @@
             }
         }
     </script>
-    <style>
-        /* Solid backgrounds to stop canvas bleed on UI tabs */
-        .view-panel { background-color: #050914; min-height: 100vh; padding-bottom: 80px; }
-        #view-explore { background-color: transparent; } 
-    </style>
 </head>
 <body>
 
@@ -53,7 +48,7 @@
     <!-- HUD AGE OVERLAY -->
     <div id="hud-age-container" class="glass-panel">
         <div class="hud-label">Universe Age</div>
-        <div id="hud-age" class="hud-value data-font">0.000 Gyr</div>
+        <div id="hud-age" class="hud-value data-font">0 Years</div>
     </div>
 
     <!-- INSPECTOR PREVIEW BAR (FLOATING OVERLAY ON EXPLORE) -->
@@ -67,7 +62,7 @@
 
     <!-- VIEW: EVENTS TAB -->
     <div id="view-events" class="view-panel" style="display:none;">
-        <div id="events-container" style="max-width: 500px; margin: 0 auto; padding: 20px;"></div>
+        <div id="events-container" style="max-width: 500px; margin: 0 auto; padding-bottom: 80px;"></div>
     </div>
 
     <!-- VIEW: ORIGIN TAB (AI OBSERVER) -->
@@ -84,29 +79,49 @@
             </div>
             <div id="earth-clock" class="earth-sync data-font">UPLINK TIMESTAMP: INITIALIZING...</div>
         </div>
-        <div id="logs-container" style="padding: 0 20px;"></div>
+
+        <div id="logs-container"></div>
+        <button id="btn-load-more" class="btn-history data-font">QUERY PAST TELEMETRY</button>
     </div>
 
     <!-- VIEW: TIMELINE TAB -->
     <div id="view-timeline" class="view-panel" style="display:none;">
-        <div id="timeline-container" class="timeline-wrapper" style="padding: 20px;"></div>
+        <div id="timeline-container" class="timeline-wrapper"></div>
     </div>
 
     <!-- VIEW: CATALOG TAB -->
     <div id="view-catalog" class="view-panel" style="display:none;">
-        <div class="catalog-viewport" style="padding: 20px;">
+        <div class="catalog-viewport">
             
             <!-- MACRO COSMOLOGICAL STATE -->
-            <div class="macro-container" style="margin-bottom: 20px;">
-                <div class="macro-bar-visual" style="display:flex; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 15px;">
-                    <div id="bar-de" style="width: 68.5%; background: #8A2BE2;"></div>
-                    <div id="bar-dm" style="width: 26.4%; background: #FF8C00;"></div>
-                    <div id="bar-baryon" style="width: 5.1%; background: #FFD700;"></div>
+            <div class="macro-container">
+                <div class="macro-bar-visual">
+                    <div id="bar-de" class="bar-de"></div>
+                    <div id="bar-dm" class="bar-dm"></div>
+                    <div id="bar-baryon" class="bar-baryonic"></div>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 12px;">
-                    <div><span style="color:#8A2BE2;">■</span> DE: <span id="cat-de-val" class="data-font">68.5%</span></div>
-                    <div><span style="color:#FF8C00;">■</span> DM: <span id="cat-dm-val" class="data-font">26.4%</span></div>
-                    <div><span style="color:#FFD700;">■</span> BM: <span id="cat-baryon-val" class="data-font">5.1%</span></div>
+                <div class="macro-grid">
+                    <div class="macro-item">
+                        <div class="dot" style="background: #8A2BE2;"></div>
+                        <div>
+                            <div class="macro-label">Dark Energy</div>
+                            <div id="cat-de-val" class="macro-val data-font">68.5%</div>
+                        </div>
+                    </div>
+                    <div class="macro-item">
+                        <div class="dot" style="background: #FF8C00;"></div>
+                        <div>
+                            <div class="macro-label">Dark Matter</div>
+                            <div id="cat-dm-val" class="macro-val data-font">26.4%</div>
+                        </div>
+                    </div>
+                    <div class="macro-item">
+                        <div class="dot" style="background: #FFD700;"></div>
+                        <div>
+                            <div class="macro-label">Baryonic Matter</div>
+                            <div id="cat-baryon-val" class="macro-val data-font">5.1%</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -124,6 +139,17 @@
                 <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #00E5FF; box-shadow: 0 0 6px #00E5FF;"></div><div class="inv-title">Inhabited Worlds</div></div><div id="cat-inhabited-val" class="inv-val data-font">0</div></div>
             </div>
         </div>
+    </div>
+
+    <!-- MODAL: OBJECT DETAIL VIEW -->
+    <div id="modal-object-detail" class="view-panel" style="display:none;">
+        <div class="modal-header">
+            <button id="btn-close-inspect" class="btn-back" aria-label="Go Back">
+                <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+            <span id="inspect-title">Celestial Body</span>
+        </div>
+        <div id="spec-name" class="glass-panel" style="padding: 20px;"></div>
     </div>
 
     <!-- BOTTOM NAVIGATION BAR -->
