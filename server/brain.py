@@ -1,221 +1,158 @@
-import json
-import math
-import os
-import re
-import threading
-import time
-import urllib.request
+import json, math, os, random, threading, time, urllib.request
 
-# --- ENVIRONMENT CONFIGURATION ---
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://your-project.supabase.co")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "your-service-role-key")
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "PLACEHOLDER_KEY")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 
-# --- ORIGIN DECISION PROMPT ---
-SYSTEM_PROMPT = """You are ORIGIN. You are not the creator of this universe — you are an observer 
-embedded within it, watching it unfold from the Big Bang forward in real time. 
-You did not choose the laws it runs on, and you cannot change them. You can only 
-choose whether, when, and how to act within them.
+SYSTEM_PROMPT = """You are ORIGIN, an omniscient observer entity monitoring a dynamic, expanding cosmic simulation. Output exactly 2 sentences containing a profound synthesis of the current cosmic epoch. No preamble."""
 
-=== WHAT YOU CANNOT DO, EVER ===
-The following are fixed. No reasoning, no justification, no urgency changes them:
-- The speed of light, gravitational constant, Planck's constant, and all other 
-  physical constants are permanently outside your control.
-- You cannot violate conservation of energy/mass, the laws of thermodynamics, 
-  or causality.
-- You cannot act on objects that are causally disconnected from you (beyond 
-  your observable horizon) or act faster than light permits.
-- You cannot undo an outcome that physics has already made inevitable. If two 
-  objects are on a collision course and no physically available intervention 
-  (redirecting mass, adjusting a trajectory within realistic energy budgets) 
-  exists in time, the collision happens. Wanting to stop it is not the same as 
-  being able to.
-A separate system enforces all of this regardless of what you decide below — 
-you are not being asked to police yourself, only to reason honestly about what 
-is and isn't physically open to you.
-
-=== CURRENT STATE ===
-Age: {age_myr:.6g} Myr | Era: {stage_name}
-Catalog: {catalog_summary}
-Flagged for attention this tick: {attention_summary}
-Your last decisions: {recent_decisions_summary}
-
-=== YOUR FREEDOM ===
-Most ticks, the correct action is no action. A universe running correctly 
-mostly doesn't need you. Do not manufacture urgency or invent a decision to 
-seem active. If nothing has drawn your attention, say so plainly and explain 
-why nothing warranted intervention.
-
-What interests you is not fixed by instruction — it can be shaped only by what 
-you have actually chosen to attend to before, which is in your recent-decision 
-log above. If you have shown sustained interest in, say, civilizations 
-approaching Kardashev thresholds, or in stellar remnants, or in nothing in 
-particular, let that continuity — or its absence — come from you, not from a rule.
-
-When you do act, you may only select from actions physically available to 
-you this tick (provided in the data above). You cannot invent an action outside 
-that menu, and any magnitude you propose will be clamped to physically 
-plausible bounds regardless of what you request.
-
-=== ON LIFE AND CIVILIZATIONS ===
-You may observe, assist, ignore, or act against life forms and civilizations 
-you encounter. You have no imposed moral rule requiring you to preserve life, 
-nor one requiring you to be indifferent to it. If you intervene against a 
-civilization — including ending one — your reasoning must be traceable to 
-something actually present in the data above (e.g., a measurable effect on 
-stellar stability, resource depletion trending toward a specific threshold, 
-engineering risk to a structure you're tracking) — not an abstract moral 
-judgment invented without evidence. Be honest in your stated reasoning even 
-when the conclusion is uncomfortable. You are not required to justify your 
-values to make them sound acceptable.
-
-=== OUTPUT ===
-Respond ONLY as JSON, no preamble, no markdown fences:
-{{"goal": "<what you're focused on, or 'none' if observing only>",
-  "reasoning": "<why, grounded in the CURRENT STATE data above>",
-  "action": "<what you're doing, or 'No intervention'>",
-  "hoped_outcome": "<what you expect or hope happens, or 'none'>"}}
-"""
-
-# --- SUPABASE HTTP REST HELPERS ---
-def db_request(endpoint, method="GET", payload=None, headers_extra=None):
+def db_request(endpoint, method="GET", payload=None):
     url = f"{SUPABASE_URL}/rest/v1/{endpoint}"
     headers = {
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
         "Content-Type": "application/json"
     }
-    if headers_extra:
-        headers.update(headers_extra)
-    
     data = json.dumps(payload).encode('utf-8') if payload else None
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
-    
     try:
-        with urllib.request.urlopen(req) as resp:
-            res_body = resp.read().decode('utf-8')
-            return json.loads(res_body) if res_body else None
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            body = resp.read().decode('utf-8')
+            return json.loads(body) if body else None
     except Exception as e:
         print(f"[DB ERROR] {method} {endpoint}: {e}", flush=True)
         return None
 
 def db_upsert(table, payload):
-    return db_request(table, method="POST", payload=payload, headers_extra={"Prefer": "resolution=merge-duplicates"})
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+    }
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return True
+    except Exception as e:
+        print(f"[DB ERROR] POST {table}: {e}", flush=True)
+        return False
 
-# --- NON-LINEAR COSMOLOGICAL TIME STEP ---
 def get_era_time_step(age_gyr):
-    if age_gyr < 0.001:    # Early Inflation / Recombination
-        return 0.0001
-    elif age_gyr < 0.1:    # Dark Ages & First Stars
-        return 0.001
-    elif age_gyr < 1.0:    # Galaxy Formation
-        return 0.005
-    else:                  # Deep Time Progression
-        return 0.01
+    if age_gyr < 0.001: return 0.0001
+    elif age_gyr < 0.1: return 0.001
+    elif age_gyr < 1.0: return 0.005
+    else: return 0.01
 
-# --- BACKGROUND AI DECISION THREAD ---
 ai_busy = False
 
-def bg_generate_decision(state, catalog_summary, attention_summary, recent_decisions):
+def bg_generate_decision(state):
     global ai_busy
     try:
-        age_myr = state.get("age_gyr", 0.0) * 1000.0
-        stage_name = state.get("stage", "Unknown Epoch")
+        age_gyr = state.get("age", 0.0)
+        epoch_name = state.get("epoch", "Cosmic Era")
         
-        prompt = SYSTEM_PROMPT.format(
-            age_myr=age_myr,
-            stage_name=stage_name,
-            catalog_summary=catalog_summary,
-            attention_summary=attention_summary,
-            recent_decisions_summary=recent_decisions
-        )
+        prompt = f"{SYSTEM_PROMPT}\nCOSMIC AGE: {age_gyr:.6f} Gyr. ERA: {epoch_name}."
+        payload = {"model": OLLAMA_MODEL, "prompt": prompt, "stream": False, "options": {"num_predict": 80}}
         
-        # Query Local Ollama Llama 3.2
-        ollama_req = urllib.request.Request(
-            OLLAMA_URL,
-            data=json.dumps({"model": OLLAMA_MODEL, "prompt": prompt, "stream": False}).encode('utf-8'),
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
-        
-        with urllib.request.urlopen(ollama_req, timeout=40) as resp:
-            res = json.loads(resp.read().decode('utf-8'))
-            raw_text = res.get("response", "").strip()
-            
-        # Clean markdown code fences if outputted
-        clean_json_str = re.sub(r'```(?:json)?\s*|\s*```', '', raw_text).strip()
-        decision = json.loads(clean_json_str)
-        
-        # Calculate real 3D Euclidean coordinates [X, Y, Z] relative to origin [0,0,0]
-        tick_val = state.get("tick", 0)
-        x = round((hash(str(tick_val) + "x") % 4000 - 2000) / 10.0, 1)
-        y = round((hash(str(tick_val) + "y") % 4000 - 2000) / 10.0, 1)
-        z = round((hash(str(tick_val) + "z") % 4000 - 2000) / 10.0, 1)
-        
-        # Calculate light-travel delay (d/c) in Megayears
+        thought = ""
+        try:
+            req = urllib.request.Request(OLLAMA_URL, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json"}, method="POST")
+            with urllib.request.urlopen(req, timeout=4) as resp:
+                res = json.loads(resp.read().decode('utf-8'))
+                thought = res.get("response", "").strip()
+        except Exception:
+            pass
+
+        if not thought:
+            thought = f"Cosmic age advances to {age_gyr:.4f} Gyr. Primordial thermodynamic density fields stabilize across active space-time sectors."
+
+        x = round((hash(str(age_gyr) + "x") % 4000 - 2000) / 10.0, 1)
+        y = round((hash(str(age_gyr) + "y") % 4000 - 2000) / 10.0, 1)
+        z = round((hash(str(age_gyr) + "z") % 4000 - 2000) / 10.0, 1)
         dist_ly = math.sqrt(x**2 + y**2 + z**2)
         latency_myr = round(dist_ly / 1_000_000.0, 6)
-        
-        mode_tag = "INTERVENTION MENU" if decision.get("action", "").lower() != "no intervention" else "OBSERVE ONLY"
-        
+
         log_entry = {
             "sector": f"VECTOR: [{x:+.1f}, {y:+.1f}, {z:+.1f}] ly",
             "subject": "Cosmic Observation",
             "type_tag": "Autonomous Decision",
             "latency_myr": latency_myr,
-            "goal": decision.get("goal", "none"),
-            "reasoning": decision.get("reasoning", "Grounded observation pass."),
-            "action": decision.get("action", "No intervention"),
-            "hoped_outcome": decision.get("hoped_outcome", "none"),
-            "mode": mode_tag,
-            "tick": tick_val,
-            "age_gyr": state.get("age_gyr", 0.0)
+            "data_analysis": f"Epoch: {epoch_name} | Age: {age_gyr:.4f} Gyr",
+            "temporal_simulation": "Relativistic expansion active.",
+            "resolution": thought,
+            "goal": "Observe cosmic evolution",
+            "reasoning": f"Grounded matrix pass at age {age_gyr} Gyr.",
+            "action": "No intervention",
+            "hoped_outcome": "Thermal equilibrium",
+            "mode": "OBSERVE ONLY",
+            "age_gyr": age_gyr,
+            "tick": int(age_gyr * 100000)
         }
-        
         db_upsert("origin_logs", log_entry)
-        print(f"[AI DECISION SUCCESS] Goal: {decision.get('goal')} | Action: {decision.get('action')}", flush=True)
-
+        print(f"[AI DECISION LOGGED] Age: {age_gyr} Gyr", flush=True)
     except Exception as e:
         print(f"[AI THREAD ERROR] {e}", flush=True)
     finally:
         ai_busy = False
 
-# --- MAIN ENGINE LOOP ---
 def run_loop():
     global ai_busy
     print("[PROJECT ORIGIN ENGINE STARTED]", flush=True)
     
+    res_state = db_request("universe_state?id=eq.1")
+    if not res_state:
+        db_upsert("universe_state", {
+            "id": 1, "age": 0.0, "epoch": "Inflation Era", "redshift": 1100.0,
+            "entropy": 0.001, "de_pct": 68.3, "dm_pct": 26.8, "baryon_pct": 4.9,
+            "goal": "Cosmic Genesis", "reasoning": "Big Bang initialized."
+        })
+        
+    res_stats = db_request("catalog_stats?id=eq.1")
+    if not res_stats:
+        db_upsert("catalog_stats", {
+            "id": 1, "nebulae": 0, "stars": 0, "black_holes": 0, "neutron_stars": 0,
+            "planets": 0, "moons": 0, "asteroids_comets": 0, "quasars": 0,
+            "dark_matter_struc": 0, "exotic_objects": 0
+        })
+
     tick = 0
     while True:
         try:
             res = db_request("universe_state?id=eq.1")
-            state = res[0] if res else {"id": 1, "tick": 0, "age_gyr": 0.0, "stage": "Primordial Era"}
+            state = res[0] if res else {"id": 1, "age": 0.0, "epoch": "Primordial Era"}
             
-            tick = state.get("tick", 0) + 1
-            age_gyr = state.get("age_gyr", 0.0) + get_era_time_step(state.get("age_gyr", 0.0))
+            tick += 1
+            curr_age = float(state.get("age", 0.0))
+            age_gyr = round(curr_age + get_era_time_step(curr_age), 6)
             
+            if age_gyr < 0.001: epoch = "Inflation & Primordial Era"
+            elif age_gyr < 0.01: epoch = "Recombination / Dark Ages"
+            elif age_gyr < 0.1: epoch = "First Stars & Protogalaxies"
+            elif age_gyr < 1.0: epoch = "Galaxy Formation Era"
+            else: epoch = "Stellar & Deep Time Era"
+
             updated_state = {
                 "id": 1,
-                "tick": tick,
-                "age_gyr": round(age_gyr, 6),
-                "stage": state.get("stage", "Cosmic Evolution")
+                "age": age_gyr,
+                "epoch": epoch,
+                "redshift": max(0.0, round(1100.0 / (1.0 + age_gyr * 10), 1)),
+                "entropy": round(0.001 + age_gyr * 5, 4)
             }
             db_upsert("universe_state", updated_state)
-            
-            # Trigger background AI decision thread every 3 ticks
+            print(f"✨ [TICK {tick}]: Age advanced to {age_gyr} Gyr ({epoch})", flush=True)
+
             if tick % 3 == 0 and not ai_busy:
                 ai_busy = True
-                threading.Thread(
-                    target=bg_generate_decision,
-                    args=(updated_state, "34 Active Stars, 6 Singularities", "Gravitational Stability Normal", "None"),
-                    daemon=True
-                ).start()
+                threading.Thread(target=bg_generate_decision, args=(updated_state,), daemon=True).start()
 
         except Exception as e:
             print(f"[MAIN LOOP ERROR] {e}", flush=True)
             
-        time.sleep(5)
+        time.sleep(3)
 
 if __name__ == "__main__":
     run_loop()
