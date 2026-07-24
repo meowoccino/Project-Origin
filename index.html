@@ -6,13 +6,29 @@
     <title>Project Origin</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="ui/styles.css">
+    
+    <!-- ⚡ NATIVE SPLASH SCREEN BYPASS ⚡ -->
+    <script>
+        function forceDismissSplash() {
+            var splash = document.getElementById('splash-screen');
+            if (splash) {
+                splash.style.transition = 'opacity 0.4s ease';
+                splash.style.opacity = '0';
+                splash.style.pointerEvents = 'none';
+                setTimeout(function() {
+                    splash.style.display = 'none';
+                }, 400);
+            }
+        }
+    </script>
 </head>
 <body>
 
-    <!-- SPLASH SCREEN (WITH DIRECT MOBILE TAP FAIL-SAFE) -->
+    <!-- SPLASH SCREEN (WITH INSTANT NATIVE BYPASS) -->
     <div id="splash-screen" 
-         onclick="if(window.dismissSplash) window.dismissSplash();" 
-         onpointerdown="if(window.dismissSplash) window.dismissSplash();">
+         onclick="forceDismissSplash()" 
+         ontouchstart="forceDismissSplash()" 
+         onpointerdown="forceDismissSplash()">
         <div class="splash-content">
             <svg class="splash-logo" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,140,0,0.15)" stroke-width="1"/>
