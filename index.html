@@ -9,8 +9,10 @@
 </head>
 <body>
 
-    <!-- SPLASH SCREEN -->
-    <div id="splash-screen">
+    <!-- SPLASH SCREEN (WITH DIRECT MOBILE TAP FAIL-SAFE) -->
+    <div id="splash-screen" 
+         onclick="if(window.dismissSplash) window.dismissSplash();" 
+         onpointerdown="if(window.dismissSplash) window.dismissSplash();">
         <div class="splash-content">
             <svg class="splash-logo" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,140,0,0.15)" stroke-width="1"/>
@@ -75,7 +77,7 @@
     <div id="view-catalog" class="view-panel">
         <div class="catalog-viewport">
             
-            <!-- MACRO COSMOLOGICAL STATE (Cleaned up redundant headers) -->
+            <!-- MACRO COSMOLOGICAL STATE -->
             <div class="macro-container">
                 <div class="macro-bar-visual">
                     <div id="bar-de" class="bar-de"></div>
