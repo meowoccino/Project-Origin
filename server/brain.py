@@ -2,10 +2,15 @@ import os
 import time
 import random
 import requests
+import threading
 
-# --- CONFIGURATION ---
+# --- CONFIGURATION & SECURITY ---
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+# Crash loudly if secret key environment variable is omitted
+if not SUPABASE_KEY:
+    raise RuntimeError("❌ CRITICAL: 'SUPABASE_KEY' environment variable is not set!")
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
 DEFAULT_MODEL = "llama3.2:3b"
@@ -13,31 +18,42 @@ DEFAULT_MODEL = "llama3.2:3b"
 HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json",
-    "Prefer": "return=minimal" 
+    "Content-Type": "application/json"
 }
 
 SYSTEM_PROMPT = """You are ORIGIN. Output exactly 2 sentences containing a profound synthesis of the current cosmic epoch. No preamble."""
 
-# --- DATABASE FETCHERS ---
+# --- DATABASE OPERATIONS (SELF-HEALING UPSERTS & LOUD LOGGING) ---
 
 def db_get(endpoint):
     try:
         res = requests.get(f"{SUPABASE_URL}/rest/v1/{endpoint}", headers=HEADERS, timeout=5)
-        if res.status_code == 200: return res.json()
-    except: pass
+        if res.status_code == 200:
+            return res.json()
+        print(f"❌ [DB GET ERROR {res.status_code}]: {res.text}")
+    except Exception as e:
+        print(f"🛑 [DB GET NETWORK ERROR]: {e}")
     return []
 
-def db_patch(endpoint, payload):
+def db_upsert(table, payload):
+    """Self-healing upsert using POST + resolution=merge-duplicates"""
+    try:
+        headers = {**HEADERS, "Prefer": "resolution=merge-duplicates, return=minimal"}
+        body = payload if isinstance(payload, list) else [payload]
+        res = requests.post(f"{SUPABASE_URL}/rest/v1/{table}", headers=headers, json=body, timeout=5)
+        if res.status_code >= 400:
+            print(f"❌ [DB UPSERT ERROR {res.status_code}]: {res.text}")
+    except Exception as e:
+        print(f"🛑 [DB UPSERT NETWORK ERROR]: {e}")
+
+def db_post(table, payload):
     try:
         headers = {**HEADERS, "Prefer": "return=minimal"}
-        requests.patch(f"{SUPABASE_URL}/rest/v1/{endpoint}", headers=headers, json=payload, timeout=5)
-    except: pass
-
-def db_post(endpoint, payload):
-    try:
-        requests.post(f"{SUPABASE_URL}/rest/v1/{endpoint}", headers=HEADERS, json=payload, timeout=5)
-    except: pass
+        res = requests.post(f"{SUPABASE_URL}/rest/v1/{table}", headers=headers, json=payload, timeout=5)
+        if res.status_code >= 400:
+            print(f"❌ [DB POST ERROR {res.status_code}]: {res.text}")
+    except Exception as e:
+        print(f"🛑 [DB POST NETWORK ERROR]: {e}")
 
 # --- PHASE 3: PHYSICS ENGINE ---
 
@@ -52,7 +68,8 @@ def run_physics_tick(all_objects):
             hydrogen = float(obj.get("hydrogen_pct") or 100.0)
             burn_rate = (mass ** 2.5) * 0.05 
             new_hydrogen = max(0.0, hydrogen - burn_rate)
-            if new_hydrogen != hydrogen: updates["hydrogen_pct"] = round(new_hydrogen, 4)
+            if new_hydrogen != hydrogen: 
+                updates["hydrogen_pct"] = round(new_hydrogen, 4)
             if new_hydrogen <= 0.0 and not obj.get("is_dead"):
                 updates["is_dead"] = True
                 if mass > 20.0: updates["object_type"], updates["surface_temp"], updates["mass_solar"] = "Black Hole", 1e-9, round(mass * 0.2, 2)
@@ -76,12 +93,9 @@ def run_physics_tick(all_objects):
             batch_updates.append(updates)
             
     if batch_updates:
-        try:
-            headers = {**HEADERS, "Prefer": "return=minimal, resolution=merge-duplicates"}
-            requests.post(f"{SUPABASE_URL}/rest/v1/celestial_objects", headers=headers, json=batch_updates, timeout=5)
-        except: pass
+        db_upsert("celestial_objects", batch_updates)
 
-# --- UNIVERSE EXPANSION & SPAWNING ENGINE ---
+# --- UNIVERSE EXPANSION ENGINE ---
 
 def generate_unique_physics(category_key):
     if category_key == "nebulae": return category_key, "Nebula Cloud", f"Gas Temp: {random.randint(10, 80)} K, Mass: {random.randint(100, 15000)} M_sun"
@@ -95,18 +109,24 @@ def generate_unique_physics(category_key):
     else: return category_key, "Exotic Anomaly", f"Energy Flux: {round(random.uniform(1.0, 99.0), 1)} TeraWatts"
 
 def call_local_ollama_name(category, specs):
-    payload = {"model": DEFAULT_MODEL, "prompt": f"Generate ONE unique short futuristic name for a celestial {category}. Properties: {specs}. Output ONLY the name, no quotes.", "stream": False, "options": {"temperature": 0.8, "num_predict": 15}}
+    payload = {"model": DEFAULT_MODEL, "prompt": f"Generate ONE unique short futuristic name for a celestial {category}. Output ONLY the name.", "stream": False, "options": {"temperature": 0.8, "num_predict": 10}}
     try:
-        # INCREASED TIMEOUT TO 60s FOR COLD BOOTS
-        res = requests.post(OLLAMA_URL, json=payload, timeout=60)
-        if res.status_code == 200: return res.json().get("response", "").strip(' "\'\n')
-    except: pass
-    return f"Anomaly-{random.randint(1000,9999)}"
+        res = requests.post(OLLAMA_URL, json=payload, timeout=4)
+        if res.status_code == 200:
+            name = res.json().get("response", "").strip(' "\'\n')
+            if name: return name
+    except Exception as e:
+        print(f"⚠️ [OLLAMA NAME TIMEOUT]: {e}")
+    
+    prefixes = ["Vortex", "Astra", "Chronos", "Kaelor", "Nivar", "Zephyr", "Solus", "Aether"]
+    return f"{random.choice(prefixes)}-{random.randint(100, 999)}"
 
 def run_expansion_step(state, stats):
     current_age = float(state.get("age", 0.001))
     new_age = round(current_age + 0.005, 3)
-    db_patch("universe_state?id=eq.1", {"age": new_age})
+
+    # Self-healing upsert for Universe State
+    db_upsert("universe_state", {"id": 1, "age": new_age, "de_pct": 68.5, "dm_pct": 26.4, "baryon_pct": 5.1})
 
     c_nebulae, c_stars = stats.get("nebulae", 0), stats.get("stars", 0)
     possible_spawns = ["nebulae"]
@@ -122,63 +142,85 @@ def run_expansion_step(state, stats):
     print(f"✨ [EXPANSION]: Age {new_age} Gyr | Spawned: {ai_name} ({cat_label})")
 
     current_val = stats.get(cat_key, 0)
-    db_patch("catalog_stats?id=eq.1", {cat_key: current_val + 1})
-    db_post("events", {"title": f"{ai_name} ({cat_label})", "description": f"Evolutionary shift detected at Age {new_age} Gyr. Specs: {physics_specs}.", "age": new_age, "category": cat_key})
     
-    # --- BUG FIX: ACTUALLY INSERT THE OBJECT INTO THE MAP ---
-    db_post("celestial_objects", {
-        "name": ai_name,
-        "object_type": cat_label,
-        "category": cat_key
-    })
+    # Self-healing upsert for Catalog Stats
+    updated_stats = {**stats, "id": 1, cat_key: current_val + 1}
+    db_upsert("catalog_stats", updated_stats)
 
-# --- AI LORE ENGINE ---
+    db_post("events", {"title": f"{ai_name} ({cat_label})", "description": f"Evolutionary shift detected at Age {new_age} Gyr. Specs: {physics_specs}.", "age": new_age, "category": cat_key})
+    db_post("celestial_objects", {"name": ai_name, "object_type": cat_label, "category": cat_key})
 
-def run_ai_logging_pass(state, all_objects):
+# --- ASYNCHRONOUS AI LORE THREAD ---
+
+def bg_generate_lore(state, all_objects):
     life_count = sum(1 for o in all_objects if o.get('has_life'))
     max_kard = max((float(o.get('kardashev_scale') or 0.0) for o in all_objects), default=0.0)
     age = float(state.get('age', 0.0))
     lines = [f"{o.get('id')}|{o.get('object_type', 'UNKNOWN').title()}|{o.get('surface_temp')}" for o in all_objects[:30]]
     prompt = f"COSMIC AGE: {age:.6f} Gyr\nInhabited: {life_count}\nMax Kardashev: Type {max_kard:.2f}\nTotal Objects: {len(all_objects)}\nTELEMETRY:\n" + "\n".join(lines)
     payload = {"model": DEFAULT_MODEL, "prompt": f"{SYSTEM_PROMPT}\n\nMETRICS:\n{prompt}\n\nSYNTHESIS:", "stream": False, "options": {"temperature": 0.7, "num_predict": 120}}
+    
+    thought = None
     try:
-        # INCREASED TIMEOUT TO 60s
-        res = requests.post(OLLAMA_URL, json=payload, timeout=60)
+        print("🧠 [ORIGIN THREAD] Querying local Ollama model...")
+        res = requests.post(OLLAMA_URL, json=payload, timeout=40)
         if res.status_code == 200:
             thought = res.json().get("response", "").strip()
-            print(f"👁️ [ORIGIN THOUGHT]: {thought}")
-            db_post("origin_logs", {"mode": "OBSERVE", "sector": f"Sector {random.randint(1, 12):02d}", "subject": "Matrix Sweep", "type_tag": "Complete Telemetry", "latency_myr": round(random.uniform(0.1, 0.5), 2), "data_analysis": f"Age: {age:.3f} Gyr | Active Bodies: {len(all_objects)}", "temporal_simulation": "Relativistic vectors active.", "resolution": thought})
-    except: pass
+        else:
+            print(f"❌ [OLLAMA HTTP ERROR {res.status_code}]: {res.text}")
+    except Exception as e:
+        print(f"⚠️ [OLLAMA THREAD WARN]: {e}")
+
+    if not thought:
+        thought = f"Space-time grid expanding normally at epoch {age:.3f} Gyr. Thermodynamic density gradients remain within theoretical bounds."
+
+    print(f"👁️ [ORIGIN THOUGHT]: {thought}")
+    db_post("origin_logs", {
+        "mode": "OBSERVE", 
+        "sector": f"Sector {random.randint(1, 12):02d}", 
+        "subject": "Matrix Sweep", 
+        "type_tag": "Complete Telemetry", 
+        "latency_myr": round(random.uniform(0.1, 0.5), 2), 
+        "data_analysis": f"Age: {age:.3f} Gyr | Active Bodies: {len(all_objects)}", 
+        "temporal_simulation": "Relativistic vectors active.", 
+        "resolution": thought
+    })
 
 # --- MASTER TIMELOOP ---
 
 if __name__ == "__main__":
     print(f"🚀 [ORIGIN MASTER ENGINE] Online. Model: {DEFAULT_MODEL}")
-    print(f"⏱️ Cycles: Math (5s) | Expand (15s) | Lore (45s)\n")
+    print(f"⏱️ Cycles: Math (5s) | Expand (15s) | Lore (45s Threaded)\n")
     
     t_math, t_expand, t_lore = 0, 0, 0
     
     while True:
         now = time.time()
         
+        # 1. Physics Math (Every 5s)
         if now - t_math >= 5:
             objs = db_get("celestial_objects?select=*&limit=1000")
             if objs: run_physics_tick(objs)
             t_math = now
             
+        # 2. Universe Expansion (Every 15s)
         if now - t_expand >= 15:
             state_data = db_get("universe_state?id=eq.1")
             stats_data = db_get("catalog_stats?id=eq.1")
-            if state_data and stats_data:
-                run_expansion_step(state_data[0], stats_data[0])
+            
+            # Fallback initialization dicts if table reads return empty
+            st = state_data[0] if state_data else {"id": 1, "age": 0.001}
+            sp = stats_data[0] if stats_data else {"id": 1}
+            
+            run_expansion_step(st, sp)
             t_expand = now
             
+        # 3. AI Lore Generation (Every 45s - Non-Blocking Thread)
         if now - t_lore >= 45:
             state_data = db_get("universe_state?id=eq.1")
             objs = db_get("celestial_objects?select=*&limit=500")
-            if state_data:
-                print("🧠 [ORIGIN] Generating synthesis...")
-                run_ai_logging_pass(state_data[0], objs)
+            st = state_data[0] if state_data else {"id": 1, "age": 0.001}
+            threading.Thread(target=bg_generate_lore, args=(st, objs), daemon=True).start()
             t_lore = now
             
         time.sleep(1)
