@@ -32,16 +32,6 @@ async function dbFetch(endpoint) {
     return await res.json();
 }
 
-// --- SPLASH SCREEN DISMISSAL (EXPOSED TO WINDOW FOR FAIL-SAFE TAP) ---
-export function dismissSplash() {
-    const splash = document.getElementById('splash-screen');
-    if (splash) {
-        splash.classList.add('hidden');
-        setTimeout(() => { splash.style.display = 'none'; }, 400);
-    }
-}
-window.dismissSplash = dismissSplash;
-
 // --- TAB NAVIGATION & INSPECTOR AUTO-COLLAPSE ---
 export function switchTab(tabName) {
     const tabMap = {
@@ -289,14 +279,6 @@ function initApp() {
         initWebGPU();
     } catch (e) {
         console.error('[CANVAS INIT ERROR]', e);
-    }
-
-    // Bind Splash Screen tap (Multiple touch / click listeners)
-    const splash = document.getElementById('splash-screen');
-    if (splash) {
-        splash.addEventListener('click', dismissSplash);
-        splash.addEventListener('pointerdown', dismissSplash);
-        splash.addEventListener('touchstart', dismissSplash);
     }
 
     // Bind Navigation Buttons
