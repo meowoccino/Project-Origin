@@ -16,7 +16,7 @@ function initApp() {
     }
 
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NzU0NTYsImV4cCI6MjEwMDE1MTQ1Nn0.vq5vMGPl2poA37JLT34nKAiC4MzaQzlHdEJ600X-3O8";
     const FETCH_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
 
     const canvasContainer = document.getElementById('canvas-container');
@@ -64,7 +64,7 @@ function initApp() {
     const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
     const hudContainer = document.getElementById('hud-age-container');
 
-    // Strict Tab Switcher with Complete Inspector Hiding
+    // Tab Switcher with Inspector Hiding Fix
     function switchTab(btnId, viewId) {
         allBtns.forEach(b => b?.classList.remove('active'));
         allViews.forEach(v => v?.classList.remove('active'));
@@ -78,11 +78,8 @@ function initApp() {
         const inspector = document.getElementById('inspector-preview');
         if (inspector) {
             if (btnId !== 'btn-explore') {
-                // Instantly hide the bar if we leave the map
-                inspector.classList.remove('active');
-                inspector.style.display = 'none';
+                clearSelection();
             } else if (MainEngine.selectedNode) {
-                // Bring it back if we return to the map and something is selected
                 inspector.style.display = 'flex';
                 setTimeout(() => inspector.classList.add('active'), 10);
             }
