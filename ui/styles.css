@@ -166,7 +166,7 @@ body {
 
 /* --- INSPECTOR OVERLAYS (STRICT HIDING FIX) --- */
 #inspector-preview {
-    position: absolute; bottom: calc(75px + env(safe-area-bottom)); 
+    position: absolute; bottom: calc(75px + env(safe-area-inset-bottom)); 
     left: 50%; transform: translateX(-50%) translateY(20px);
     width: 90%; max-width: 400px; padding: 16px 20px; 
     display: none; justify-content: space-between; align-items: center;
