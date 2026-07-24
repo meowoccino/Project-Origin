@@ -1,456 +1,185 @@
-import { initWebGPU, cameraState, updateCanvasFromCatalog, selectedNode, clearSelection } from '../engine/main.js';
-import * as MainEngine from '../engine/main.js';
+// --- CONFIGURATION ---
+const SUPABASE_URL = "https://your-project.supabase.co"; // Replace with your Supabase URL
+const SUPABASE_ANON_KEY = "your-anon-public-key";      // Replace with your anon public key
 
-function initApp() {
-    initWebGPU().catch(err => console.error("❌ [ENGINE INIT FAILED]:", err));
+// --- 10 SCIENTIFIC CATALOG CATEGORIES ---
+const CATALOG_CATEGORIES = [
+    { id: "nebulae", label: "Nebulae & Clouds", color: "#00E5FF" },
+    { id: "active_stars", label: "Active Stars", color: "#FFD700" },
+    { id: "black_holes", label: "Black Holes", color: "#B026FF" },
+    { id: "neutron_stars", label: "Neutron Stars / Pulsars", color: "#FF3366" },
+    { id: "planets", label: "Planets", color: "#00E676" },
+    { id: "moons", label: "Moons", color: "#94A3B8" },
+    { id: "asteroids", label: "Asteroids & Comets", color: "#CBD5E1" },
+    { id: "quasars", label: "Quasars", color: "#FF8C00" },
+    { id: "exotic", label: "Exotic Objects", color: "#E040FB" },
+    { id: "inhabited", label: "Inhabited Worlds", color: "#00B0FF" }
+];
 
-    const splash = document.getElementById('splash-screen');
-    if (splash) {
-        const hideSplash = (e) => {
-            if (e) e.preventDefault();
-            splash.classList.add('hidden');
-        };
-        splash.addEventListener('pointerdown', hideSplash);
-        splash.addEventListener('touchstart', hideSplash);
-        splash.addEventListener('click', hideSplash);
-    }
-
-    const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NzU0NTYsImV4cCI6MjEwMDE1MTQ1Nn0.vq5vMGPl2poA37JLT34nKAiC4MzaQzlHdEJ600X-3O8";
-    const FETCH_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
-
-    const canvasContainer = document.getElementById('canvas-container');
-    let isDragging = false, lastX = 0, lastY = 0, initialPinchDist = null, initialZoom = 1.0, touchStart = 0;
-    let localCurrentAge = 0.0;
-
-    if (canvasContainer) {
-        canvasContainer.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1) {
-                isDragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
-                touchStart = Date.now();
-            } else if (e.touches.length === 2) {
-                isDragging = false; 
-                initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                initialZoom = cameraState.zoom;
-            }
-        }, { passive: true });
-
-        canvasContainer.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 1 && isDragging) {
-                const dpr = window.devicePixelRatio || 1;
-                cameraState.panX += (e.touches[0].clientX - lastX) * dpr;
-                cameraState.panY += (e.touches[0].clientY - lastY) * dpr;
-                lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
-            } else if (e.touches.length === 2 && initialPinchDist) {
-                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                const minZoom = 0.35; 
-                const maxZoom = 12.0; 
-                cameraState.zoom = Math.max(minZoom, Math.min(maxZoom, initialZoom * (dist / initialPinchDist)));
-            }
-        }, { passive: true });
-
-        canvasContainer.addEventListener('touchend', (e) => {
-            if (e.changedTouches.length === 1 && (Date.now() - touchStart < 250)) {
-                if (window.selectParticleAt && MainEngine.isExploreActive) {
-                    window.selectParticleAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-                }
-            }
-            if (e.touches.length < 2) initialPinchDist = null;
-            if (e.touches.length === 0) isDragging = false;
-        }, { passive: true });
-    }
-
-    const allBtns = ['btn-explore', 'btn-events', 'btn-ai', 'btn-timeline', 'btn-catalog'].map(id => document.getElementById(id));
-    const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
-    const hudContainer = document.getElementById('hud-age-container');
-
-    // Tab Switcher with Inspector Hiding Fix
-    function switchTab(btnId, viewId) {
-        allBtns.forEach(b => b?.classList.remove('active'));
-        allViews.forEach(v => v?.classList.remove('active'));
-        
-        if (btnId) document.getElementById(btnId)?.classList.add('active');
-        if (viewId) document.getElementById(viewId)?.classList.add('active');
-        
-        if (hudContainer) hudContainer.style.opacity = (btnId === 'btn-explore') ? '1' : '0';
-        MainEngine.isExploreActive = (btnId === 'btn-explore');
-
-        const inspector = document.getElementById('inspector-preview');
-        if (inspector) {
-            if (btnId !== 'btn-explore') {
-                clearSelection();
-            } else if (MainEngine.selectedNode) {
-                inspector.style.display = 'flex';
-                setTimeout(() => inspector.classList.add('active'), 10);
-            }
-        }
-    }
-
-    document.getElementById('btn-explore')?.addEventListener('click', () => switchTab('btn-explore', null));
-    document.getElementById('btn-events')?.addEventListener('click', () => switchTab('btn-events', 'view-events'));
-    document.getElementById('btn-ai')?.addEventListener('click', () => switchTab('btn-ai', 'view-ai'));
-    document.getElementById('btn-timeline')?.addEventListener('click', () => switchTab('btn-timeline', 'view-timeline'));
-    document.getElementById('btn-catalog')?.addEventListener('click', () => switchTab('btn-catalog', 'view-catalog'));
-
-    function initEarthClock() {
-        const clockEl = document.getElementById('earth-clock');
-        if (!clockEl) return;
-        const update = () => {
-            const now = new Date();
-            const y = now.getFullYear();
-            const m = String(now.getMonth() + 1).padStart(2, '0');
-            const d = String(now.getDate()).padStart(2, '0');
-            const h = String(now.getHours()).padStart(2, '0');
-            const min = String(now.getMinutes()).padStart(2, '0');
-            const s = String(now.getSeconds()).padStart(2, '0');
-            clockEl.innerText = `UPLINK TIMESTAMP: ${y}-${m}-${d} ${h}:${min}:${s} LOCAL`;
-        };
-        setInterval(update, 1000);
-        update();
-    }
-    initEarthClock();
-
-    function setObserverEyeState(mode) {
-        const ui = document.getElementById('observer-ui');
-        const label = document.getElementById('status-label');
-        if (!ui || !label) return;
-
-        ui.classList.remove('state-observe', 'state-intervene', 'state-error');
-        const m = (mode || '').toUpperCase();
-
-        if (m === 'INTERVENE') {
-            ui.classList.add('state-intervene');
-            label.innerText = 'EXECUTING INTERVENTION';
-        } else if (m === 'ERROR' || m === 'OFFLINE') {
-            ui.classList.add('state-error');
-            label.innerText = 'CONNECTION SEVERED';
-        } else {
-            ui.classList.add('state-observe');
-            label.innerText = 'OBSERVER ONLINE';
-        }
-    }
-
-    function updatePingLatency(latencyMs, isSuccess) {
-        const pingDot = document.getElementById('ping-dot');
-        const pingText = document.getElementById('ping-ms');
-        if (!pingDot) return;
-        if (pingText) pingText.innerText = `(${latencyMs} ms)`;
-
-        if (!isSuccess || latencyMs > 1500) {
-            pingDot.style.background = '#FF1744';
-            pingDot.style.boxShadow = '0 0 8px #FF1744';
-        } else if (latencyMs > 500) {
-            pingDot.style.background = '#FFEA00';
-            pingDot.style.boxShadow = '0 0 8px #FFEA00';
-        } else {
-            pingDot.style.background = '#00E676';
-            pingDot.style.boxShadow = '0 0 8px #00E676';
-        }
-    }
-
-    function createLogCard(log) {
-        const mode = (log.mode || 'OBSERVE').toLowerCase();
-        const sector = log.sector || "Sector 04";
-        const title = log.subject || "Cosmic System";
-        const typeTag = log.type_tag || "Telemetry Event";
-        const timeLabel = log.latency_myr ? `LATENCY: ${log.latency_myr.toFixed(1)} MYR` : "LATENCY: 1.0 MYR";
-
-        const card = document.createElement("div");
-        card.className = `log-card log-${mode}`;
-        
-        card.innerHTML = `
-            <div class="breadcrumb-bar data-font">
-                <span class="bc-item" style="flex-shrink: 0;">${sector}</span>
-                <span class="bc-sep">►</span>
-                <span class="bc-item">${title}</span>
-                <span class="bc-sep">►</span>
-                <span class="bc-tag">${typeTag}</span>
-            </div>
-            <div class="log-meta data-font"><span>${timeLabel}</span></div>
-            <div class="logic-step">
-                <div class="logic-icon">▶</div>
-                <div class="logic-text"><strong>Data Analysis:</strong> ${log.data_analysis || 'Analyzing local thermodynamic density.'}</div>
-            </div>
-            <div class="logic-step">
-                <div class="logic-icon">▶</div>
-                <div class="logic-text"><strong>Simulation:</strong> ${log.temporal_simulation || 'Gravitational trajectories within normal distribution.'}</div>
-            </div>
-            <div class="logic-decision logic-step">
-                <div class="logic-icon">■</div>
-                <div class="logic-text">${log.resolution || 'Standard procedural evolution permitted.'}</div>
-            </div>
-        `;
-        return card;
-    }
-
-    let oldestLoadedId = null;
-    let isLoadingLogs = false;
-
-    async function loadNextBatch() {
-        if (isLoadingLogs) return;
-        isLoadingLogs = true;
-
-        const btn = document.getElementById("btn-load-more");
-        const container = document.getElementById("logs-container");
-        if (btn) btn.innerText = "QUERYING Llama3.2 ARCHIVE...";
-
-        try {
-            let url = `${SUPABASE_URL}/rest/v1/origin_logs?select=*&order=id.desc&limit=4`;
-            if (oldestLoadedId) url += `&id=lt.${oldestLoadedId}`;
-
-            const res = await fetch(url, { headers: FETCH_HEADERS });
-            let logs = [];
-            if (res.ok) logs = await res.json();
-
-            if (logs.length === 0) {
-                if (btn) btn.innerText = "END OF TELEMETRY ARCHIVE";
-                isLoadingLogs = false;
-                return;
-            }
-
-            if (!oldestLoadedId && logs.length > 0) {
-                setObserverEyeState(logs[0].mode);
-            }
-
-            logs.forEach(log => {
-                oldestLoadedId = log.id;
-                const card = createLogCard(log);
-                container?.appendChild(card);
-            });
-
-            if (btn) btn.innerText = "QUERY PAST TELEMETRY";
-        } catch (err) {
-            console.error("Failed to fetch telemetry logs:", err);
-            setObserverEyeState('ERROR');
-            if (btn) btn.innerText = "RETRY TELEMETRY QUERY";
-        } finally {
-            isLoadingLogs = false;
-        }
-    }
-
-    document.getElementById("btn-load-more")?.addEventListener("click", loadNextBatch);
-    loadNextBatch();
-
-    const TIMELINE_EPOCHS = [
-        { title: "Primordial Inflation", start: 0, end: 100000, desc: "Exponential space-time expansion driven by quantum vacuum inflaton field decay." },
-        { title: "Recombination & Decoupling", start: 100000, end: 100000000, desc: "Thermal baryonic gas cools below 3,000 K, releasing Cosmic Microwave Background radiation." },
-        { title: "Pop-III Star Reionization", start: 100000000, end: 1000000000, desc: "Zero-metallicity primordial gas collapses into hypermassive stars, ionising neutral hydrogen." },
-        { title: "Galactic Disk Accretion", start: 1000000000, end: 13800000000, desc: "Angular momentum conservation forms flat spinning galactic disks with MHD turbulence." },
-        { title: "Degenerate & Far Cosmic Era", start: 13800000000, end: Infinity, desc: "Interstellar gas depletion, white dwarf dominance, and open-ended thermodynamic entropy decay." }
-    ];
-
-    function updateTimelineUI(totalYears) {
-        const container = document.getElementById('timeline-container');
-        if (!container) return;
-        container.innerHTML = TIMELINE_EPOCHS.map(epoch => {
-            const isActive = totalYears >= epoch.start && totalYears < epoch.end;
-            const actClass = isActive ? 'active' : '';
-            const endLabel = (epoch.end === Infinity) ? "∞" : epoch.end.toLocaleString();
-            return `
-                <div class="timeline-node">
-                  <div class="node-marker ${actClass}"></div>
-                  <div class="node-title ${actClass}">${epoch.title}</div>
-                  <div class="node-time data-font ${actClass}">${epoch.start.toLocaleString()} - ${endLabel} Yrs</div>
-                  <div class="node-desc ${actClass}">${epoch.desc}</div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    function renderAgeHUD(ageGyr) {
-        cameraState.currentAge = ageGyr;
-        const totalYears = Math.floor(ageGyr * 1000000000);
-        const hudAge = document.getElementById('hud-age');
-        if (hudAge) {
-            hudAge.innerText = totalYears >= 1000000000 
-                ? `${(totalYears / 1000000000).toFixed(3)} Billion Years` 
-                : `${totalYears.toLocaleString()} Years`;
-        }
-        updateTimelineUI(totalYears);
-    }
-
-    function generatePhysics(node, age) {
-        let mass, radius, temp, extra;
-        const seed = node.id * 13;
-        const epochLabel = age < 0.1 ? `${(age * 1000).toFixed(2)} Myr` : `${age.toFixed(3)} Gyr`;
-
-        switch (node.category) {
-            case 'asteroids_comets':
-                mass = (seed % 90 + 1) + " × 10^15 kg"; radius = (seed % 150 + 5) + " km"; temp = (seed % 100 + 40) + " K";
-                extra = `<div class="spec-row"><span class="spec-label">Composition</span><span class="spec-value data-font">Silicates / Nickel-Iron</span></div>`;
-                break;
-            case 'moons':
-                mass = "0." + (seed % 99 + 1) + " M_lunar"; radius = (seed % 2000 + 500) + " km"; temp = (seed % 150 + 50) + " K";
-                extra = `<div class="spec-row"><span class="spec-label">Tidal State</span><span class="spec-value data-font">Tidally Locked</span></div>`;
-                break;
-            case 'planets':
-            case 'inhabited':
-                mass = (seed % 15 + 0.1).toFixed(2) + " M_earth"; radius = (seed % 20000 + 4000) + " km";
-                temp = node.category === 'inhabited' ? ((seed % 40) + 5) + " °C" : "-" + (seed % 150) + " °C";
-                extra = node.category === 'inhabited' 
-                    ? `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value data-font">N2/O2 Rich</span></div><div class="spec-row"><span class="spec-label">Biosphere</span><span class="spec-value data-font" style="color:#00E5FF">Confirmed</span></div>`
-                    : `<div class="spec-row"><span class="spec-label">Atmosphere</span><span class="spec-value data-font">CO2 / Methane</span></div>`;
-                break;
-            case 'stars':
-                mass = (seed % 25 + 0.5).toFixed(2) + " M_sun"; radius = (seed % 15 + 0.8).toFixed(2) + " R_sun"; temp = (seed % 30000 + 3000).toLocaleString() + " K";
-                extra = `<div class="spec-row"><span class="spec-label">Luminosity</span><span class="spec-value data-font">${(seed % 1000 + 1).toFixed(1)} L_sun</span></div>`;
-                break;
-            case 'black_holes':
-                mass = (seed % 50 + 5).toFixed(2) + " M_sun"; radius = ((seed % 50 + 5) * 2.95).toFixed(1) + " km"; temp = "0.000" + (seed % 9 + 1) + " K";
-                extra = `<div class="spec-row"><span class="spec-label">Accretion</span><span class="spec-value data-font">${(seed % 5 * 0.1).toFixed(3)} M_sun/yr</span></div>`;
-                break;
-            default:
-                mass = (seed % 5000 + 1000) + " M_sun"; radius = (seed % 150 + 10) + " Lightyears"; temp = "10 - 50 K";
-                extra = `<div class="spec-row"><span class="spec-label">Composition</span><span class="spec-value data-font">H II Region / Plasma</span></div>`;
-                break;
-        }
-
-        return `
-            <div class="spec-row"><span class="spec-label">Designation</span><span class="spec-value data-font" style="font-weight:bold; color:#fff;">${node.designation}</span></div>
-            <div class="spec-row"><span class="spec-label">Mass</span><span class="spec-value data-font">${mass}</span></div>
-            <div class="spec-row"><span class="spec-label">Radius</span><span class="spec-value data-font">${radius}</span></div>
-            <div class="spec-row"><span class="spec-label">Surface Temp</span><span class="spec-value data-font">${temp}</span></div>
-            ${extra}
-            <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Formation Epoch</span><span class="spec-value data-font">${epochLabel}</span></div>
-        `;
-    }
-
-    document.getElementById('btn-expand-inspect')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (selectedNode) {
-            document.getElementById('inspect-title').innerText = selectedNode.designation;
-            document.getElementById('spec-name').innerHTML = generatePhysics(selectedNode, localCurrentAge);
-            switchTab(null, 'modal-object-detail');
-        }
+// --- NAVIGATION & INSPECTOR AUTO-COLLAPSE ---
+function switchTab(tabName) {
+    const tabs = ['explore', 'events', 'origin', 'timeline', 'catalog'];
+    
+    tabs.forEach(t => {
+        const view = document.getElementById(`view-${t}`);
+        const btn = document.getElementById(`nav-${t}`);
+        if (view) view.style.display = (t === tabName) ? 'block' : 'none';
+        if (btn) btn.classList.toggle('active', t === tabName);
     });
 
-    document.getElementById('btn-close-inspect')?.addEventListener('click', () => switchTab('btn-explore', null));
-
-    function formatAgeFormatted(ageGyr) {
-        if (!ageGyr || ageGyr < 0.001) return "< 0.001 Gyr";
-        return `${Number(ageGyr).toFixed(3)} Gyr`;
+    // Auto-collapse bottom inspector bar if navigating away from Explore
+    const inspectorBar = document.getElementById('inspector-bar');
+    if (inspectorBar) {
+        inspectorBar.style.display = (tabName === 'explore') ? 'flex' : 'none';
     }
 
-    async function pollUniverseState() {
-        const t0 = performance.now();
-        try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&order=id.desc&limit=1`, { headers: FETCH_HEADERS });
-            const latency = Math.round(performance.now() - t0);
-            updatePingLatency(latency, res.ok);
+    // Trigger tab data loads
+    if (tabName === 'origin') {
+        loadOriginLogs();
+    } else if (tabName === 'catalog') {
+        loadCatalogStats();
+    }
+}
 
-            if (res.ok) {
-                const data = await res.json();
-                if (data.length > 0) {
-                    localCurrentAge = Number(data[0].age || 0.0);
-                    renderAgeHUD(localCurrentAge);
-                    
-                    if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = `${data[0].de_pct || 68.5}%`;
-                    if (document.getElementById('cat-dm-val')) document.getElementById('cat-dm-val').innerText = `${data[0].dm_pct || 26.4}%`;
-                    if (document.getElementById('cat-baryon-val')) document.getElementById('cat-baryon-val').innerText = `${data[0].baryon_pct || 5.1}%`;
-                    
-                    const barDe = document.getElementById('bar-de'), barDm = document.getElementById('bar-dm'), barBaryon = document.getElementById('bar-baryon');
-                    if(barDe) barDe.style.width = `${data[0].de_pct || 68.5}%`;
-                    if(barDm) barDm.style.width = `${data[0].dm_pct || 26.4}%`;
-                    if(barBaryon) barBaryon.style.width = `${data[0].baryon_pct || 5.1}%`;
-                }
+// --- FETCH & RENDER ORIGIN TELEMETRY CARDS ---
+async function loadOriginLogs() {
+    const container = document.getElementById('origin-feed-container');
+    if (!container) return;
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/origin_logs?select=*&order=created_at.desc&limit=10`, {
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
             }
-        } catch (err) {
-            updatePingLatency(9999, false);
-        }
-    }
+        });
 
-    async function pollCatalog() {
-        try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/catalog_stats?select=*&limit=1`, { headers: FETCH_HEADERS });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.length > 0) {
-                    const stats = data[0];
-                    updateCanvasFromCatalog(stats, localCurrentAge);
-                    
-                    if (document.getElementById('cat-nebulae-val')) document.getElementById('cat-nebulae-val').innerText = (stats.nebulae || 0).toLocaleString();
-                    if (document.getElementById('cat-stars-val')) document.getElementById('cat-stars-val').innerText = (stats.stars || 0).toLocaleString();
-                    if (document.getElementById('cat-bh-val')) document.getElementById('cat-bh-val').innerText = (stats.black_holes || 0).toLocaleString();
-                    if (document.getElementById('cat-degenerate-val')) document.getElementById('cat-degenerate-val').innerText = (stats.neutron_stars || 0).toLocaleString();
-                    if (document.getElementById('cat-planets-val')) document.getElementById('cat-planets-val').innerText = (stats.planets || 0).toLocaleString();
-                    if (document.getElementById('cat-moons-val')) document.getElementById('cat-moons-val').innerText = (stats.moons || 0).toLocaleString();
-                    if (document.getElementById('cat-asteroids-val')) document.getElementById('cat-asteroids-val').innerText = (stats.asteroids_comets || 0).toLocaleString();
-                    if (document.getElementById('cat-quasars-val')) document.getElementById('cat-quasars-val').innerText = (stats.quasars || 0).toLocaleString();
-                    if (document.getElementById('cat-exotic-val')) document.getElementById('cat-exotic-val').innerText = (stats.exotic_objects || 0).toLocaleString();
-                    if (document.getElementById('cat-inhabited-val')) {
-                        const inhabited = (localCurrentAge > 0.5) ? Math.floor((stats.planets || 0) * 0.012) : 0;
-                        document.getElementById('cat-inhabited-val').innerText = inhabited.toLocaleString();
-                    }
-                }
-            }
-        } catch (err) {}
-    }
+        if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+        const logs = await response.json();
 
-    function renderDesign4EventCard(e) {
-        const title = e.title || 'Cosmic Telemetry Event';
-        const desc = e.description || 'Thermodynamic equilibrium shift detected in local space-time region.';
-        const ageFormatted = formatAgeFormatted(e.age);
-        
-        let hex = "#FF8C00", rgb = "255, 140, 0", tag = "COSMIC EVENT";
-        let iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
-        let m1 = { lbl: "EPOCH", val: ageFormatted }, m2 = { lbl: "STATUS", val: "STABLE" }, m3 = { lbl: "SECTOR", val: "SEC 04" };
-
-        const lowerTitle = title.toLowerCase();
-
-        if (lowerTitle.includes("cmb") || lowerTitle.includes("background") || lowerTitle.includes("decoupling")) {
-            hex = "#9C27B0"; rgb = "156, 39, 176"; tag = "DECOUPLING";
-            m1 = { lbl: "REDSHIFT", val: "z ≈ 1100" }; m2 = { lbl: "TEMP", val: "3,000 K" }; m3 = { lbl: "EPOCH", val: "380,000 Yrs" };
-        } else if (lowerTitle.includes("nebula") || lowerTitle.includes("cloud") || lowerTitle.includes("gas")) {
-            hex = "#00E5FF"; rgb = "0, 229, 255"; tag = "NEBULA CLOUD";
-            m1 = { lbl: "GAS TEMP", val: "18 K" }; m2 = { lbl: "DENSITY", val: "10⁴ /cm³" }; m3 = { lbl: "EPOCH", val: ageFormatted };
-        } else if (lowerTitle.includes("star") || lowerTitle.includes("protostar") || lowerTitle.includes("ignition")) {
-            hex = "#FFD700"; rgb = "255, 215, 0"; tag = "CLASS-O STAR";
-            m1 = { lbl: "MASS", val: "18.5 M_sun" }; m2 = { lbl: "TEMP", val: "33,000 K" }; m3 = { lbl: "LUMINOSITY", val: "45,000 L_sun" };
-        } else if (lowerTitle.includes("black hole") || lowerTitle.includes("singularity")) {
-            hex = "#B026FF"; rgb = "176, 38, 255"; tag = "BLACK HOLE";
-            m1 = { lbl: "MASS", val: "4.2M M_sun" }; m2 = { lbl: "R_SCHWARZ", val: "0.08 AU" }; m3 = { lbl: "SPIN", val: "0.94 Kerr" };
-        } else if (lowerTitle.includes("pulsar") || lowerTitle.includes("neutron")) {
-            hex = "#FF3366"; rgb = "255, 51, 102"; tag = "PULSAR BURST";
-            m1 = { lbl: "B-FIELD", val: "10¹⁴ Gauss" }; m2 = { lbl: "PERIOD", val: "5.8 ms" }; m3 = { lbl: "RADIUS", val: "11.2 km" };
+        if (!logs || logs.length === 0) {
+            container.innerHTML = `<div style="text-align:center; color:#64748B; padding:20px; font-family:monospace;">NO TELEMETRY LOGS RECORDED YET</div>`;
+            return;
         }
 
-        return `
-            <div class="d4-card" style="--c-hex: ${hex}; --c-rgb: ${rgb};">
-                <div class="d4-header">
-                    <div class="d4-icon-box">${iconSvg}</div>
-                    <span class="d4-tag data-font">${tag}</span>
+        container.innerHTML = logs.map(log => `
+            <article class="origin-card" style="
+                background: #0C121E;
+                border: 1px solid #142238;
+                border-radius: 12px;
+                padding: 14px;
+                margin-bottom: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            ">
+                <!-- TOP VECTOR BOX -->
+                <div style="
+                    border: 1px solid rgba(0, 229, 255, 0.25);
+                    border-radius: 6px;
+                    padding: 8px 10px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    background: rgba(0, 229, 255, 0.02);
+                ">
+                    <span style="font-family: 'Courier New', monospace; font-size: 11px; color: #E2E8F0;">
+                        ${log.sector || 'VECTOR: [0.0, 0.0, 0.0] ly'}
+                    </span>
+                    <span style="font-family: 'Courier New', monospace; font-size: 10px; font-weight: 800; color: ${log.mode === 'INTERVENTION MENU' ? '#FFB300' : '#00E5FF'};">
+                        ${log.mode || 'OBSERVE ONLY'}
+                    </span>
                 </div>
-                <div class="d4-title">${title}</div>
-                <div class="d4-desc">${desc}</div>
-                <div class="d4-metrics-grid data-font">
-                    <div class="m-item"><span class="m-lbl">${m1.lbl}</span><span class="m-val">${m1.val}</span></div>
-                    <div class="m-item"><span class="m-lbl">${m2.lbl}</span><span class="m-val">${m2.val}</span></div>
-                    <div class="m-item"><span class="m-lbl">${m3.lbl}</span><span class="m-val">${m3.val}</span></div>
+
+                <!-- CALCULATED LIGHT DELAY -->
+                <div style="font-family: 'Courier New', monospace; font-size: 11px; color: #00E5FF; font-weight: 700;">
+                    LIGHT DELAY: ${log.latency_myr ? log.latency_myr.toFixed(3) : '0.000'} MYR
+                </div>
+
+                <!-- BULLETS (GOAL & ACTION) -->
+                <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
+                    <div style="display: flex; gap: 8px;">
+                        <span style="color: #00E5FF;">►</span>
+                        <div><strong style="color: #FFF;">Goal:</strong> <span style="color: #CBD5E1;">${log.goal || 'none'}</span></div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <span style="color: #00E5FF;">►</span>
+                        <div><strong style="color: #FFF;">Action:</strong> <span style="color: #CBD5E1;">${log.action || 'No intervention'}</span></div>
+                    </div>
+                </div>
+
+                <!-- INNER REASONING & HOPED OUTCOME BOX -->
+                <div style="
+                    background: rgba(0, 229, 255, 0.03);
+                    border: 1px solid rgba(0, 229, 255, 0.12);
+                    border-radius: 6px;
+                    padding: 10px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    font-size: 12px;
+                    line-height: 1.4;
+                    color: #E2E8F0;
+                ">
+                    <div style="display: flex; gap: 8px;">
+                        <span style="color: #00E5FF; font-size: 8px; margin-top: 3px;">■</span>
+                        <div><strong style="color: #00E5FF;">Reasoning:</strong> ${log.reasoning || 'Grounded observation pass.'}</div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <span style="color: #00E5FF; font-size: 8px; margin-top: 3px;">■</span>
+                        <div><strong style="color: #00E5FF;">Hoped Outcome:</strong> ${log.hoped_outcome || 'none'}</div>
+                    </div>
+                </div>
+            </article>
+        `).join('');
+
+    } catch (err) {
+        console.error('[ORIGIN LOAD ERROR]', err);
+    }
+}
+
+// --- FETCH & RENDER 10 CATALOG CATEGORIES ---
+async function loadCatalogStats() {
+    const container = document.getElementById('catalog-grid-container');
+    if (!container) return;
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/catalog_stats?select=*&id=eq.1`, {
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+        });
+
+        const data = await response.json();
+        const stats = (data && data[0]) ? data[0] : {};
+
+        container.innerHTML = CATALOG_CATEGORIES.map(cat => `
+            <div style="
+                background: #0C121E;
+                border: 1px solid #142238;
+                border-left: 3px solid ${cat.color};
+                border-radius: 8px;
+                padding: 12px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                gap: 6px;
+            ">
+                <div style="font-size: 10px; font-weight: 800; color: ${cat.color}; text-transform: uppercase; font-family: monospace;">
+                    ${cat.label}
+                </div>
+                <div style="font-size: 20px; font-weight: 800; color: #FFF; font-family: monospace;">
+                    ${stats[cat.id] || 0}
                 </div>
             </div>
-        `;
-    }
+        `).join('');
 
-    async function pollEvents() {
-        try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=id.desc&limit=15`, { headers: FETCH_HEADERS });
-            if (res.ok) {
-                const events = await res.json();
-                const container = document.getElementById('events-container');
-                if (container && events.length > 0) {
-                    container.innerHTML = events.map(e => renderDesign4EventCard(e)).join('');
-                }
-            }
-        } catch (err) {}
+    } catch (err) {
+        console.error('[CATALOG LOAD ERROR]', err);
     }
-
-    function pollAll() { pollUniverseState(); pollCatalog(); pollEvents(); }
-    pollAll(); 
-    setInterval(pollAll, 2500);
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initApp);
-} else {
-    initApp();
-}
+// Auto-poll Origin logs every 10 seconds
+setInterval(loadOriginLogs, 10000);
