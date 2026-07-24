@@ -32,14 +32,15 @@ async function dbFetch(endpoint) {
     return await res.json();
 }
 
-// --- SPLASH SCREEN DISMISSAL ---
-function dismissSplash() {
+// --- SPLASH SCREEN DISMISSAL (EXPOSED TO WINDOW FOR FAIL-SAFE TAP) ---
+export function dismissSplash() {
     const splash = document.getElementById('splash-screen');
     if (splash) {
         splash.classList.add('hidden');
         setTimeout(() => { splash.style.display = 'none'; }, 400);
     }
 }
+window.dismissSplash = dismissSplash;
 
 // --- TAB NAVIGATION & INSPECTOR AUTO-COLLAPSE ---
 export function switchTab(tabName) {
@@ -86,6 +87,7 @@ export function switchTab(tabName) {
     else if (tabName === 'timeline') loadTimelineData();
     else if (tabName === 'events') loadEventsData();
 }
+window.switchTab = switchTab;
 
 // --- FETCH & RENDER UNIVERSE AGE (HUD) ---
 async function loadUniverseState() {
@@ -216,7 +218,6 @@ async function loadTimelineData() {
     if (!container) return;
 
     try {
-        // Reads directly from the distinct "timeline" table
         const timelineEntries = await dbFetch('timeline?select=*&order=timestamp_gyr.asc');
         const currentAge = Number(cameraState.currentAge || 0);
 
@@ -254,7 +255,6 @@ async function loadEventsData() {
     if (!container) return;
 
     try {
-        // Reads directly from the distinct "events" table
         const eventsList = await dbFetch('events?select=*&order=created_at.desc&limit=15');
 
         if (!eventsList || eventsList.length === 0) {
@@ -282,16 +282,21 @@ async function loadEventsData() {
     }
 }
 
-// --- INITIALIZATION & EVENT BINDING ---
-document.addEventListener('DOMContentLoaded', () => {
+// --- SAFE APP INITIALIZATION ---
+function initApp() {
     // Start WebGPU 2D Canvas Engine
-    initWebGPU();
+    try {
+        initWebGPU();
+    } catch (e) {
+        console.error('[CANVAS INIT ERROR]', e);
+    }
 
-    // Bind Splash Screen tap
+    // Bind Splash Screen tap (Multiple touch / click listeners)
     const splash = document.getElementById('splash-screen');
     if (splash) {
         splash.addEventListener('click', dismissSplash);
         splash.addEventListener('pointerdown', dismissSplash);
+        splash.addEventListener('touchstart', dismissSplash);
     }
 
     // Bind Navigation Buttons
@@ -311,7 +316,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial load
     loadUniverseState();
     loadCatalogStats();
-});
+}
+
+// GUARANTEED BOOTSTRAP (Runs immediately if DOM is ready, or waits for DOMContentLoaded)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
 
 // Periodic background polling (every 5 seconds)
 setInterval(() => {
