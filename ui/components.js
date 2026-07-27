@@ -32,9 +32,7 @@ function initApp() {
                 lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
             } else if (e.touches.length === 2 && initialPinchDist) {
                 const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                const minZoom = 0.35; 
-                const maxZoom = 12.0; 
-                cameraState.zoom = Math.max(minZoom, Math.min(maxZoom, initialZoom * (dist / initialPinchDist)));
+                cameraState.zoom = Math.max(0.35, Math.min(12.0, initialZoom * (dist / initialPinchDist)));
             }
         }, { passive: true });
 
@@ -53,7 +51,6 @@ function initApp() {
     const allViews = ['view-events', 'view-ai', 'view-timeline', 'view-catalog', 'modal-object-detail'].map(id => document.getElementById(id));
     const hudContainer = document.getElementById('hud-age-container');
 
-    // STRICT TAB SWITCHER & UI BLEED FIX
     function switchTab(btnId, viewId) {
         allBtns.forEach(b => b?.classList.remove('active'));
         allViews.forEach(v => {
@@ -74,7 +71,6 @@ function initApp() {
         
         MainEngine.isExploreActive = (btnId === 'btn-explore');
         
-        // Lock Canvas pointer events if NOT exploring
         if (canvasContainer) {
             if (MainEngine.isExploreActive) {
                 canvasContainer.classList.remove('canvas-locked');
@@ -97,6 +93,33 @@ function initApp() {
     document.getElementById('btn-ai')?.addEventListener('click', () => switchTab('btn-ai', 'view-ai'));
     document.getElementById('btn-timeline')?.addEventListener('click', () => switchTab('btn-timeline', 'view-timeline'));
     document.getElementById('btn-catalog')?.addEventListener('click', () => switchTab('btn-catalog', 'view-catalog'));
+
+    // TIMELINE UI ENGINE
+    const TIMELINE_EPOCHS = [
+        { title: "Primordial Inflation", start: 0, end: 0.001, desc: "Exponential space-time expansion driven by quantum vacuum inflaton field decay." },
+        { title: "Recombination & Decoupling", start: 0.001, end: 0.01, desc: "Thermal baryonic gas cools below 3,000 K, releasing Cosmic Microwave Background radiation." },
+        { title: "Pop-III Star Reionization", start: 0.01, end: 0.1, desc: "Zero-metallicity primordial gas collapses into hypermassive stars, ionising neutral hydrogen." },
+        { title: "Galactic Disk Accretion", start: 0.1, end: 1.0, desc: "Angular momentum conservation forms flat spinning galactic disks with MHD turbulence." },
+        { title: "Stellar & Deep Time Era", start: 1.0, end: Infinity, desc: "Interstellar gas depletion, white dwarf dominance, and open-ended thermodynamic entropy decay." }
+    ];
+
+    function updateTimelineUI(ageGyr) {
+        const container = document.getElementById('timeline-container');
+        if (!container) return;
+        container.innerHTML = TIMELINE_EPOCHS.map(epoch => {
+            const isActive = ageGyr >= epoch.start && ageGyr < epoch.end;
+            const actClass = isActive ? 'active' : '';
+            const endLabel = (epoch.end === Infinity) ? "∞" : `${epoch.end} Gyr`;
+            return `
+                <div class="timeline-node">
+                  <div class="node-marker ${actClass}"></div>
+                  <div class="node-title ${actClass}">${epoch.title}</div>
+                  <div class="node-time data-font ${actClass}">${epoch.start} - ${endLabel}</div>
+                  <div class="node-desc ${actClass}">${epoch.desc}</div>
+                </div>
+            `;
+        }).join('');
+    }
 
     function initEarthClock() {
         const clockEl = document.getElementById('earth-clock');
@@ -176,58 +199,100 @@ function initApp() {
     document.getElementById("btn-load-more")?.addEventListener("click", loadNextBatch);
     loadNextBatch();
 
-    // LIVE SUPABASE DATA FETCH FOR 12-METRIC INSPECTOR
+    // INSPECTOR DATA FETCH WITH FALLBACK
     async function fetchRealObjectData(category) {
-        // Map visual categories to DB object_types
+        const fallback = {
+            designation: selectedNode ? selectedNode.designation : "Simulated Node",
+            object_type: category ? category.toUpperCase() : "COSMIC BODY",
+            mass_solar: "1.00", surface_temp: "288.0", is_dead: false,
+            x_coord: 0.0, y_coord: 0.0, z_coord: 0.0,
+            hydrogen_pct: 100.0, abiogenesis_index: 0.0, progress_index: 0.0,
+            kardashev_scale: 0.0, radio_sphere_ly: 0.0, id: selectedNode ? selectedNode.id : "0"
+        };
+
         const typeMap = {
             'stars': '*star*', 'planets': '*planet*', 'black_holes': '*hole*',
             'neutron_stars': '*neutron*', 'nebulae': '*cloud*', 'asteroids_comets': '*asteroid*'
         };
-        const queryType = typeMap[category] || '*anomaly*';
+        const queryType = typeMap[category] || '*';
         
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/celestial_objects?object_type=ilike.${queryType}&limit=1`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const data = await res.json();
-                if (data.length > 0) return data[0];
+                if (data.length > 0) return { ...fallback, ...data[0] };
             }
-        } catch (err) { console.error("Inspector Data Fetch Failed", err); }
+        } catch (err) {}
         
-        // Fallback if no exact match found
-        return { 
-            designation: "Unknown Anomaly", object_type: "Classified", mass_solar: "N/A", 
-            surface_temp: "N/A", hydrogen_pct: 0, is_dead: false, abiogenesis_index: 0, 
-            progress_index: 0, kardashev_scale: 0, radio_sphere_ly: 0, x_coord: 0, y_coord: 0, z_coord: 0 
-        };
+        return fallback;
     }
 
     document.getElementById('btn-expand-inspect')?.addEventListener('click', async (e) => {
         e.stopPropagation();
         if (selectedNode) {
             switchTab(null, 'modal-object-detail');
-            document.getElementById('inspect-title').innerText = "Establishing Uplink...";
+            document.getElementById('inspect-title').innerText = selectedNode.designation;
             
-            // 1. Fetch live data
             const dbObj = await fetchRealObjectData(selectedNode.category);
             
-            // 2. Populate 12-Metric Inspector UI
-            document.getElementById('inspect-title').innerText = dbObj.designation || selectedNode.designation;
-            document.getElementById('det-class').innerText = dbObj.object_type || "Unknown";
-            document.getElementById('det-mass').innerText = dbObj.mass_solar || "Unknown";
-            document.getElementById('det-temp').innerText = dbObj.surface_temp || "Unknown";
+            document.getElementById('inspect-title').innerText = dbObj.designation || dbObj.name || selectedNode.designation;
+            document.getElementById('det-class').innerText = dbObj.object_type || "Celestial Body";
+            document.getElementById('det-mass').innerText = dbObj.mass_solar ? `${dbObj.mass_solar} M_sun` : "1.0 M_sun";
+            document.getElementById('det-temp').innerText = dbObj.surface_temp ? `${dbObj.surface_temp} K` : "288 K";
             document.getElementById('det-status').innerText = dbObj.is_dead ? "Dead Remnant" : "Active";
 
             document.getElementById('det-coords').innerText = `[${dbObj.x_coord || 0}, ${dbObj.y_coord || 0}, ${dbObj.z_coord || 0}]`;
-            document.getElementById('det-hydrogen').innerText = dbObj.hydrogen_pct ? `${dbObj.hydrogen_pct}%` : "0.0%";
+            document.getElementById('det-hydrogen').innerText = dbObj.hydrogen_pct !== undefined ? `${dbObj.hydrogen_pct}%` : "100%";
             document.getElementById('det-abio').innerText = dbObj.abiogenesis_index || "0.00";
             document.getElementById('det-progress').innerText = dbObj.progress_index || "0.00";
             document.getElementById('det-kardashev').innerText = dbObj.kardashev_scale || "Type 0";
-            document.getElementById('det-radio').innerText = dbObj.radio_sphere_ly || "0.00";
-            document.getElementById('det-id').innerText = dbObj.id || "UUID-UNKNOWN";
+            document.getElementById('det-radio').innerText = dbObj.radio_sphere_ly ? `${dbObj.radio_sphere_ly} ly` : "0.0 ly";
+            document.getElementById('det-id').innerText = `OBJ-#${dbObj.id || '0000'}`;
         }
     });
 
     document.getElementById('btn-close-inspect')?.addEventListener('click', () => switchTab('btn-explore', null));
+
+    // DESIGN 4 EVENT CARDS RENDERER
+    function renderDesign4EventCard(e) {
+        const title = e.title || 'Cosmic Telemetry Event';
+        const desc = e.description || 'Thermodynamic equilibrium shift detected.';
+        const ageFormatted = `${Number(e.age || 0).toFixed(3)} Gyr`;
+        
+        let hex = "#00E5FF", rgb = "0, 229, 255", tag = "COSMIC EVENT";
+        let iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
+        
+        const lowerTitle = title.toLowerCase();
+        if (lowerTitle.includes("nebula") || lowerTitle.includes("cloud")) {
+            hex = "#00E5FF"; rgb = "0, 229, 255"; tag = "NEBULA CLOUD";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>`;
+        } else if (lowerTitle.includes("star") || lowerTitle.includes("class-o")) {
+            hex = "#FFD700"; rgb = "255, 215, 0"; tag = "CLASS-O STAR";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>`;
+        } else if (lowerTitle.includes("black hole") || lowerTitle.includes("singularity")) {
+            hex = "#B026FF"; rgb = "176, 38, 255"; tag = "SINGULARITY";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
+        } else if (lowerTitle.includes("asteroid") || lowerTitle.includes("belt")) {
+            hex = "#FF8C00"; rgb = "255, 140, 0"; tag = "ASTEROID BELT";
+            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>`;
+        }
+
+        return `
+            <div class="d4-card" style="--c-hex: ${hex}; --c-rgb: ${rgb}; margin-bottom: 12px;">
+                <div class="d4-header">
+                    <div class="d4-icon-box">${iconSvg}</div>
+                    <span class="d4-tag data-font">${tag}</span>
+                </div>
+                <div class="d4-title">${title}</div>
+                <div class="d4-desc">${desc}</div>
+                <div class="d4-metrics-grid data-font">
+                    <div class="m-item"><span class="m-lbl">AGE</span><span class="m-val">${ageFormatted}</span></div>
+                    <div class="m-item"><span class="m-lbl">STATUS</span><span class="m-val">STABLE</span></div>
+                    <div class="m-item"><span class="m-lbl">SECTOR</span><span class="m-val">SEC 04</span></div>
+                </div>
+            </div>
+        `;
+    }
 
     // POLLING ENGINES
     async function pollUniverseState() {
@@ -241,12 +306,19 @@ function initApp() {
                 if (data.length > 0) {
                     localCurrentAge = Number(data[0].age || 0.0);
                     cameraState.currentAge = localCurrentAge;
-                    const hudAge = document.getElementById('hud-age');
-                    if (hudAge) hudAge.innerText = localCurrentAge >= 1.0 ? `${localCurrentAge.toFixed(3)} Billion Years` : `${Math.floor(localCurrentAge * 1000000000).toLocaleString()} Years`;
                     
-                    if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = `${data[0].de_pct || 68.5}%`;
-                    if (document.getElementById('cat-dm-val')) document.getElementById('cat-dm-val').innerText = `${data[0].dm_pct || 26.4}%`;
-                    if (document.getElementById('cat-baryon-val')) document.getElementById('cat-baryon-val').innerText = `${data[0].baryon_pct || 5.1}%`;
+                    const hudAge = document.getElementById('hud-age');
+                    if (hudAge) {
+                        hudAge.innerText = localCurrentAge >= 1.0 
+                            ? `${localCurrentAge.toFixed(3)} Billion Years` 
+                            : `${Math.floor(localCurrentAge * 1000000000).toLocaleString()} Years`;
+                    }
+                    
+                    updateTimelineUI(localCurrentAge);
+                    
+                    if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = `${data[0].de_pct || 68.3}%`;
+                    if (document.getElementById('cat-dm-val')) document.getElementById('cat-dm-val').innerText = `${data[0].dm_pct || 26.8}%`;
+                    if (document.getElementById('cat-baryon-val')) document.getElementById('cat-baryon-val').innerText = `${data[0].baryon_pct || 4.9}%`;
                 }
             }
         } catch (err) { updatePingLatency(9999, false); }
@@ -280,16 +352,7 @@ function initApp() {
                 const events = await res.json();
                 const container = document.getElementById('events-container');
                 if (container && events.length > 0) {
-                    container.innerHTML = events.map(e => `
-                        <div class="d4-card" style="--c-hex: #00E5FF; --c-rgb: 0, 229, 255;">
-                            <div class="d4-title">${e.title}</div>
-                            <div class="d4-desc">${e.description}</div>
-                            <div class="d4-metrics-grid mono">
-                                <div class="m-item"><span class="m-lbl">AGE</span><span class="m-val">${Number(e.age || 0).toFixed(3)} Gyr</span></div>
-                                <div class="m-item"><span class="m-lbl">STATUS</span><span class="m-val">STABLE</span></div>
-                            </div>
-                        </div>
-                    `).join('');
+                    container.innerHTML = events.map(e => renderDesign4EventCard(e)).join('');
                 }
             }
         } catch (err) {}
