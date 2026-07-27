@@ -7,7 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="ui/styles.css">
     
-    <!-- ⚡ NATIVE SPLASH SCREEN BYPASS ⚡ -->
     <script>
         function forceDismissSplash() {
             var splash = document.getElementById('splash-screen');
@@ -21,14 +20,32 @@
             }
         }
     </script>
+    <style>
+        /* CANVAS LOCKDOWN TO PREVENT UI BLEED */
+        .canvas-locked { pointer-events: none !important; }
+
+        /* 12-METRIC INSPECTOR LAYOUT */
+        .inspector-layout { display: flex; flex-direction: column; gap: 16px; padding: 0 10px 20px 10px; max-width: 500px; margin: 0 auto; }
+        
+        /* Top 4 Tiles */
+        .primary-tiles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .inspect-tile { background: rgba(20, 22, 35, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; backdrop-filter: blur(8px); }
+        .inspect-t-lbl { font-size: 9px; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 1px; margin-bottom: 4px; }
+        .inspect-t-val { font-size: 14px; font-weight: 700; color: #fff; }
+        .inspect-t-val.cyan { color: #00E5FF; }
+        .inspect-t-val.amber { color: #FF8C00; }
+        
+        /* Bottom 8 Rows */
+        .telemetry-list { padding: 8px 16px; }
+        .spec-row { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; }
+        .spec-label { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
+        .spec-value { color: #d0d2e0; text-align: right; font-size: 11px; }
+    </style>
 </head>
 <body>
 
-    <!-- SPLASH SCREEN (NOW FULLY CLICKABLE) -->
-    <div id="splash-screen" 
-         onclick="forceDismissSplash()" 
-         ontouchstart="forceDismissSplash()" 
-         onpointerdown="forceDismissSplash()">
+    <!-- SPLASH SCREEN -->
+    <div id="splash-screen" onclick="forceDismissSplash()" ontouchstart="forceDismissSplash()" onpointerdown="forceDismissSplash()">
         <div class="splash-content">
             <svg class="splash-logo" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,140,0,0.15)" stroke-width="1"/>
@@ -51,7 +68,7 @@
         <div id="hud-age" class="hud-value data-font">0 Years</div>
     </div>
 
-    <!-- INSPECTOR PREVIEW BAR (FLOATING OVERLAY ON EXPLORE) -->
+    <!-- INSPECTOR PREVIEW BAR -->
     <div id="inspector-preview" class="glass-panel">
         <div>
             <div id="obj-name">Celestial Body</div>
@@ -92,7 +109,6 @@
     <!-- VIEW: CATALOG TAB -->
     <div id="view-catalog" class="view-panel" style="display:none;">
         <div class="catalog-viewport">
-            
             <!-- MACRO COSMOLOGICAL STATE -->
             <div class="macro-container">
                 <div class="macro-bar-visual">
@@ -101,27 +117,9 @@
                     <div id="bar-baryon" class="bar-baryonic"></div>
                 </div>
                 <div class="macro-grid">
-                    <div class="macro-item">
-                        <div class="dot" style="background: #8A2BE2;"></div>
-                        <div>
-                            <div class="macro-label">Dark Energy</div>
-                            <div id="cat-de-val" class="macro-val data-font">68.5%</div>
-                        </div>
-                    </div>
-                    <div class="macro-item">
-                        <div class="dot" style="background: #FF8C00;"></div>
-                        <div>
-                            <div class="macro-label">Dark Matter</div>
-                            <div id="cat-dm-val" class="macro-val data-font">26.4%</div>
-                        </div>
-                    </div>
-                    <div class="macro-item">
-                        <div class="dot" style="background: #FFD700;"></div>
-                        <div>
-                            <div class="macro-label">Baryonic Matter</div>
-                            <div id="cat-baryon-val" class="macro-val data-font">5.1%</div>
-                        </div>
-                    </div>
+                    <div class="macro-item"><div class="dot" style="background: #8A2BE2;"></div><div><div class="macro-label">Dark Energy</div><div id="cat-de-val" class="macro-val data-font">68.5%</div></div></div>
+                    <div class="macro-item"><div class="dot" style="background: #FF8C00;"></div><div><div class="macro-label">Dark Matter</div><div id="cat-dm-val" class="macro-val data-font">26.4%</div></div></div>
+                    <div class="macro-item"><div class="dot" style="background: #FFD700;"></div><div><div class="macro-label">Baryonic Matter</div><div id="cat-baryon-val" class="macro-val data-font">5.1%</div></div></div>
                 </div>
             </div>
 
@@ -141,34 +139,45 @@
         </div>
     </div>
 
-    <!-- MODAL: OBJECT DETAIL VIEW -->
-    <div id="modal-object-detail" class="view-panel" style="display:none;">
-        <div class="modal-header">
+    <!-- MODAL: 12-METRIC OBJECT DETAIL VIEW -->
+    <div id="modal-object-detail" class="view-panel" style="display:none; z-index: 200;">
+        <div class="modal-header" style="max-width: 500px; margin: 0 auto 20px auto;">
             <button id="btn-close-inspect" class="btn-back" aria-label="Go Back">
-                <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" stroke="#fff" stroke-width="2" fill="none"/></svg>
             </button>
-            <span id="inspect-title">Celestial Body</span>
+            <span id="inspect-title">Loading...</span>
         </div>
-        <div id="spec-name" class="glass-panel" style="padding: 20px;"></div>
+        
+        <div class="inspector-layout">
+            <!-- 4 Primary Tiles -->
+            <div class="primary-tiles-grid">
+                <div class="inspect-tile"><div class="inspect-t-lbl">CLASS</div><div class="inspect-t-val cyan data-font" id="det-class">--</div></div>
+                <div class="inspect-tile"><div class="inspect-t-lbl">MASS (SOLAR)</div><div class="inspect-t-val data-font" id="det-mass">--</div></div>
+                <div class="inspect-tile"><div class="inspect-t-lbl">TEMP (K)</div><div class="inspect-t-val amber data-font" id="det-temp">--</div></div>
+                <div class="inspect-tile"><div class="inspect-t-lbl">STATUS</div><div class="inspect-t-val data-font" id="det-status">--</div></div>
+            </div>
+
+            <!-- 8 Telemetry Rows -->
+            <div class="telemetry-list glass-panel">
+                <div class="spec-row"><span class="spec-label">Coordinates</span><span class="spec-value data-font" id="det-coords">--</span></div>
+                <div class="spec-row"><span class="spec-label">Hydrogen (Core)</span><span class="spec-value data-font" id="det-hydrogen">--</span></div>
+                <div class="spec-row"><span class="spec-label">Life Potential (Abio)</span><span class="spec-value data-font" id="det-abio">--</span></div>
+                <div class="spec-row"><span class="spec-label">Evolution Index</span><span class="spec-value data-font" id="det-progress">--</span></div>
+                <div class="spec-row"><span class="spec-label">Kardashev Scale</span><span class="spec-value data-font" id="det-kardashev">--</span></div>
+                <div class="spec-row"><span class="spec-label">Radio Sphere (Ly)</span><span class="spec-value data-font" id="det-radio">--</span></div>
+                <div class="spec-row"><span class="spec-label">Orbital Mechanics</span><span class="spec-value data-font">Stable</span></div>
+                <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Database ID</span><span class="spec-value data-font" id="det-id">--</span></div>
+            </div>
+        </div>
     </div>
 
     <!-- BOTTOM NAVIGATION BAR -->
     <nav id="bottom-nav">
-        <div id="btn-explore" class="nav-btn active">
-            <div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg></div><span>Explore</span>
-        </div>
-        <div id="btn-events" class="nav-btn">
-            <div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg></div><span>Events</span>
-        </div>
-        <div id="btn-ai" class="nav-btn">
-            <div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><span>Origin</span>
-        </div>
-        <div id="btn-timeline" class="nav-btn">
-            <div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg></div><span>Timeline</span>
-        </div>
-        <div id="btn-catalog" class="nav-btn">
-            <div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg></div><span>Catalog</span>
-        </div>
+        <div id="btn-explore" class="nav-btn active"><div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg></div><span>Explore</span></div>
+        <div id="btn-events" class="nav-btn"><div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg></div><span>Events</span></div>
+        <div id="btn-ai" class="nav-btn"><div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><span>Origin</span></div>
+        <div id="btn-timeline" class="nav-btn"><div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg></div><span>Timeline</span></div>
+        <div id="btn-catalog" class="nav-btn"><div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg></div><span>Catalog</span></div>
     </nav>
 
     <script type="module" src="ui/components.js"></script>
