@@ -2,10 +2,31 @@ import json, math, os, random, threading, time, urllib.request
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "PLACEHOLDER_KEY")
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 
-SYSTEM_PROMPT = """You are ORIGIN, an omniscient observer entity monitoring a dynamic, expanding cosmic simulation. Output exactly 2 sentences containing a profound synthesis of the current cosmic epoch. No preamble."""
+# Groq API Configuration
+GROQ_API_KEY = "Gsk_BoHuKcn7ydROVRYv9hXkWGdyb3FYwhTH3LHNVcO9CiPQ20qoYIV6"
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = "llama3-8b-8192"
+
+SYSTEM_PROMPT = """You are ORIGIN, an autonomous AI monitoring a cosmic simulation. 
+Analyze the provided cosmic data. You must output your decision in STRICT JSON format. 
+Choose "OBSERVATION" if the system is stable, or "INTERVENTION" to alter a physical parameter.
+Format exactly like this:
+{
+  "mode": "OBSERVATION" or "INTERVENTION",
+  "goal": "Brief goal description",
+  "reasoning": "Scientific reasoning using the exact data provided",
+  "action": "Specific physical adjustment or 'Passive Monitoring'",
+  "calculated_outcome": "Expected physical result"
+}"""
+
+# Analytics Tracker for the 24-Hour Summary
+daily_stats = {
+    "observations": 0,
+    "interventions": 0,
+    "last_summary_time": time.time(),
+    "recent_actions": []
+}
 
 def db_request(endpoint, method="GET", payload=None):
     url = f"{SUPABASE_URL}/rest/v1/{endpoint}"
@@ -35,7 +56,7 @@ def db_upsert(table, payload):
     data = json.dumps(payload).encode('utf-8')
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=5):
             return True
     except Exception as e:
         print(f"[DB ERROR] POST {table}: {e}", flush=True)
@@ -49,26 +70,84 @@ def get_era_time_step(age_gyr):
 
 ai_busy = False
 
+def generate_daily_summary(age_gyr):
+    global daily_stats
+    total = daily_stats["observations"] + daily_stats["interventions"]
+    if total == 0: return
+
+    obs_pct = round((daily_stats["observations"] / total) * 100)
+    int_pct = round((daily_stats["interventions"] / total) * 100)
+    
+    unique_actions = list(set(daily_stats["recent_actions"]))
+    action_str = ", ".join(unique_actions[:3]) if unique_actions else "Passive progression"
+
+    summary_text = (f"Over the last 24-hour cycle, ORIGIN spent {obs_pct}% of its time passively observing "
+                    f"and {int_pct}% intervening. Primary focus areas included: {action_str}.")
+
+    summary_entry = {
+        "sector": "MACRO-SYSTEM",
+        "subject": "24-Hour Activity Cycle",
+        "type_tag": "Daily Summary",
+        "latency_myr": 0.0,
+        "data_analysis": f"Cycle Review at Age: {age_gyr:.4f} Gyr",
+        "temporal_simulation": f"Total Actions Evaluated: {total}",
+        "resolution": summary_text,
+        "goal": "Assess AI autonomy patterns",
+        "reasoning": "Periodic system analytics log.",
+        "action": "Summary Generation",
+        "hoped_outcome": "Data aggregation",
+        "mode": "OBSERVATION",
+        "age_gyr": age_gyr,
+        "tick": int(age_gyr * 100000)
+    }
+    db_upsert("origin_logs", summary_entry)
+    print("\n📊 [DAILY SUMMARY GENERATED AND LOGGED]\n", flush=True)
+    
+    daily_stats = {"observations": 0, "interventions": 0, "last_summary_time": time.time(), "recent_actions": []}
+
 def bg_generate_decision(state):
-    global ai_busy
+    global ai_busy, daily_stats
     try:
         age_gyr = state.get("age", 0.0)
         epoch_name = state.get("epoch", "Cosmic Era")
+        target_id = f"Object #{random.randint(1000, 9999)}"
         
-        prompt = f"{SYSTEM_PROMPT}\nCOSMIC AGE: {age_gyr:.6f} Gyr. ERA: {epoch_name}."
-        payload = {"model": OLLAMA_MODEL, "prompt": prompt, "stream": False, "options": {"num_predict": 80}}
+        prompt = f"COSMIC AGE: {age_gyr:.6f} Gyr. ERA: {epoch_name}. TARGET: {target_id}. Provide JSON decision."
         
-        thought = ""
+        payload = {
+            "model": GROQ_MODEL,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.7
+        }
+        
+        ai_response = {}
         try:
-            req = urllib.request.Request(OLLAMA_URL, data=json.dumps(payload).encode('utf-8'), headers={"Content-Type": "application/json"}, method="POST")
-            with urllib.request.urlopen(req, timeout=4) as resp:
+            req = urllib.request.Request(GROQ_URL, data=json.dumps(payload).encode('utf-8'), method="POST")
+            req.add_header("Authorization", f"Bearer {GROQ_API_KEY}")
+            req.add_header("Content-Type", "application/json")
+            
+            with urllib.request.urlopen(req, timeout=10) as resp:
                 res = json.loads(resp.read().decode('utf-8'))
-                thought = res.get("response", "").strip()
-        except Exception:
-            pass
+                raw_text = res["choices"][0]["message"]["content"].strip()
+                ai_response = json.loads(raw_text)
+        except Exception as e:
+            print(f"[GROQ API ERROR] {e}", flush=True)
 
-        if not thought:
-            thought = f"Cosmic age advances to {age_gyr:.4f} Gyr. Primordial thermodynamic density fields stabilize across active space-time sectors."
+        mode = ai_response.get("mode", "OBSERVATION").upper()
+        goal = ai_response.get("goal", "Maintain thermodynamic balance")
+        reasoning = ai_response.get("reasoning", "Metrics align with standard cosmological models.")
+        action = ai_response.get("action", "Passive Monitoring")
+        outcome = ai_response.get("calculated_outcome", "Stable evolution expected.")
+
+        if mode == "INTERVENTION":
+            daily_stats["interventions"] += 1
+            daily_stats["recent_actions"].append(action)
+        else:
+            daily_stats["observations"] += 1
 
         x = round((hash(str(age_gyr) + "x") % 4000 - 2000) / 10.0, 1)
         y = round((hash(str(age_gyr) + "y") % 4000 - 2000) / 10.0, 1)
@@ -78,22 +157,27 @@ def bg_generate_decision(state):
 
         log_entry = {
             "sector": f"VECTOR: [{x:+.1f}, {y:+.1f}, {z:+.1f}] ly",
-            "subject": "Cosmic Observation",
-            "type_tag": "Autonomous Decision",
+            "subject": target_id,
+            "type_tag": "AI Telemetry",
             "latency_myr": latency_myr,
-            "data_analysis": f"Epoch: {epoch_name} | Age: {age_gyr:.4f} Gyr",
-            "temporal_simulation": "Relativistic expansion active.",
-            "resolution": thought,
-            "goal": "Observe cosmic evolution",
-            "reasoning": f"Grounded matrix pass at age {age_gyr} Gyr.",
-            "action": "No intervention",
-            "hoped_outcome": "Thermal equilibrium",
-            "mode": "OBSERVE ONLY",
+            "data_analysis": reasoning,
+            "temporal_simulation": outcome,
+            "resolution": action,
+            "goal": goal,
+            "reasoning": reasoning,
+            "action": action,
+            "hoped_outcome": outcome,
+            "mode": mode,
             "age_gyr": age_gyr,
             "tick": int(age_gyr * 100000)
         }
         db_upsert("origin_logs", log_entry)
-        print(f"[AI DECISION LOGGED] Age: {age_gyr} Gyr", flush=True)
+        print(f"[{mode}] Action logged for {target_id} at Age: {age_gyr} Gyr", flush=True)
+
+        # Trigger summary if 24 hours (86400 seconds) have passed
+        if time.time() - daily_stats["last_summary_time"] > 86400:
+            generate_daily_summary(age_gyr)
+
     except Exception as e:
         print(f"[AI THREAD ERROR] {e}", flush=True)
     finally:
@@ -101,7 +185,7 @@ def bg_generate_decision(state):
 
 def run_loop():
     global ai_busy
-    print("[PROJECT ORIGIN ENGINE STARTED]", flush=True)
+    print("[PROJECT ORIGIN ENGINE STARTED - GROQ API]", flush=True)
     
     res_state = db_request("universe_state?id=eq.1")
     if not res_state:
@@ -111,14 +195,6 @@ def run_loop():
             "goal": "Cosmic Genesis", "reasoning": "Big Bang initialized."
         })
         
-    res_stats = db_request("catalog_stats?id=eq.1")
-    if not res_stats:
-        db_upsert("catalog_stats", {
-            "id": 1, "nebulae": 0, "stars": 0, "black_holes": 0, "neutron_stars": 0,
-            "planets": 0, "moons": 0, "asteroids_comets": 0, "quasars": 0,
-            "dark_matter_struc": 0, "exotic_objects": 0
-        })
-
     tick = 0
     while True:
         try:
@@ -145,7 +221,7 @@ def run_loop():
             db_upsert("universe_state", updated_state)
             print(f"✨ [TICK {tick}]: Age advanced to {age_gyr} Gyr ({epoch})", flush=True)
 
-            if tick % 3 == 0 and not ai_busy:
+            if tick % 15 == 0 and not ai_busy: 
                 ai_busy = True
                 threading.Thread(target=bg_generate_decision, args=(updated_state,), daemon=True).start()
 
