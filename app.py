@@ -9,22 +9,20 @@ app = Flask(__name__, static_folder='dist', static_url_path='')
 
 @app.route('/')
 def index():
-    # Serve index.html if Vite output exists, otherwise show status message
     if os.path.exists(os.path.join(app.static_folder, 'index.html')):
         return send_from_directory(app.static_folder, 'index.html')
     return "Project Origin backend is online."
 
 @app.route('/<path:path>')
 def static_proxy(path):
-    # Serve static assets (js, css, images) built by Vite
     if os.path.exists(os.path.join(app.static_folder, path)):
         return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, 'index.html')
 
 def launch_engines():
-    # Stream stdout & stderr so logs show directly on Render dashboard
-    subprocess.Popen(["python", "-u", "runner.py"], stdout=sys.stdout, stderr=sys.stderr)
-    subprocess.Popen(["python", "-u", "brain.py"], stdout=sys.stdout, stderr=sys.stderr)
+    # Updated paths to point into the server/ directory
+    subprocess.Popen(["python", "-u", "server/runner.py"], stdout=sys.stdout, stderr=sys.stderr)
+    subprocess.Popen(["python", "-u", "server/brain.py"], stdout=sys.stdout, stderr=sys.stderr)
 
 if __name__ == '__main__':
     Thread(target=launch_engines).start()
