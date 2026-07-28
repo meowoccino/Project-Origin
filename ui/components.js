@@ -53,7 +53,6 @@ function initApp() {
                 canvasContainer.style.pointerEvents = 'none'; 
                 if (hudContainer) hudContainer.style.opacity = '0';
                 
-                // BRUTE FORCE UI BLEED KILL SWITCH
                 if (inspectorPreview) {
                     inspectorPreview.classList.remove('active');
                     inspectorPreview.style.display = 'none';
@@ -105,7 +104,6 @@ function initApp() {
         const desc = e.description || 'Thermodynamic equilibrium shift detected.';
         const ageFormatted = `${Number(e.age || 0).toFixed(3)} Gyr`;
         
-        // REAL DATA PARSER: Extracts actual SEC coordinates instead of fake SEC 04
         let sectorStr = "UNKNOWN SEC";
         const secMatch = desc.match(/SEC \[[^\]]+\]/);
         if (secMatch) {
