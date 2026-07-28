@@ -52,8 +52,14 @@ function initApp() {
             } else {
                 canvasContainer.style.pointerEvents = 'none'; 
                 if (hudContainer) hudContainer.style.opacity = '0';
-                if (inspectorPreview) inspectorPreview.style.display = 'none'; 
-                clearSelection(); // Instantly drops target
+                
+                // BRUTE FORCE UI BLEED KILL SWITCH
+                if (inspectorPreview) {
+                    inspectorPreview.classList.remove('active');
+                    inspectorPreview.style.display = 'none';
+                    inspectorPreview.style.opacity = '0';
+                }
+                clearSelection(); 
             }
         }
     }
@@ -99,6 +105,13 @@ function initApp() {
         const desc = e.description || 'Thermodynamic equilibrium shift detected.';
         const ageFormatted = `${Number(e.age || 0).toFixed(3)} Gyr`;
         
+        // REAL DATA PARSER: Extracts actual SEC coordinates instead of fake SEC 04
+        let sectorStr = "UNKNOWN SEC";
+        const secMatch = desc.match(/SEC \[[^\]]+\]/);
+        if (secMatch) {
+            sectorStr = secMatch[0];
+        }
+
         let hex = "#00E5FF", rgb = "0, 229, 255", tag = "COSMIC EVENT";
         let iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
         
@@ -128,7 +141,7 @@ function initApp() {
                 <div class="d4-metrics-grid data-font">
                     <div class="m-item"><span class="m-lbl">AGE</span><span class="m-val">${ageFormatted}</span></div>
                     <div class="m-item"><span class="m-lbl">STATUS</span><span class="m-val">STABLE</span></div>
-                    <div class="m-item"><span class="m-lbl">SECTOR</span><span class="m-val">SEC 04</span></div>
+                    <div class="m-item" style="overflow:hidden; text-overflow:ellipsis;"><span class="m-lbl">SECTOR</span><span class="m-val">${sectorStr}</span></div>
                 </div>
             </div>
         `;
@@ -200,14 +213,12 @@ function initApp() {
     document.getElementById("btn-load-more")?.addEventListener("click", loadNextBatch);
     loadNextBatch();
 
-    // STRICT ANALYZE FALLBACK: Forces DOM update instantly to prevent freezing
     document.getElementById('btn-expand-inspect')?.addEventListener('click', async (e) => {
         e.stopPropagation();
         if (!selectedNode) return;
         
         switchTab(null, 'modal-object-detail');
         
-        // INSTANT WRITE: Overwrites "Establishing Uplink..." immediately
         document.getElementById('inspect-title').innerText = selectedNode.designation || "Unknown Node";
         document.getElementById('det-class').innerText = (selectedNode.category || "Anomaly").toUpperCase();
         document.getElementById('det-mass').innerText = "CALCULATING...";
@@ -247,7 +258,6 @@ function initApp() {
             }
         } catch (err) {}
         
-        // FINAL FALLBACK IF OFFLINE OR NO DATA
         document.getElementById('det-mass').innerText = "1.0 M_sun";
         document.getElementById('det-status').innerText = "SIMULATED NODE";
     });
@@ -293,8 +303,7 @@ function initApp() {
                     const stats = data[0];
                     updateCanvasFromCatalog(stats, localCurrentAge);
                     
-                    // Added dmstruct to mappings for Dark Matter
-                    const idMap = { neutron_stars: 'degenerate', black_holes: 'bh', asteroids_comets: 'asteroids', dark_matter_structures: 'dmstruct' };
+                    const idMap = { neutron_stars: 'degenerate', black_holes: 'bh', asteroids_comets: 'asteroids', dark_matter_structures: 'dmstruct', exotic_objects: 'exotic' };
                     ['nebulae', 'stars', 'black_holes', 'neutron_stars', 'planets', 'moons', 'asteroids_comets', 'quasars', 'exotic_objects', 'dark_matter_structures'].forEach(key => {
                         const elId = `cat-${idMap[key] || key}-val`;
                         const el = document.getElementById(elId);
