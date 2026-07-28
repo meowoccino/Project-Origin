@@ -110,14 +110,19 @@ def bg_generate_decision(state):
         }
         
         ai_response = {}
+        
+        # Guardrail for Render Deployments attempting to hit localhost
+        if "127.0.0.1" in OLLAMA_URL or "localhost" in OLLAMA_URL:
+            print("[AI WARNING] OLLAMA_URL is set to localhost, but script is running in a cloud container. API will fail.", flush=True)
+            
         try:
             res = requests.post(OLLAMA_URL, json=payload, timeout=20)
             if res.status_code == 200:
                 raw_text = res.json().get("response", "{}")
-                # STRICT REGEX JSON EXTRACTION (Strips markdown and filler)
                 match = re.search(r'\{.*\}', raw_text, re.DOTALL)
                 if match: ai_response = json.loads(match.group(0))
-        except Exception as e: print(f"[LLM] {e}", flush=True)
+        except Exception as e: 
+            print(f"[LLM CONNECTION FAILED] {e}. Defaulting to Passive Mode.", flush=True)
 
         mode = ai_response.get("mode", "OBSERVATION").upper()
         
@@ -135,8 +140,8 @@ def bg_generate_decision(state):
             "subject": target.get("designation", "Unknown Body"),
             "type_tag": "AI Telemetry",
             "latency_myr": round(dist_ly / 1_000_000.0, 6),
-            "data_analysis": ai_response.get("reasoning", "Nominal."),
-            "temporal_simulation": ai_response.get("calculated_outcome", "Stable."),
+            "data_analysis": ai_response.get("reasoning", "Nominal data streaming. AI offline or standing by."),
+            "temporal_simulation": ai_response.get("calculated_outcome", "Stable trajectory."),
             "resolution": final_action,
             "mode": mode,
             "age_gyr": age_gyr,
@@ -150,7 +155,6 @@ def calculate_dual_phase_age(genesis_time):
     if elapsed_sec <= 3600:
         return round((elapsed_sec / 3600.0) * 13.8, 6)
     else:
-        # FIXED TIME SCALING: 1 Real Day = 1 Billion Years (Gyr)
         elapsed_phase_2 = elapsed_sec - 3600
         age_added = (elapsed_phase_2 / 86400.0) * 1.0
         return round(13.8 + age_added, 6)
