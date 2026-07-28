@@ -2,8 +2,7 @@ import json, math, os, random, threading, time, requests, re
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://nnntebgkhgzfztwfdphw.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "PLACEHOLDER_KEY")
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
-DEFAULT_MODEL = "llama3.2:3b"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -52,7 +51,7 @@ def build_dynamic_prompt(target):
     else: levers = "['density_shift']"
 
     return f"""You are ORIGIN, an autonomous AI directing a cosmic simulation.
-Analyze the target and output your decision in STRICT JSON format. NO MARKDOWN. NO CONVERSATION.
+Analyze the target and output your decision in STRICT JSON format. NO CONVERSATION.
 Choose "OBSERVATION" or "INTERVENTION".
 If INTERVENTION, select one lever: {levers}.
 
@@ -102,27 +101,36 @@ def bg_generate_decision(state):
         if not targets: return
         target = random.choice(targets)
         
+        if not GROQ_API_KEY:
+            print("[AI ERROR] Missing GROQ_API_KEY.", flush=True)
+            return
+
         sys_prompt = build_dynamic_prompt(target)
+        groq_headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
         payload = {
-            "model": DEFAULT_MODEL,
-            "prompt": f"{sys_prompt}\nTARGET: {json.dumps(target)}",
-            "stream": False, "options": {"temperature": 0.6}
+            "model": "llama-3.1-8b-instant",
+            "messages": [
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": f"TARGET: {json.dumps(target)}"}
+            ],
+            "temperature": 0.6,
+            "response_format": {"type": "json_object"}
         }
         
         ai_response = {}
-        
-        # Guardrail for Render Deployments attempting to hit localhost
-        if "127.0.0.1" in OLLAMA_URL or "localhost" in OLLAMA_URL:
-            print("[AI WARNING] OLLAMA_URL is set to localhost, but script is running in a cloud container. API will fail.", flush=True)
-            
         try:
-            res = requests.post(OLLAMA_URL, json=payload, timeout=20)
+            res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=groq_headers, json=payload, timeout=20)
             if res.status_code == 200:
-                raw_text = res.json().get("response", "{}")
+                raw_text = res.json()["choices"][0]["message"]["content"]
                 match = re.search(r'\{.*\}', raw_text, re.DOTALL)
                 if match: ai_response = json.loads(match.group(0))
+            else:
+                print(f"[GROQ ERROR] {res.text}", flush=True)
         except Exception as e: 
-            print(f"[LLM CONNECTION FAILED] {e}. Defaulting to Passive Mode.", flush=True)
+            print(f"[LLM CONNECTION FAILED] {e}", flush=True)
 
         mode = ai_response.get("mode", "OBSERVATION").upper()
         
