@@ -40,7 +40,7 @@ def fetch_all_celestial_objects():
     return all_objs
 
 def calculate_ms_lifespan(mass_solar):
-    # Real physics: Main Sequence lifespan t ~ 10 * (M/M_sun)^-2.5 in Gyr
+    # Main Sequence lifespan t ~ 10 * (M/M_sun)^-2.5 in Gyr
     return 10.0 * (mass_solar ** -2.5)
 
 def run_physics_tick(all_objects, current_age):
@@ -52,8 +52,14 @@ def run_physics_tick(all_objects, current_age):
         updates = {}
         obj_type = (obj.get("object_type") or "UNKNOWN").title()
         mass = float(obj.get("mass_solar") or 1.0)
-        birth_age = float(obj.get("created_at_gyr") or current_age) # Note: requires tracking birth age
         
+        birth_age = obj.get("created_at_gyr")
+        if birth_age is None:
+            birth_age = current_age
+            updates["created_at_gyr"] = current_age
+        else:
+            birth_age = float(birth_age)
+            
         x = obj.get("x_coord") or 0.0
         y = obj.get("y_coord") or 0.0
         z = obj.get("z_coord") or 0.0
@@ -62,18 +68,15 @@ def run_physics_tick(all_objects, current_age):
             lifespan_gyr = calculate_ms_lifespan(mass)
             age_of_star = current_age - birth_age
             
-            # Hydrogen depletes linearly based on its calculated lifespan
             hydrogen_pct = max(0.0, 100.0 * (1.0 - (age_of_star / lifespan_gyr)))
             
             if abs(hydrogen_pct - float(obj.get("hydrogen_pct") or 100.0)) > 0.1:
                 updates["hydrogen_pct"] = round(hydrogen_pct, 4)
                 
-            # Supernova / Core Collapse physics
             if hydrogen_pct <= 0.0 and not obj.get("is_dead"):
                 updates["is_dead"] = True
                 catalog_deltas["stars"] = catalog_deltas.get("stars", 0) - 1
                 
-                # Tolman-Oppenheimer-Volkoff / Chandrasekhar limits
                 if mass > 20.0:
                     updates["object_type"], updates["surface_temp"], updates["mass_solar"] = "Black Hole", 2.7, round(mass * 0.15, 2)
                     catalog_deltas["black_holes"] = catalog_deltas.get("black_holes", 0) + 1
@@ -133,7 +136,7 @@ def spawn_object(cat_key, cat_label, physics_specs, current_age):
         "x_coord": x, "y_coord": y, "z_coord": z,
         "is_dead": False, "hydrogen_pct": 100.0,
         "mass_solar": round(random.uniform(0.1, 50.0), 2) if "Star" in cat_label else 0.0,
-        "created_at_gyr": current_age # Track birth age for physics
+        "created_at_gyr": current_age
     })
 
     current_stats = db_get("catalog_stats?id=eq.1")
@@ -144,20 +147,17 @@ def spawn_object(cat_key, cat_label, physics_specs, current_age):
 def run_expansion_step(state, stats):
     current_age = float(state.get("age", 0.0))
     
-    # STRICT TIMELINE ENFORCEMENT
-    # If under 0.1 Gyr (The first 1 hour), only primordial gas can exist.
     if current_age < 0.1:
-        spawn_object("nebulae", "Primordial Gas Cloud", f"Temp: {random.randint(10, 50)} K", current_age)
+        if random.random() < 0.2:
+            spawn_object("nebulae", "Primordial Gas Cloud", f"Temp: {random.randint(10, 50)} K", current_age)
         return
 
-    # Post 0.1 Gyr: First objects can born. Uses thermodynamic weights, not random chance.
     c_nebulae = stats.get("nebulae", 0)
     c_stars = stats.get("stars", 0)
     
-    # Jeans Instability limit: Stars only spawn if there are enough gas clouds to collapse
     if c_nebulae > 0 and random.random() < 0.7:
         spawn_object("stars", "Main Sequence Star", f"Core Temp: {random.randint(5000, 45000)} K", current_age)
-        db_patch("catalog_stats?id=eq.1", {"nebulae": max(0, c_nebulae - 1)}) # Consume gas
+        db_patch("catalog_stats?id=eq.1", {"nebulae": max(0, c_nebulae - 1)})
     elif c_stars > 5 and random.random() < 0.4:
         spawn_object("planets", "Terrestrial Planet", f"Orbit: {round(random.uniform(0.3, 2.5), 2)} AU", current_age)
     elif c_stars > 10 and random.random() < 0.2:
@@ -178,7 +178,6 @@ if __name__ == "__main__":
             current_stats = stats_data[0]
             current_age = float(current_state.get("age", 0.0))
             
-            # Log the Big Bang explicitly at genesis
             if current_age < 0.0001 and not big_bang_logged:
                 db_post("events", {
                     "title": "The Big Bang", 
