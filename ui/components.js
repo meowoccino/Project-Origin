@@ -13,12 +13,10 @@ function initApp() {
     let isLoadingLogs = false;
     let oldestLoadedId = null;
 
-    // UI BLEED FIX: Disconnect touch interaction instantly if menu is open
     if (canvasContainer) {
         canvasContainer.addEventListener('touchend', (e) => {
             if (window.selectParticleAt && MainEngine.isExploreActive && e.changedTouches.length === 1) {
                 window.selectParticleAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-                
                 setTimeout(() => {
                     const subEl = document.getElementById('obj-sub');
                     if (subEl && selectedNode) {
@@ -52,10 +50,10 @@ function initApp() {
                 canvasContainer.style.pointerEvents = 'auto';
                 if (hudContainer) hudContainer.style.opacity = '1';
             } else {
-                canvasContainer.style.pointerEvents = 'none'; // Lock background interaction
+                canvasContainer.style.pointerEvents = 'none'; 
                 if (hudContainer) hudContainer.style.opacity = '0';
-                if (inspectorPreview) inspectorPreview.style.display = 'none'; // Erase floating UI
-                clearSelection(); // Force 3D engine to drop target
+                if (inspectorPreview) inspectorPreview.style.display = 'none'; 
+                clearSelection(); // Instantly drops target
             }
         }
     }
@@ -66,7 +64,6 @@ function initApp() {
     document.getElementById('btn-timeline')?.addEventListener('click', () => switchTab('btn-timeline', 'view-timeline'));
     document.getElementById('btn-catalog')?.addEventListener('click', () => switchTab('btn-catalog', 'view-catalog'));
 
-    // TIMELINE EPOCH SCALING FIX
     const TIMELINE_EPOCHS = [
         { title: "Primordial Inflation", end: 0.001, desc: "Exponential space-time expansion driven by quantum vacuum inflaton field decay." },
         { title: "Recombination & Decoupling", end: 0.01, desc: "Thermal baryonic gas cools below 3,000 K, releasing Cosmic Microwave Background radiation." },
@@ -97,7 +94,6 @@ function initApp() {
         container.innerHTML = html;
     }
 
-    // DESIGN 4 EVENT CARDS (Restored)
     function renderDesign4EventCard(e) {
         const title = e.title || 'Cosmic Telemetry Event';
         const desc = e.description || 'Thermodynamic equilibrium shift detected.';
@@ -138,7 +134,6 @@ function initApp() {
         `;
     }
 
-    // EARTH CLOCK & OBSERVER LOGIC (Restored)
     function initEarthClock() {
         const clockEl = document.getElementById('earth-clock');
         if (!clockEl) return;
@@ -205,18 +200,26 @@ function initApp() {
     document.getElementById("btn-load-more")?.addEventListener("click", loadNextBatch);
     loadNextBatch();
 
-    // ANALYZE BUTTON FALLBACK FIX (Prevents frozen '--' screens)
+    // STRICT ANALYZE FALLBACK: Forces DOM update instantly to prevent freezing
     document.getElementById('btn-expand-inspect')?.addEventListener('click', async (e) => {
         e.stopPropagation();
         if (!selectedNode) return;
         
         switchTab(null, 'modal-object-detail');
         
-        // Instant visual fallback - writes immediately before the fetch
+        // INSTANT WRITE: Overwrites "Establishing Uplink..." immediately
         document.getElementById('inspect-title').innerText = selectedNode.designation || "Unknown Node";
         document.getElementById('det-class').innerText = (selectedNode.category || "Anomaly").toUpperCase();
         document.getElementById('det-mass').innerText = "CALCULATING...";
-        document.getElementById('det-status').innerText = "ACTIVE";
+        document.getElementById('det-temp').innerText = "--- K";
+        document.getElementById('det-status').innerText = "UPLINK...";
+        document.getElementById('det-coords').innerText = `[${Math.round(selectedNode.baseX)}, ${Math.round(selectedNode.baseY)}, 0]`;
+        document.getElementById('det-hydrogen').innerText = "--";
+        document.getElementById('det-abio').innerText = "--";
+        document.getElementById('det-progress').innerText = "--";
+        document.getElementById('det-kardashev').innerText = "--";
+        document.getElementById('det-radio').innerText = "--";
+        document.getElementById('det-id').innerText = `SYS-${selectedNode.id}`;
         
         const typeMap = { 'stars': '*star*', 'planets': '*planet*', 'black_holes': '*hole*', 'neutron_stars': '*neutron*', 'nebulae': '*cloud*', 'asteroids_comets': '*asteroid*' };
         const queryType = typeMap[selectedNode.category] || '*';
@@ -244,16 +247,13 @@ function initApp() {
             }
         } catch (err) {}
         
-        // If query fails, safely inject default numbers instead of locking up
+        // FINAL FALLBACK IF OFFLINE OR NO DATA
         document.getElementById('det-mass').innerText = "1.0 M_sun";
-        document.getElementById('det-temp').innerText = "--- K";
-        document.getElementById('det-coords').innerText = "[0, 0, 0]";
-        document.getElementById('det-id').innerText = "SIMULATED NODE";
+        document.getElementById('det-status').innerText = "SIMULATED NODE";
     });
 
     document.getElementById('btn-close-inspect')?.addEventListener('click', () => switchTab('btn-explore', null));
 
-    // POLLING ENGINES
     async function pollUniverseState() {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/universe_state?select=*&limit=1`, { headers: FETCH_HEADERS });
@@ -268,7 +268,6 @@ function initApp() {
                     
                     updateTimelineUI(localCurrentAge);
                     
-                    // CATALOG BAR WIDTH FIX
                     const de = data[0].de_pct || 68.3;
                     const dm = data[0].dm_pct || 26.8;
                     const bm = data[0].baryon_pct || 4.9;
@@ -294,9 +293,9 @@ function initApp() {
                     const stats = data[0];
                     updateCanvasFromCatalog(stats, localCurrentAge);
                     
-                    // CATALOG HTML ID MISMATCH FIX
-                    const idMap = { neutron_stars: 'degenerate', black_holes: 'bh', asteroids_comets: 'asteroids' };
-                    ['nebulae', 'stars', 'black_holes', 'neutron_stars', 'planets', 'moons', 'asteroids_comets', 'quasars', 'exotic_objects'].forEach(key => {
+                    // Added dmstruct to mappings for Dark Matter
+                    const idMap = { neutron_stars: 'degenerate', black_holes: 'bh', asteroids_comets: 'asteroids', dark_matter_structures: 'dmstruct' };
+                    ['nebulae', 'stars', 'black_holes', 'neutron_stars', 'planets', 'moons', 'asteroids_comets', 'quasars', 'exotic_objects', 'dark_matter_structures'].forEach(key => {
                         const elId = `cat-${idMap[key] || key}-val`;
                         const el = document.getElementById(elId);
                         if (el) el.innerText = (stats[key] || 0).toLocaleString();
