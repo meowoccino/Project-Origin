@@ -11,16 +11,16 @@ let globalNodeId = 0;
 let maxWebRadius = 600;
 
 const CATEGORY_STYLES = {
-    nebulae: { color: 'rgba(0, 229, 255, 0.2)', glowColor: 'rgba(0, 229, 255, 0.5)', name: 'Nebula Cloud', size: 12.0 },
-    stars: { color: '#FFD700', glowColor: 'rgba(255, 215, 0, 0.5)', name: 'Stellar Core', size: 3.0 },
-    black_holes: { color: '#05050A', ringColor: '#FF8C00', name: 'Black Hole', size: 5.0 },
-    neutron_stars: { color: '#F000FF', glowColor: 'rgba(240, 0, 255, 0.7)', name: 'Neutron Core', size: 2.2 },
-    planets: { color: '#10B981', glowColor: 'rgba(16, 185, 129, 0.3)', name: 'Planetary Body', size: 1.8 },
-    moons: { color: '#8C8F9F', glowColor: 'rgba(140, 143, 159, 0.2)', name: 'Satellite Moon', size: 1.2 },
-    asteroids_comets: { color: '#B0B0D0', name: 'Asteroid Fragment', size: 0.8 },
-    quasars: { color: '#FF5722', glowColor: 'rgba(255, 87, 34, 0.8)', name: 'Active Quasar', size: 7.0 },
-    exotic_objects: { color: '#FF007A', glowColor: 'rgba(255, 0, 122, 0.5)', name: 'Exotic Artifact', size: 3.5 },
-    inhabited: { color: '#00FFB2', glowColor: 'rgba(0, 255, 178, 0.8)', name: 'Inhabited World', size: 4.5 }
+    nebulae: { color: 'rgba(0, 229, 255, 0.2)', glowColor: 'rgba(0, 229, 255, 0.5)', name: 'Nebula Cloud', baseSize: 12.0 },
+    stars: { color: '#FFD700', glowColor: 'rgba(255, 215, 0, 0.5)', name: 'Stellar Core', baseSize: 3.0 },
+    black_holes: { color: '#05050A', ringColor: '#FF8C00', name: 'Black Hole', baseSize: 5.0 },
+    neutron_stars: { color: '#F000FF', glowColor: 'rgba(240, 0, 255, 0.7)', name: 'Neutron Core', baseSize: 2.2 },
+    planets: { color: '#10B981', glowColor: 'rgba(16, 185, 129, 0.3)', name: 'Planetary Body', baseSize: 1.8 },
+    moons: { color: '#8C8F9F', glowColor: 'rgba(140, 143, 159, 0.2)', name: 'Satellite Moon', baseSize: 1.2 },
+    asteroids_comets: { color: '#B0B0D0', name: 'Asteroid Fragment', baseSize: 0.8 },
+    quasars: { color: '#FF5722', glowColor: 'rgba(255, 87, 34, 0.8)', name: 'Active Quasar', baseSize: 7.0 },
+    exotic_objects: { color: '#FF007A', glowColor: 'rgba(255, 0, 122, 0.5)', name: 'Exotic Artifact', baseSize: 3.5 },
+    inhabited: { color: '#00FFB2', glowColor: 'rgba(0, 255, 178, 0.8)', name: 'Inhabited World', baseSize: 4.5 }
 };
 
 function initWebHubs() {
@@ -46,9 +46,12 @@ function createWebNode(category, id) {
     x += (Math.random() - 0.5) * scatter;
     y += (Math.random() - 0.5) * scatter;
 
+    // Introduce natural variance to sizes to mimic physical differences
+    const sizeVariance = style.baseSize * (0.5 + Math.random());
+
     return {
         id: id, category: category, designation: `${style.name} #${id}`,
-        baseX: x, baseY: y, size: style.size, style: style,
+        baseX: x, baseY: y, size: sizeVariance, style: style,
         pulseSpeed: 0.02 + Math.random() * 0.03, pulsePhase: Math.random() * Math.PI * 2,
         screenX: 0, screenY: 0
     };
@@ -93,12 +96,13 @@ export function updateCanvasFromCatalog(stats, ageGyr) {
     });
 }
 
+// Strictly isolate the selection clearing logic
 export function clearSelection() {
     selectedNode = null;
     const preview = document.getElementById('inspector-preview');
     if (preview) {
         preview.classList.remove('active');
-        setTimeout(() => { if(!preview.classList.contains('active')) preview.style.display = 'none'; }, 300);
+        preview.style.display = 'none'; // Hard remove from flow
     }
 }
 
@@ -191,19 +195,18 @@ export async function initWebGPU() {
                 ctx.strokeStyle = '#FF8C00'; 
                 ctx.lineWidth = 2.0 * dpr;
                 ctx.beginPath();
-                // Top Left
                 ctx.moveTo(p.screenX - tgtSize, p.screenY - tgtSize + len);
                 ctx.lineTo(p.screenX - tgtSize, p.screenY - tgtSize);
                 ctx.lineTo(p.screenX - tgtSize + len, p.screenY - tgtSize);
-                // Top Right
+                
                 ctx.moveTo(p.screenX + tgtSize - len, p.screenY - tgtSize);
                 ctx.lineTo(p.screenX + tgtSize, p.screenY - tgtSize);
                 ctx.lineTo(p.screenX + tgtSize, p.screenY - tgtSize + len);
-                // Bottom Left
+                
                 ctx.moveTo(p.screenX - tgtSize, p.screenY + tgtSize - len);
                 ctx.lineTo(p.screenX - tgtSize, p.screenY + tgtSize);
                 ctx.lineTo(p.screenX - tgtSize + len, p.screenY + tgtSize);
-                // Bottom Right
+                
                 ctx.moveTo(p.screenX + tgtSize - len, p.screenY + tgtSize);
                 ctx.lineTo(p.screenX + tgtSize, p.screenY + tgtSize);
                 ctx.lineTo(p.screenX + tgtSize, p.screenY + tgtSize - len);
@@ -219,7 +222,10 @@ export async function initWebGPU() {
 
     renderLoop();
 
+    // Attach interaction exclusively when Explore is active
     window.selectParticleAt = function(clientX, clientY) {
+        if (!isExploreActive) return; // Hard block touches if menus are open
+
         const dpr = window.devicePixelRatio || 1;
         const tapX = clientX * dpr;
         const tapY = clientY * dpr;
@@ -237,7 +243,7 @@ export async function initWebGPU() {
             const styleName = CATEGORY_STYLES[closest.category].name;
             
             document.getElementById('obj-name').innerText = closest.designation;
-            document.getElementById('obj-sub').innerText = (closest.designation.includes(styleName)) ? "Simulated Cosmic Object" : styleName;
+            document.getElementById('obj-sub').innerText = styleName;
             
             preview.style.display = 'flex';
             void preview.offsetWidth; 
