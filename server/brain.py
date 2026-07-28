@@ -160,12 +160,17 @@ def bg_generate_decision(state):
 
 def calculate_dual_phase_age(genesis_time):
     elapsed_sec = time.time() - genesis_time
+    
+    # Phase 1: 1 Hour (3600s) = 0 to 0.1 Gyr
     if elapsed_sec <= 3600:
-        return round((elapsed_sec / 3600.0) * 13.8, 6)
+        return round((elapsed_sec / 3600.0) * 0.1, 6)
+    
+    # Phase 2: Next 30 Days (2,592,000s) = 0.1 Gyr to 100 Gyr
     else:
         elapsed_phase_2 = elapsed_sec - 3600
-        age_added = (elapsed_phase_2 / 86400.0) * 1.0
-        return round(13.8 + age_added, 6)
+        rate_per_sec = 99.9 / (30 * 24 * 3600) 
+        age_added = elapsed_phase_2 * rate_per_sec
+        return round(0.1 + age_added, 6)
 
 def run_loop():
     global ai_busy
@@ -174,17 +179,17 @@ def run_loop():
     
     if genesis_val is None:
         genesis = time.time()
-        db_upsert("universe_state", {"id": 1, "age": 0.0, "genesis_time": genesis, "epoch": "Inflation Era"})
+        db_upsert("universe_state", {"id": 1, "age": 0.0, "genesis_time": genesis, "epoch": "Primordial Inflation"})
     else: genesis = float(genesis_val)
         
     tick = 0
     while True:
         try:
             age_gyr = calculate_dual_phase_age(genesis)
-            if age_gyr < 0.001: epoch = "Inflation & Primordial Era"
-            elif age_gyr < 0.01: epoch = "Recombination / Dark Ages"
-            elif age_gyr < 0.1: epoch = "First Stars & Protogalaxies"
-            elif age_gyr < 1.0: epoch = "Galaxy Formation Era"
+            if age_gyr < 0.001: epoch = "Primordial Inflation"
+            elif age_gyr < 0.01: epoch = "Recombination & Decoupling"
+            elif age_gyr < 0.1: epoch = "Pop-III Star Reionization"
+            elif age_gyr < 1.0: epoch = "Galactic Disk Accretion"
             else: epoch = "Stellar & Deep Time Era"
 
             db_upsert("universe_state", {"id": 1, "age": age_gyr, "epoch": epoch, "genesis_time": genesis})
