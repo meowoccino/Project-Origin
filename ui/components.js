@@ -5,7 +5,6 @@ function initApp() {
     initWebGPU().catch(err => console.error("❌ [ENGINE INIT FAILED]:", err));
 
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
-    // Your correct public anon key is now safely placed here
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NzU0NTYsImV4cCI6MjEwMDE1MTQ1Nn0.vq5vMGPl2poA37JLT34nKAiC4MzaQzlHdEJ600X-3O8";
     const FETCH_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
 
@@ -232,6 +231,9 @@ function initApp() {
                     const hudAge = document.getElementById('hud-age');
                     if (hudAge) hudAge.innerText = localCurrentAge >= 1.0 ? `${localCurrentAge.toFixed(3)} Billion Years` : `${Math.floor(localCurrentAge * 1000000000).toLocaleString()} Years`;
                     
+                    const hudEpoch = document.getElementById('hud-epoch');
+                    if (hudEpoch) hudEpoch.innerText = data[0].epoch || "Calculating Epoch...";
+
                     updateTimelineUI(localCurrentAge);
                 }
             }
