@@ -5,7 +5,8 @@ function initApp() {
     initWebGPU().catch(err => console.error("❌ [ENGINE INIT FAILED]:", err));
 
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU3NTQ1NiwiZXhwIjoyMTAwMTUxNDU2fQ.YxpoNTujXCrJQcxZ9Bj8f_bFC6j_Fq6GLt74H8mEAq0";
+    // IMPORTANT: Paste your Supabase 'anon' / 'public' key here. Do NOT use the service_role key.
+    const SUPABASE_KEY = "YOUR_ANON_PUBLIC_KEY_HERE";
     const FETCH_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
 
     const canvasContainer = document.getElementById('canvas-container');
@@ -53,6 +54,7 @@ function initApp() {
                 canvasContainer.style.pointerEvents = 'none'; 
                 if (hudContainer) hudContainer.style.opacity = '0';
                 
+                // Force kill the popup bleed
                 if (inspectorPreview) {
                     inspectorPreview.classList.remove('active');
                     inspectorPreview.style.display = 'none';
@@ -106,9 +108,7 @@ function initApp() {
         
         let sectorStr = "UNKNOWN SEC";
         const secMatch = desc.match(/SEC \[[^\]]+\]/);
-        if (secMatch) {
-            sectorStr = secMatch[0];
-        }
+        if (secMatch) sectorStr = secMatch[0];
 
         let hex = "#00E5FF", rgb = "0, 229, 255", tag = "COSMIC EVENT";
         let iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
@@ -117,14 +117,14 @@ function initApp() {
         if (lowerTitle.includes("nebula") || lowerTitle.includes("cloud")) {
             hex = "#00E5FF"; rgb = "0, 229, 255"; tag = "NEBULA CLOUD";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>`;
-        } else if (lowerTitle.includes("star") || lowerTitle.includes("class-o")) {
+        } else if (lowerTitle.includes("star") || lowerTitle.includes("dwarf") || lowerTitle.includes("giant")) {
             hex = "#FFD700"; rgb = "255, 215, 0"; tag = "STELLAR CORE";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>`;
-        } else if (lowerTitle.includes("black hole") || lowerTitle.includes("singularity")) {
+        } else if (lowerTitle.includes("black hole") || lowerTitle.includes("quasar")) {
             hex = "#B026FF"; rgb = "176, 38, 255"; tag = "SINGULARITY";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
-        } else if (lowerTitle.includes("asteroid") || lowerTitle.includes("belt")) {
-            hex = "#FF8C00"; rgb = "255, 140, 0"; tag = "ASTEROID BELT";
+        } else if (lowerTitle.includes("asteroid") || lowerTitle.includes("planet") || lowerTitle.includes("moon")) {
+            hex = "#FF8C00"; rgb = "255, 140, 0"; tag = "PLANETARY BODY";
             iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>`;
         }
 
@@ -302,7 +302,16 @@ function initApp() {
                     updateCanvasFromCatalog(stats, localCurrentAge);
                     
                     const idMap = { neutron_stars: 'degenerate', black_holes: 'bh', asteroids_comets: 'asteroids', dark_matter_structures: 'dmstruct', exotic_objects: 'exotic' };
-                    ['nebulae', 'stars', 'black_holes', 'neutron_stars', 'planets', 'moons', 'asteroids_comets', 'quasars', 'exotic_objects', 'dark_matter_structures'].forEach(key => {
+                    
+                    // Array of all 14 categories mapping to HTML IDs
+                    const categories = [
+                        'nebulae', 'protostars', 'stars', 'giants_supergiants', 'brown_dwarfs', 
+                        'white_dwarfs', 'neutron_stars', 'black_holes', 'planets', 'gas_giants', 
+                        'sterile_planets', 'active_biospheres', 'moons', 'asteroids_comets', 
+                        'quasars', 'dark_matter_structures', 'exotic_objects'
+                    ];
+
+                    categories.forEach(key => {
                         const elId = `cat-${idMap[key] || key}-val`;
                         const el = document.getElementById(elId);
                         if (el) el.innerText = (stats[key] || 0).toLocaleString();
