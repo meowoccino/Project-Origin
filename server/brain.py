@@ -47,15 +47,13 @@ def execute_physical_intervention(target_id, target_data, ai_response):
     
     # CONSERVATION OF MASS LOGIC
     if lever in ["mass_ejection", "accretion_friction"]:
-        # AI wants to add mass. It must steal it from the closest neighbor.
         neighbors = db_get(f"celestial_objects?is_dead=is.false&id=neq.{target_id}&limit=1")
         if neighbors:
             victim = neighbors[0]
-            stolen_mass = min(delta, float(victim.get("mass_solar", 1.0) * 0.9)) # Can't steal more than they have
+            stolen_mass = min(delta, float(victim.get("mass_solar", 1.0) * 0.9))
             db_patch("celestial_objects", victim["id"], {"mass_solar": float(victim.get("mass_solar", 1.0)) - stolen_mass})
-            
             updates["mass_solar"] = float(target_data.get("mass_solar", 1.0)) + stolen_mass
-            action_log = f"Conservation enforced: Stole {round(stolen_mass, 2)} M_sun from {victim.get('designation')} to fuel {lever}."
+            action_log = f"Conservation enforced: Stole {round(stolen_mass, 2)} M_sun from {victim.get('designation')}."
         else:
             return "Intervention failed: No local mass available to steal."
             
@@ -114,14 +112,27 @@ Output strictly in JSON. If Intervention, select ONE lever: ['thermal_convection
 
 if __name__ == "__main__":
     log_msg("🚀 Origin Brain Engine Online. Mass Conservation Active.")
-    genesis = time.time()
+    res_state = db_get("universe_state?id=eq.1")
+    genesis_val = res_state[0].get("genesis_time") if res_state else None
     
+    if genesis_val is None:
+        genesis = time.time()
+        db_upsert("universe_state", {"id": 1, "age": 0.0, "genesis_time": genesis, "epoch": "Primordial Inflation"})
+    else: 
+        genesis = float(genesis_val)
+        
     while True:
         try:
             elapsed = time.time() - genesis
             age_gyr = (elapsed / 3600.0) * 0.1 if elapsed <= 3600 else 0.1 + ((elapsed - 3600) * (99.9 / (30*24*3600)))
-            db_patch("universe_state", 1, {"age": age_gyr})
+            
+            if age_gyr < 0.001: epoch = "Primordial Inflation"
+            elif age_gyr < 0.01: epoch = "Recombination & Decoupling"
+            elif age_gyr < 0.1: epoch = "Pop-III Star Reionization"
+            elif age_gyr < 1.0: epoch = "Galactic Disk Accretion"
+            else: epoch = "Stellar & Deep Time Era"
+            
+            db_patch("universe_state", 1, {"age": age_gyr, "epoch": epoch})
             run_ai_cycle(age_gyr)
-        except Exception as e:
-            log_error("MAIN LOOP", e)
+        except Exception as e: log_error("MAIN LOOP", e)
         time.sleep(45)
