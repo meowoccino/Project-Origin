@@ -36,12 +36,35 @@ def db_post(endpoint, payload):
 def calculate_ms_lifespan(mass_solar):
     return 10.0 * (max(mass_solar, 0.01) ** -2.5)
 
+def spawn_object(cat_key, cat_label, physics_specs, current_age):
+    x, y, z = int(random.uniform(-5000, 5000)), int(random.uniform(-5000, 5000)), int(random.uniform(-5000, 5000))
+    designation = f"{cat_label.replace(' ', '')}-{random.randint(1000,9999)}"
+    
+    if cat_key != "dark_matter_structures":
+        db_post("events", {
+            "title": designation, "description": f"Formation detected in SEC [{x}, {y}, {z}]. Specs: {physics_specs}.", 
+            "age": current_age, "category": cat_key
+        })
+
+    mass = 0.0
+    if "Star" in cat_label or "Dwarf" in cat_label or "Giant" in cat_label: mass = round(random.uniform(0.1, 50.0), 2)
+    if cat_key == "dark_matter_structures": mass = round(random.uniform(1000, 100000), 2)
+    elif cat_key == "quasars": mass = round(random.uniform(1000000, 50000000), 2)
+
+    db_post("celestial_objects", {
+        "object_type": cat_label, "designation": designation, "category": cat_key,
+        "x_coord": x, "y_coord": y, "z_coord": z, "is_dead": False, "hydrogen_pct": 100.0,
+        "mass_solar": mass, "birth_age_gyr": current_age
+    })
+
+    stats = db_get("catalog_stats?id=eq.1")
+    if stats: db_patch("catalog_stats?id=eq.1", {cat_key: stats[0].get(cat_key, 0) + 1})
+
 def run_physics_tick(all_objects, current_age):
     batch_updates = []
     catalog_deltas = {}
     events_to_log = []
     
-    # 1. Spatial Collisions (Tidal Disruptions)
     black_holes = [obj for obj in all_objects if "Black Hole" in obj.get("object_type", "") and not obj.get("is_dead")]
     stars = [obj for obj in all_objects if "Star" in obj.get("object_type", "") and not obj.get("is_dead")]
 
@@ -60,11 +83,10 @@ def run_physics_tick(all_objects, current_age):
                 catalog_deltas["stars"] = catalog_deltas.get("stars", 0) - 1
                 events_to_log.append({
                     "title": f"Tidal Disruption: {star.get('designation')}",
-                    "description": f"Star consumed by Singularity at SEC [{round(bh['x_coord'])}, {round(bh['y_coord'])}]. Mass absorbed.",
+                    "description": f"Star consumed by Singularity at SEC [{int(bh.get('x_coord',0))}, {int(bh.get('y_coord',0))}]. Mass absorbed.",
                     "age": current_age, "category": "black_holes"
                 })
 
-    # 2. Stellar Decay
     for obj in all_objects:
         if obj.get("is_dead"): continue
         updates = {}
@@ -119,29 +141,6 @@ def run_physics_tick(all_objects, current_age):
 
     for event in events_to_log:
         db_post("events", event)
-
-def spawn_object(cat_key, cat_label, physics_specs, current_age):
-    x, y, z = round(random.uniform(-5000, 5000), 1), round(random.uniform(-5000, 5000), 1), round(random.uniform(-5000, 5000), 1)
-    designation = f"{cat_label.replace(' ', '')}-{random.randint(1000,9999)}"
-    
-    db_post("events", {
-        "title": designation, "description": f"Formation detected in SEC [{x}, {y}, {z}]. Specs: {physics_specs}.", 
-        "age": current_age, "category": cat_key
-    })
-
-    mass = 0.0
-    if "Star" in cat_label or "Dwarf" in cat_label or "Giant" in cat_label: mass = round(random.uniform(0.1, 50.0), 2)
-    if cat_key == "dark_matter_structures": mass = round(random.uniform(1000, 100000), 2)
-    elif cat_key == "quasars": mass = round(random.uniform(1000000, 50000000), 2)
-
-    db_post("celestial_objects", {
-        "object_type": cat_label, "designation": designation, "category": cat_key,
-        "x_coord": x, "y_coord": y, "z_coord": z, "is_dead": False, "hydrogen_pct": 100.0,
-        "mass_solar": mass, "birth_age_gyr": current_age
-    })
-
-    stats = db_get("catalog_stats?id=eq.1")
-    if stats: db_patch("catalog_stats?id=eq.1", {cat_key: stats[0].get(cat_key, 0) + 1})
 
 def run_expansion_step(state, stats):
     current_age = float(state.get("age", 0.0))
