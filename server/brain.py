@@ -45,7 +45,6 @@ def execute_physical_intervention(target_id, target_data, ai_response):
     updates = {}
     action_log = ""
     
-    # CONSERVATION OF MASS LOGIC
     if lever in ["mass_ejection", "accretion_friction"]:
         neighbors = db_get(f"celestial_objects?is_dead=is.false&id=neq.{target_id}&limit=1")
         if neighbors:
@@ -101,7 +100,7 @@ Output strictly in JSON. If Intervention, select ONE lever: ['thermal_convection
     final_action = execute_physical_intervention(target["id"], target, ai_response) if mode == "INTERVENTION" else "Passive Tracking."
 
     db_upsert("origin_logs", {
-        "sector": f"SEC [{round(target.get('x_coord',0))}, {round(target.get('y_coord',0))}]",
+        "sector": f"SEC [{int(target.get('x_coord',0))}, {int(target.get('y_coord',0))}]",
         "subject": target.get("designation", "Unknown Body"),
         "type_tag": "AI Telemetry",
         "data_analysis": ai_response.get("reasoning", "Nominal tracking."),
