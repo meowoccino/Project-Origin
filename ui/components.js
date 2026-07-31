@@ -5,8 +5,8 @@ function initApp() {
     initWebGPU().catch(err => console.error("❌ [ENGINE INIT FAILED]:", err));
 
     const SUPABASE_URL = "https://nnntebgkhgzfztwfdphw.supabase.co";
-    // IMPORTANT: Paste your Supabase 'anon' / 'public' key here. Do NOT use the service_role key.
-    const SUPABASE_KEY = "YOUR_ANON_PUBLIC_KEY_HERE";
+    // Your correct public anon key is now safely placed here
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ubnRlYmdraGd6Znp0d2ZkcGh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NzU0NTYsImV4cCI6MjEwMDE1MTQ1Nn0.vq5vMGPl2poA37JLT34nKAiC4MzaQzlHdEJ600X-3O8";
     const FETCH_HEADERS = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
 
     const canvasContainer = document.getElementById('canvas-container');
@@ -53,8 +53,6 @@ function initApp() {
             } else {
                 canvasContainer.style.pointerEvents = 'none'; 
                 if (hudContainer) hudContainer.style.opacity = '0';
-                
-                // Force kill the popup bleed
                 if (inspectorPreview) {
                     inspectorPreview.classList.remove('active');
                     inspectorPreview.style.display = 'none';
@@ -82,7 +80,6 @@ function initApp() {
     function updateTimelineUI(ageGyr) {
         const container = document.getElementById('timeline-container');
         if (!container) return;
-        
         let html = '';
         let start = 0;
         TIMELINE_EPOCHS.forEach(epoch => {
@@ -114,26 +111,14 @@ function initApp() {
         let iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
         
         const lowerTitle = title.toLowerCase();
-        if (lowerTitle.includes("nebula") || lowerTitle.includes("cloud")) {
-            hex = "#00E5FF"; rgb = "0, 229, 255"; tag = "NEBULA CLOUD";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>`;
-        } else if (lowerTitle.includes("star") || lowerTitle.includes("dwarf") || lowerTitle.includes("giant")) {
-            hex = "#FFD700"; rgb = "255, 215, 0"; tag = "STELLAR CORE";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>`;
-        } else if (lowerTitle.includes("black hole") || lowerTitle.includes("quasar")) {
-            hex = "#B026FF"; rgb = "176, 38, 255"; tag = "SINGULARITY";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
-        } else if (lowerTitle.includes("asteroid") || lowerTitle.includes("planet") || lowerTitle.includes("moon")) {
-            hex = "#FF8C00"; rgb = "255, 140, 0"; tag = "PLANETARY BODY";
-            iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>`;
-        }
+        if (lowerTitle.includes("nebula") || lowerTitle.includes("cloud")) { hex = "#00E5FF"; tag = "NEBULA CLOUD"; } 
+        else if (lowerTitle.includes("star") || lowerTitle.includes("dwarf") || lowerTitle.includes("giant")) { hex = "#FFD700"; tag = "STELLAR CORE"; } 
+        else if (lowerTitle.includes("black hole") || lowerTitle.includes("quasar")) { hex = "#B026FF"; tag = "SINGULARITY"; } 
+        else if (lowerTitle.includes("asteroid") || lowerTitle.includes("planet") || lowerTitle.includes("moon")) { hex = "#FF8C00"; tag = "PLANETARY BODY"; }
 
         return `
-            <div class="d4-card" style="--c-hex: ${hex}; --c-rgb: ${rgb}; margin-bottom: 12px;">
-                <div class="d4-header">
-                    <div class="d4-icon-box">${iconSvg}</div>
-                    <span class="d4-tag data-font">${tag}</span>
-                </div>
+            <div class="d4-card" style="--c-hex: ${hex}; margin-bottom: 12px;">
+                <div class="d4-header"><div class="d4-icon-box">${iconSvg}</div><span class="d4-tag data-font">${tag}</span></div>
                 <div class="d4-title">${title}</div>
                 <div class="d4-desc">${desc}</div>
                 <div class="d4-metrics-grid data-font">
@@ -146,12 +131,11 @@ function initApp() {
     }
 
     function initEarthClock() {
-        const clockEl = document.getElementById('earth-clock');
-        if (!clockEl) return;
         setInterval(() => {
             const now = new Date();
             const pad = (n) => String(n).padStart(2, '0');
-            clockEl.innerText = `UPLINK TIMESTAMP: ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())} LOCAL`;
+            const clockEl = document.getElementById('earth-clock');
+            if (clockEl) clockEl.innerText = `UPLINK TIMESTAMP: ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())} LOCAL`;
         }, 1000);
     }
     initEarthClock();
@@ -162,7 +146,7 @@ function initApp() {
         if (!ui || !label) return;
         ui.classList.remove('state-observe', 'state-intervene', 'state-error');
         const m = (mode || '').toUpperCase();
-        if (m === 'INTERVENE') { ui.classList.add('state-intervene'); label.innerText = 'EXECUTING INTERVENTION'; }
+        if (m === 'INTERVENTION') { ui.classList.add('state-intervene'); label.innerText = 'EXECUTING INTERVENTION'; }
         else if (m === 'ERROR' || m === 'OFFLINE') { ui.classList.add('state-error'); label.innerText = 'CONNECTION SEVERED'; }
         else { ui.classList.add('state-observe'); label.innerText = 'OBSERVER ONLINE'; }
     }
@@ -195,7 +179,6 @@ function initApp() {
                         <div class="breadcrumb-bar data-font"><span class="bc-item">${log.sector || "Sector 04"}</span><span class="bc-sep">►</span><span class="bc-item">${log.subject || "Cosmic System"}</span><span class="bc-sep">►</span><span class="bc-tag">${log.type_tag || "Telemetry"}</span></div>
                         <div class="log-meta data-font"><span>LATENCY: ${Number(log.latency_myr || 1.0).toFixed(3)} MYR</span></div>
                         <div class="logic-step"><div class="logic-icon">▶</div><div class="logic-text"><strong>Data Analysis:</strong> ${log.data_analysis || 'Analyzing'}</div></div>
-                        <div class="logic-step"><div class="logic-icon">▶</div><div class="logic-text"><strong>Simulation:</strong> ${log.temporal_simulation || 'Trajectories nominal'}</div></div>
                         <div class="logic-decision logic-step"><div class="logic-icon">■</div><div class="logic-text">${log.resolution || 'Standard progression'}</div></div>
                     `;
                     container?.appendChild(card);
@@ -214,27 +197,10 @@ function initApp() {
     document.getElementById('btn-expand-inspect')?.addEventListener('click', async (e) => {
         e.stopPropagation();
         if (!selectedNode) return;
-        
         switchTab(null, 'modal-object-detail');
         
-        document.getElementById('inspect-title').innerText = selectedNode.designation || "Unknown Node";
-        document.getElementById('det-class').innerText = (selectedNode.category || "Anomaly").toUpperCase();
-        document.getElementById('det-mass').innerText = "CALCULATING...";
-        document.getElementById('det-temp').innerText = "--- K";
-        document.getElementById('det-status').innerText = "UPLINK...";
-        document.getElementById('det-coords').innerText = `[${Math.round(selectedNode.baseX)}, ${Math.round(selectedNode.baseY)}, 0]`;
-        document.getElementById('det-hydrogen').innerText = "--";
-        document.getElementById('det-abio').innerText = "--";
-        document.getElementById('det-progress').innerText = "--";
-        document.getElementById('det-kardashev').innerText = "--";
-        document.getElementById('det-radio').innerText = "--";
-        document.getElementById('det-id').innerText = `SYS-${selectedNode.id}`;
-        
-        const typeMap = { 'stars': '*star*', 'planets': '*planet*', 'black_holes': '*hole*', 'neutron_stars': '*neutron*', 'nebulae': '*cloud*', 'asteroids_comets': '*asteroid*' };
-        const queryType = typeMap[selectedNode.category] || '*';
-        
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/celestial_objects?object_type=ilike.${queryType}&limit=1`, { headers: FETCH_HEADERS });
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/celestial_objects?object_type=ilike.*${selectedNode.category}*&limit=1`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const data = await res.json();
                 if (data.length > 0) {
@@ -246,18 +212,10 @@ function initApp() {
                     document.getElementById('det-status').innerText = dbObj.is_dead ? "Dead Remnant" : "Active";
                     document.getElementById('det-coords').innerText = `[${dbObj.x_coord || 0}, ${dbObj.y_coord || 0}, ${dbObj.z_coord || 0}]`;
                     document.getElementById('det-hydrogen').innerText = dbObj.hydrogen_pct !== undefined ? `${dbObj.hydrogen_pct}%` : "100%";
-                    document.getElementById('det-abio').innerText = dbObj.abiogenesis_index || "0.00";
-                    document.getElementById('det-progress').innerText = dbObj.progress_index || "0.00";
-                    document.getElementById('det-kardashev').innerText = dbObj.kardashev_scale || "Type 0";
-                    document.getElementById('det-radio').innerText = dbObj.radio_sphere_ly ? `${dbObj.radio_sphere_ly} ly` : "0.0 ly";
-                    document.getElementById('det-id').innerText = `OBJ-#${dbObj.id || '0000'}`;
                     return; 
                 }
             }
         } catch (err) {}
-        
-        document.getElementById('det-mass').innerText = "1.0 M_sun";
-        document.getElementById('det-status').innerText = "SIMULATED NODE";
     });
 
     document.getElementById('btn-close-inspect')?.addEventListener('click', () => switchTab('btn-explore', null));
@@ -275,18 +233,6 @@ function initApp() {
                     if (hudAge) hudAge.innerText = localCurrentAge >= 1.0 ? `${localCurrentAge.toFixed(3)} Billion Years` : `${Math.floor(localCurrentAge * 1000000000).toLocaleString()} Years`;
                     
                     updateTimelineUI(localCurrentAge);
-                    
-                    const de = data[0].de_pct || 68.3;
-                    const dm = data[0].dm_pct || 26.8;
-                    const bm = data[0].baryon_pct || 4.9;
-                    
-                    if (document.getElementById('bar-de')) document.getElementById('bar-de').style.width = `${de}%`;
-                    if (document.getElementById('bar-dm')) document.getElementById('bar-dm').style.width = `${dm}%`;
-                    if (document.getElementById('bar-baryon')) document.getElementById('bar-baryon').style.width = `${bm}%`;
-                    
-                    if (document.getElementById('cat-de-val')) document.getElementById('cat-de-val').innerText = `${de}%`;
-                    if (document.getElementById('cat-dm-val')) document.getElementById('cat-dm-val').innerText = `${dm}%`;
-                    if (document.getElementById('cat-baryon-val')) document.getElementById('cat-baryon-val').innerText = `${bm}%`;
                 }
             }
         } catch (err) {}
@@ -300,25 +246,11 @@ function initApp() {
                 if (data.length > 0) {
                     const stats = data[0];
                     updateCanvasFromCatalog(stats, localCurrentAge);
-                    
-                    const idMap = { neutron_stars: 'degenerate', black_holes: 'bh', asteroids_comets: 'asteroids', dark_matter_structures: 'dmstruct', exotic_objects: 'exotic' };
-                    
-                    // Array of all 14 categories mapping to HTML IDs
-                    const categories = [
-                        'nebulae', 'protostars', 'stars', 'giants_supergiants', 'brown_dwarfs', 
-                        'white_dwarfs', 'neutron_stars', 'black_holes', 'planets', 'gas_giants', 
-                        'sterile_planets', 'active_biospheres', 'moons', 'asteroids_comets', 
-                        'quasars', 'dark_matter_structures', 'exotic_objects'
-                    ];
-
+                    const categories = [ 'nebulae', 'protostars', 'stars', 'giants_supergiants', 'brown_dwarfs', 'white_dwarfs', 'neutron_stars', 'black_holes', 'planets', 'gas_giants', 'sterile_planets', 'active_biospheres', 'moons', 'asteroids_comets', 'quasars', 'dark_matter_structures', 'exotic_objects' ];
                     categories.forEach(key => {
-                        const elId = `cat-${idMap[key] || key}-val`;
-                        const el = document.getElementById(elId);
+                        const el = document.getElementById(`cat-${key}-val`);
                         if (el) el.innerText = (stats[key] || 0).toLocaleString();
                     });
-                    
-                    const inhabited = document.getElementById('cat-inhabited-val');
-                    if (inhabited) inhabited.innerText = (stats.inhabited || 0).toLocaleString();
                 }
             }
         } catch (err) {}
@@ -342,5 +274,4 @@ function initApp() {
     setInterval(pollAll, 3000);
 }
 
-if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initApp); } 
-else { initApp(); }
+if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initApp); } else { initApp(); }
