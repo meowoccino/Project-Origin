@@ -22,7 +22,6 @@
         .canvas-locked { pointer-events: none !important; }
 
         .inspector-layout { display: flex; flex-direction: column; gap: 16px; padding: 0 10px 20px 10px; max-width: 500px; margin: 0 auto; }
-        
         .primary-tiles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .inspect-tile { background: rgba(20, 22, 35, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; backdrop-filter: blur(8px); }
         .inspect-t-lbl { font-size: 9px; color: #8892b0; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; margin-bottom: 4px; }
@@ -40,9 +39,9 @@
         .bar-dm { background: #FF8C00; height: 100%; transition: width 1s ease-in-out; }
         .bar-baryonic { background: #FFD700; height: 100%; transition: width 1s ease-in-out; }
 
-        .inventory-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .inv-card { background: rgba(20,22,35,0.8); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); }
-        .inv-header { display:flex; align-items:center; margin-bottom:8px; }
+        .inventory-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .inv-card { background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center; }
+        .inv-header { display:flex; flex-direction: column; align-items:center; margin-bottom:6px; gap: 4px; }
         .full-width { grid-column: 1 / -1; }
     </style>
 </head>
@@ -53,7 +52,6 @@
             <svg class="splash-logo" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,140,0,0.15)" stroke-width="1"/>
                 <circle class="orbit-anim" cx="50" cy="50" r="30" fill="none" stroke="rgba(255,140,0,0.4)" stroke-width="1.5" stroke-dasharray="4 8"/>
-                <circle class="orbit-anim" cx="50" cy="20" r="4" fill="#FF8C00"/>
                 <circle cx="50" cy="50" r="6" fill="#FFFFFF"/>
             </svg>
             <h1 class="splash-title">PROJECT <span style="color: #FF8C00;">ORIGIN</span></h1>
@@ -65,16 +63,36 @@
     <div id="canvas-container"></div>
 
     <div id="hud-age-container" class="glass-panel">
-        <div class="hud-label">Universe Age</div>
+        <div class="hud-label" id="hud-epoch">Primordial Inflation</div>
         <div id="hud-age" class="hud-value data-font">0 Years</div>
     </div>
 
-    <div id="inspector-preview" class="glass-panel" style="display:none;">
-        <div>
-            <div id="obj-name">Celestial Body</div>
-            <div id="obj-sub" class="data-font" style="color: #00E5FF; font-size: 10px; margin-top: 2px;">Object Selected</div>
+    <!-- The 12-Metric Fullscreen Inspector Modal -->
+    <div id="modal-object-detail" class="view-panel" style="display:none; z-index: 200;">
+        <div class="modal-header" style="max-width: 500px; margin: 0 auto 20px auto; padding: 0 10px; display: flex; align-items: center;">
+            <button id="btn-close-inspect" aria-label="Go Back" style="background:none; border:none; color:#fff; font-size:24px; cursor:pointer;">←</button>
+            <span id="inspect-title" style="margin-left: 10px; font-weight: 700; font-size: 16px;">Uplink...</span>
         </div>
-        <button id="btn-expand-inspect" style="background: #FF8C00; border: none; color: #fff; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer;">Analyze</button>
+        
+        <div class="inspector-layout">
+            <div class="primary-tiles-grid">
+                <div class="inspect-tile"><div class="inspect-t-lbl">CLASS</div><div class="inspect-t-val cyan data-font" id="det-class">--</div></div>
+                <div class="inspect-tile"><div class="inspect-t-lbl">MASS (SOLAR)</div><div class="inspect-t-val data-font" id="det-mass">--</div></div>
+                <div class="inspect-tile"><div class="inspect-t-lbl">TEMP (K)</div><div class="inspect-t-val amber data-font" id="det-temp">--</div></div>
+                <div class="inspect-tile"><div class="inspect-t-lbl">STATUS</div><div class="inspect-t-val data-font" id="det-status">--</div></div>
+            </div>
+
+            <div class="telemetry-list">
+                <div class="spec-row"><span class="spec-label">Coordinates [x,y,z]</span><span class="spec-value data-font" id="det-coords">--</span></div>
+                <div class="spec-row"><span class="spec-label">Hydrogen (Core)</span><span class="spec-value data-font" id="det-hydrogen">--</span></div>
+                <div class="spec-row"><span class="spec-label">Life Potential (Abio)</span><span class="spec-value data-font" id="det-abio">--</span></div>
+                <div class="spec-row"><span class="spec-label">Evolution Index</span><span class="spec-value data-font" id="det-progress">--</span></div>
+                <div class="spec-row"><span class="spec-label">Kardashev Scale</span><span class="spec-value data-font" id="det-kardashev">--</span></div>
+                <div class="spec-row"><span class="spec-label">Radio Sphere (Ly)</span><span class="spec-value data-font" id="det-radio">--</span></div>
+                <div class="spec-row"><span class="spec-label">ISCO Boundary</span><span class="spec-value data-font" id="det-isco">--</span></div>
+                <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Mag Dynamo Flux</span><span class="spec-value data-font" id="det-flux">--</span></div>
+            </div>
+        </div>
     </div>
 
     <div id="view-events" class="view-panel" style="display:none;">
@@ -94,7 +112,6 @@
             </div>
             <div id="earth-clock" class="earth-sync data-font">UPLINK TIMESTAMP: INITIALIZING...</div>
         </div>
-
         <div id="logs-container"></div>
         <button id="btn-load-more" class="btn-history data-font">QUERY PAST TELEMETRY</button>
     </div>
@@ -112,53 +129,35 @@
                     <div id="bar-baryon" class="bar-baryonic" style="width: 4.9%;"></div>
                 </div>
                 <div class="macro-grid" style="display: flex; justify-content: space-between; font-size: 9px;">
-                    <div class="macro-item"><div class="dot" style="background: #8A2BE2; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 2px;"></div><span style="color:#8892b0;">DARK ENERGY</span> <div id="cat-de-val" class="macro-val data-font" style="color:#fff; font-size: 12px; margin-top:4px;">68.3%</div></div>
-                    <div class="macro-item"><div class="dot" style="background: #FF8C00; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 2px;"></div><span style="color:#8892b0;">DARK MATTER</span> <div id="cat-dm-val" class="macro-val data-font" style="color:#fff; font-size: 12px; margin-top:4px;">26.8%</div></div>
-                    <div class="macro-item"><div class="dot" style="background: #FFD700; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 2px;"></div><span style="color:#8892b0;">BARYONIC</span> <div id="cat-baryon-val" class="macro-val data-font" style="color:#fff; font-size: 12px; margin-top:4px;">4.9%</div></div>
+                    <div class="macro-item"><span style="color:#8892b0;">DARK ENERGY</span> <div id="cat-de-val" class="macro-val data-font" style="color:#fff; font-size: 12px;">68.3%</div></div>
+                    <div class="macro-item"><span style="color:#8892b0;">DARK MATTER</span> <div id="cat-dm-val" class="macro-val data-font" style="color:#fff; font-size: 12px;">26.8%</div></div>
+                    <div class="macro-item"><span style="color:#8892b0;">BARYONIC</span> <div id="cat-baryon-val" class="macro-val data-font" style="color:#fff; font-size: 12px;">4.9%</div></div>
                 </div>
             </div>
 
+            <!-- The Full 14-Category Grid -->
             <div class="inventory-grid">
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #00E5FF; width:8px; height:8px; border-radius:50%; margin-right:6px;"></div><div style="font-size:10px; color:#8892b0; font-weight:bold;">NEBULAE & CLOUDS</div></div><div id="cat-nebulae-val" class="data-font" style="font-size:18px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #FFD700; width:8px; height:8px; border-radius:50%; margin-right:6px;"></div><div style="font-size:10px; color:#8892b0; font-weight:bold;">ACTIVE STARS</div></div><div id="cat-stars-val" class="data-font" style="font-size:18px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #B026FF; width:8px; height:8px; border-radius:50%; margin-right:6px;"></div><div style="font-size:10px; color:#8892b0; font-weight:bold;">BLACK HOLES</div></div><div id="cat-bh-val" class="data-font" style="font-size:18px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #FF3366; width:8px; height:8px; border-radius:50%; margin-right:6px;"></div><div style="font-size:10px; color:#8892b0; font-weight:bold;">NEUTRON STARS</div></div><div id="cat-degenerate-val" class="data-font" style="font-size:18px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #4CAF50; width:8px; height:8px; border-radius:50%; margin-right:6px;"></div><div style="font-size:10px; color:#8892b0; font-weight:bold;">PLANETS</div></div><div id="cat-planets-val" class="data-font" style="font-size:18px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #A0AEC0; width:8px; height:8px; border-radius:50%; margin-right:6px;"></div><div style="font-size:10px; color:#8892b0; font-weight:bold;">MOONS</div></div><div id="cat-moons-val" class="data-font" style="font-size:18px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #888888; width:8px; height:8px; border-radius:50%; margin-right:6px;"></div><div style="font-size:10px; color:#8892b0; font-weight:bold;">ASTEROIDS & COMETS</div></div><div id="cat-asteroids-val" class="data-font" style="font-size:18px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #555577; width:8px; height:8px; border-radius:50%; margin-right:6px;"></div><div style="font-size:10px; color:#8892b0; font-weight:bold;">DARK MATTER</div></div><div id="cat-dmstruct-val" class="data-font" style="font-size:18px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #FF8C00; width:8px; height:8px; border-radius:50%; margin-right:6px;"></div><div style="font-size:10px; color:#8892b0; font-weight:bold;">QUASARS</div></div><div id="cat-quasars-val" class="data-font" style="font-size:18px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div class="dot" style="background: #E91E63; width:8px; height:8px; border-radius:50%; margin-right:6px;"></div><div style="font-size:10px; color:#8892b0; font-weight:bold;">EXOTIC OBJECTS</div></div><div id="cat-exotic-val" class="data-font" style="font-size:18px; color:#fff;">0</div></div>
-                <div class="inv-card full-width" style="border: 1px solid rgba(0,229,255,0.3); box-shadow: 0 0 10px rgba(0,229,255,0.1);"><div class="inv-header"><div class="dot" style="background: #00E5FF; width:8px; height:8px; border-radius:50%; margin-right:6px; box-shadow: 0 0 8px #00E5FF;"></div><div style="font-size:10px; color:#00E5FF; font-weight:bold;">INHABITED WORLDS</div></div><div id="cat-inhabited-val" class="data-font" style="font-size:18px; color:#fff;">0</div></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-object-detail" class="view-panel" style="display:none; z-index: 200;">
-        <div class="modal-header" style="max-width: 500px; margin: 0 auto 20px auto; padding: 0 10px;">
-            <button id="btn-close-inspect" class="btn-back" aria-label="Go Back" style="background:none; border:none; color:#fff; font-size:24px; cursor:pointer;">
-                ←
-            </button>
-            <span id="inspect-title" style="margin-left: 10px; font-weight: 700; font-size: 16px;">Uplink...</span>
-        </div>
-        
-        <div class="inspector-layout">
-            <div class="primary-tiles-grid">
-                <div class="inspect-tile"><div class="inspect-t-lbl">CLASS</div><div class="inspect-t-val cyan data-font" id="det-class">--</div></div>
-                <div class="inspect-tile"><div class="inspect-t-lbl">MASS (SOLAR)</div><div class="inspect-t-val data-font" id="det-mass">--</div></div>
-                <div class="inspect-tile"><div class="inspect-t-lbl">TEMP (K)</div><div class="inspect-t-val amber data-font" id="det-temp">--</div></div>
-                <div class="inspect-tile"><div class="inspect-t-lbl">STATUS</div><div class="inspect-t-val data-font" id="det-status">--</div></div>
-            </div>
-
-            <div class="telemetry-list">
-                <div class="spec-row"><span class="spec-label">Coordinates</span><span class="spec-value data-font" id="det-coords">--</span></div>
-                <div class="spec-row"><span class="spec-label">Hydrogen (Core)</span><span class="spec-value data-font" id="det-hydrogen">--</span></div>
-                <div class="spec-row"><span class="spec-label">Life Potential (Abio)</span><span class="spec-value data-font" id="det-abio">--</span></div>
-                <div class="spec-row"><span class="spec-label">Evolution Index</span><span class="spec-value data-font" id="det-progress">--</span></div>
-                <div class="spec-row"><span class="spec-label">Kardashev Scale</span><span class="spec-value data-font" id="det-kardashev">--</span></div>
-                <div class="spec-row"><span class="spec-label">Radio Sphere (Ly)</span><span class="spec-value data-font" id="det-radio">--</span></div>
-                <div class="spec-row"><span class="spec-label">Orbital Mechanics</span><span class="spec-value data-font">Stable</span></div>
-                <div class="spec-row" style="border-bottom:none;"><span class="spec-label">Database ID</span><span class="spec-value data-font" id="det-id">--</span></div>
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#00E5FF;">NEBULAE</div></div><div id="cat-nebulae-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FFD700;">PROTOSTARS</div></div><div id="cat-protostars-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FFD700;">STARS</div></div><div id="cat-stars-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FF8C00;">GIANTS</div></div><div id="cat-giants_supergiants-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#8B4513;">BROWN DWARFS</div></div><div id="cat-brown_dwarfs-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FFFFFF;">WHITE DWARFS</div></div><div id="cat-white_dwarfs-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FF3366;">NEUTRON STARS</div></div><div id="cat-neutron_stars-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#B026FF;">BLACK HOLES</div></div><div id="cat-black_holes-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FF8C00;">QUASARS</div></div><div id="cat-quasars-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#4CAF50;">PLANETS</div></div><div id="cat-planets-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FFB6C1;">GAS GIANTS</div></div><div id="cat-gas_giants-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#A0AEC0;">STERILE WORLDS</div></div><div id="cat-sterile_planets-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                
+                <div class="inv-card full-width" style="border: 1px solid rgba(0,255,100,0.4);"><div class="inv-header"><div style="font-size:10px; color:#00FF64; font-weight:bold;">ACTIVE BIOSPHERES</div></div><div id="cat-active_biospheres-val" class="data-font" style="font-size:20px; color:#fff;">0</div></div>
+                
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#A0AEC0;">MOONS</div></div><div id="cat-moons-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#888888;">ASTEROIDS</div></div><div id="cat-asteroids_comets-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#555577;">DARK MATTER</div></div><div id="cat-dark_matter_structures-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
             </div>
         </div>
     </div>
@@ -171,6 +170,6 @@
         <div id="btn-catalog" class="nav-btn"><div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg></div><span>Catalog</span></div>
     </nav>
 
-    <script type="module" src="ui/components.js?v=4"></script>
+    <script type="module" src="ui/components.js?v=5"></script>
 </body>
 </html>
