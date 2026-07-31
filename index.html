@@ -7,6 +7,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="ui/styles.css">
     <style>
+        /* Splash Screen Fixes */
+        #splash-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0b0c10; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .splash-content { text-align: center; }
+        .splash-logo { width: 100px; height: 100px; margin-bottom: 20px; }
+        .orbit-anim { transform-origin: 50px 50px; animation: spin 4s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .splash-title { font-family: 'Outfit', sans-serif; font-size: 28px; color: #fff; margin: 0; font-weight: 900; letter-spacing: 2px; }
+        .splash-subtitle { font-family: 'Space Mono', monospace; font-size: 10px; color: #8892b0; margin-top: 5px; letter-spacing: 1px; }
+        .splash-prompt { font-family: 'Space Mono', monospace; font-size: 12px; color: #FF8C00; margin-top: 40px; animation: blink 1.5s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* UI Layout Rules */
         .canvas-locked { pointer-events: none !important; }
         .inspector-layout { display: flex; flex-direction: column; gap: 16px; padding: 0 10px 20px 10px; max-width: 500px; margin: 0 auto; }
         .primary-tiles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -17,16 +29,47 @@
         .spec-row { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; }
         .spec-label { color: #8892b0; font-weight: 600; text-transform: uppercase; font-size: 10px; }
         .spec-value { color: #d0d2e0; text-align: right; font-size: 11px; }
+        
+        /* Restored Macro Bar */
+        .macro-bar-visual { width: 100%; height: 6px; background: #1a1c29; border-radius: 4px; display: flex; overflow: hidden; margin-bottom: 16px; }
+        .bar-de { background: #8A2BE2; height: 100%; transition: width 1s ease-in-out; }
+        .bar-dm { background: #FF8C00; height: 100%; transition: width 1s ease-in-out; }
+        .bar-baryonic { background: #FFD700; height: 100%; transition: width 1s ease-in-out; }
+
         .inventory-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
         .inv-card { background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center; }
         .inv-header { display:flex; flex-direction: column; align-items:center; margin-bottom:6px; gap: 4px; }
         .full-width { grid-column: 1 / -1; }
     </style>
+    <script>
+        function forceDismissSplash() {
+            var splash = document.getElementById('splash-screen');
+            if (splash) {
+                splash.style.transition = 'opacity 0.4s ease';
+                splash.style.opacity = '0';
+                splash.style.pointerEvents = 'none';
+                setTimeout(function() { splash.style.display = 'none'; }, 400);
+            }
+        }
+    </script>
 </head>
 <body>
 
+    <div id="splash-screen" onclick="forceDismissSplash()" ontouchstart="forceDismissSplash()">
+        <div class="splash-content">
+            <svg class="splash-logo" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,140,0,0.15)" stroke-width="1"/>
+                <circle class="orbit-anim" cx="50" cy="50" r="30" fill="none" stroke="rgba(255,140,0,0.4)" stroke-width="1.5" stroke-dasharray="4 8"/>
+                <circle cx="50" cy="50" r="6" fill="#FFFFFF"/>
+            </svg>
+            <h1 class="splash-title">PROJECT <span style="color: #FF8C00;">ORIGIN</span></h1>
+            <p class="splash-subtitle">AN AI-DIRECTED UNIVERSE</p>
+        </div>
+        <div class="splash-prompt data-font">tap to observe _</div>
+    </div>
+
     <div id="canvas-container"></div>
-    <div id="hud-age-container" class="glass-panel"><div class="hud-label" id="hud-epoch">Epoch Tracking</div><div id="hud-age" class="hud-value data-font">0 Years</div></div>
+    <div id="hud-age-container" class="glass-panel"><div class="hud-label" id="hud-epoch">Awaiting Uplink...</div><div id="hud-age" class="hud-value data-font">0 Years</div></div>
 
     <div id="modal-object-detail" class="view-panel" style="display:none; z-index: 200;">
         <div class="modal-header" style="max-width: 500px; margin: 0 auto 20px auto; padding: 0 10px; display: flex; align-items: center;">
@@ -63,6 +106,19 @@
 
     <div id="view-catalog" class="view-panel" style="display:none;">
         <div class="catalog-viewport" style="max-width: 500px; margin: 0 auto; padding-bottom: 80px;">
+            <div class="macro-container" style="background: rgba(20,22,35,0.8); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 20px;">
+                <div class="macro-bar-visual">
+                    <div id="bar-de" class="bar-de" style="width: 68.3%;"></div>
+                    <div id="bar-dm" class="bar-dm" style="width: 26.8%;"></div>
+                    <div id="bar-baryon" class="bar-baryonic" style="width: 4.9%;"></div>
+                </div>
+                <div class="macro-grid" style="display: flex; justify-content: space-between; font-size: 9px;">
+                    <div class="macro-item"><span style="color:#8892b0;">DARK ENERGY</span> <div id="cat-de-val" class="macro-val data-font" style="color:#fff; font-size: 12px;">68.3%</div></div>
+                    <div class="macro-item"><span style="color:#8892b0;">DARK MATTER</span> <div id="cat-dm-val" class="macro-val data-font" style="color:#fff; font-size: 12px;">26.8%</div></div>
+                    <div class="macro-item"><span style="color:#8892b0;">BARYONIC</span> <div id="cat-baryon-val" class="macro-val data-font" style="color:#fff; font-size: 12px;">4.9%</div></div>
+                </div>
+            </div>
+
             <div class="inventory-grid">
                 <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#00E5FF;">NEBULAE</div></div><div id="cat-nebulae-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
                 <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FFD700;">PROTOSTARS</div></div><div id="cat-protostars-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
@@ -97,6 +153,6 @@
         <div id="btn-catalog" class="nav-btn"><div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg></div><span>Catalog</span></div>
     </nav>
 
-    <script type="module" src="ui/components.js?v=7"></script>
+    <script type="module" src="ui/components.js?v=9"></script>
 </body>
 </html>
