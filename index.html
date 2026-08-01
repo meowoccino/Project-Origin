@@ -5,9 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Project Origin</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Your original stylesheet is now strictly preserved and in control -->
     <link rel="stylesheet" href="ui/styles.css">
+    
+    <!-- ONLY isolated, non-conflicting styles for the Splash Screen and Macro Bar -->
     <style>
-        #splash-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0b0c10; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #splash-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0b0c10; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease; }
         .splash-content { text-align: center; }
         .splash-logo { width: 100px; height: 100px; margin-bottom: 20px; }
         .orbit-anim { transform-origin: 50px 50px; animation: spin 4s linear infinite; }
@@ -17,32 +21,17 @@
         .splash-prompt { font-family: 'Space Mono', monospace; font-size: 12px; color: #FF8C00; margin-top: 40px; animation: blink 1.5s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
-        .canvas-locked { pointer-events: none !important; }
-        .inspector-layout { display: flex; flex-direction: column; gap: 16px; padding: 0 10px 20px 10px; max-width: 500px; margin: 0 auto; }
-        .primary-tiles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .inspect-tile { background: rgba(20, 22, 35, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; backdrop-filter: blur(8px); }
-        .inspect-t-lbl { font-size: 9px; color: #8892b0; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; margin-bottom: 4px; }
-        .inspect-t-val { font-size: 14px; font-weight: 700; color: #fff; }
-        .telemetry-list { padding: 8px 16px; border-radius: 12px; background: rgba(20, 22, 35, 0.6); border: 1px solid rgba(255,255,255,0.05); }
-        .spec-row { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; }
-        .spec-label { color: #8892b0; font-weight: 600; text-transform: uppercase; font-size: 10px; }
-        .spec-value { color: #d0d2e0; text-align: right; font-size: 11px; }
-        
         .macro-bar-visual { width: 100%; height: 6px; background: #1a1c29; border-radius: 4px; display: flex; overflow: hidden; margin-bottom: 16px; }
-        .bar-de { background: #8A2BE2; height: 100%; transition: width 1s ease-in-out; }
-        .bar-dm { background: #FF8C00; height: 100%; transition: width 1s ease-in-out; }
-        .bar-baryonic { background: #FFD700; height: 100%; transition: width 1s ease-in-out; }
-
-        .inventory-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-        .inv-card { background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center; }
-        .inv-header { display:flex; flex-direction: column; align-items:center; margin-bottom:6px; gap: 4px; }
-        .full-width { grid-column: 1 / -1; }
+        .bar-de { background: #8A2BE2; height: 100%; }
+        .bar-dm { background: #FF8C00; height: 100%; }
+        .bar-baryonic { background: #FFD700; height: 100%; }
+        
+        .canvas-locked { pointer-events: none !important; }
     </style>
     <script>
         function forceDismissSplash() {
             var splash = document.getElementById('splash-screen');
             if (splash) {
-                splash.style.transition = 'opacity 0.4s ease';
                 splash.style.opacity = '0';
                 splash.style.pointerEvents = 'none';
                 setTimeout(function() { splash.style.display = 'none'; }, 400);
@@ -66,43 +55,81 @@
     </div>
 
     <div id="canvas-container"></div>
-    <div id="hud-age-container" class="glass-panel"><div class="hud-label" id="hud-epoch">Awaiting Uplink...</div><div id="hud-age" class="hud-value data-font">0 Years</div></div>
+    
+    <div id="hud-age-container" class="glass-panel">
+        <div class="hud-label" id="hud-epoch">Awaiting Uplink...</div>
+        <div id="hud-age" class="hud-value data-font">0 Years</div>
+    </div>
 
+    <!-- The 12-Metric Inspector Modal -->
     <div id="modal-object-detail" class="view-panel" style="display:none; z-index: 200;">
         <div class="modal-header" style="max-width: 500px; margin: 0 auto 20px auto; padding: 0 10px; display: flex; align-items: center;">
             <button id="btn-close-inspect" aria-label="Go Back" style="background:none; border:none; color:#fff; font-size:24px; cursor:pointer;">←</button>
             <span id="inspect-title" style="margin-left: 10px; font-weight: 700; font-size: 16px;">Uplink...</span>
         </div>
-        <div class="inspector-layout">
-            <div class="primary-tiles-grid">
-                <div class="inspect-tile"><div class="inspect-t-lbl">CLASS</div><div class="inspect-t-val cyan data-font" id="det-class">--</div></div>
-                <div class="inspect-tile"><div class="inspect-t-lbl">MASS (SOLAR)</div><div class="inspect-t-val data-font" id="det-mass">--</div></div>
-                <div class="inspect-tile"><div class="inspect-t-lbl">TEMP (K)</div><div class="inspect-t-val amber data-font" id="det-temp">--</div></div>
-                <div class="inspect-tile"><div class="inspect-t-lbl">STATUS</div><div class="inspect-t-val data-font" id="det-status">--</div></div>
+        
+        <div style="display: flex; flex-direction: column; gap: 16px; padding: 0 10px 20px 10px; max-width: 500px; margin: 0 auto;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div style="background: rgba(20, 22, 35, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center;">
+                    <div style="font-size: 9px; color: #8892b0; font-weight: 800; margin-bottom: 4px;">CLASS</div>
+                    <div id="det-class" class="cyan data-font" style="font-size: 14px; font-weight: 700;">--</div>
+                </div>
+                <div style="background: rgba(20, 22, 35, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center;">
+                    <div style="font-size: 9px; color: #8892b0; font-weight: 800; margin-bottom: 4px;">MASS (SOLAR)</div>
+                    <div id="det-mass" class="data-font" style="font-size: 14px; font-weight: 700; color: #fff;">--</div>
+                </div>
+                <div style="background: rgba(20, 22, 35, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center;">
+                    <div style="font-size: 9px; color: #8892b0; font-weight: 800; margin-bottom: 4px;">TEMP (K)</div>
+                    <div id="det-temp" class="amber data-font" style="font-size: 14px; font-weight: 700;">--</div>
+                </div>
+                <div style="background: rgba(20, 22, 35, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center;">
+                    <div style="font-size: 9px; color: #8892b0; font-weight: 800; margin-bottom: 4px;">STATUS</div>
+                    <div id="det-status" class="data-font" style="font-size: 14px; font-weight: 700; color: #fff;">--</div>
+                </div>
             </div>
-            <div class="telemetry-list">
-                <div class="spec-row"><span class="spec-label">Coordinates [x,y,z]</span><span class="spec-value data-font" id="det-coords">--</span></div>
-                <div class="spec-row"><span class="spec-label">Hydrogen (Core)</span><span class="spec-value data-font" id="det-hydrogen">--</span></div>
+            
+            <div style="padding: 8px 16px; border-radius: 12px; background: rgba(20, 22, 35, 0.6); border: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <span style="color: #8892b0; font-weight: 600; font-size: 10px;">Coordinates [x,y,z]</span>
+                    <span id="det-coords" class="data-font" style="color: #d0d2e0; font-size: 11px;">--</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 14px 0;">
+                    <span style="color: #8892b0; font-weight: 600; font-size: 10px;">Hydrogen (Core)</span>
+                    <span id="det-hydrogen" class="data-font" style="color: #d0d2e0; font-size: 11px;">--</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <div id="view-events" class="view-panel" style="display:none;"><div id="events-container" style="max-width: 500px; margin: 0 auto; padding-bottom: 80px;"></div></div>
+    <!-- The Feed Views -->
+    <div id="view-events" class="view-panel" style="display:none;">
+        <div id="events-container" style="max-width: 500px; margin: 0 auto; padding-bottom: 80px;"></div>
+    </div>
 
     <div id="view-ai" class="view-panel" style="display:none;">
         <div class="observer-module">
-            <div id="observer-ui" class="eye-container state-observe"><div class="eye-ring-outer"></div><div class="eye-ring-inner"></div><div class="eye-core"></div></div>
-            <div class="status-header-row"><div class="ping-dot" id="ping-dot"></div><span id="status-label" class="status-text data-font">OBSERVER ONLINE</span></div>
+            <div id="observer-ui" class="eye-container state-observe">
+                <div class="eye-ring-outer"></div>
+                <div class="eye-ring-inner"></div>
+                <div class="eye-core"></div>
+            </div>
+            <div class="status-header-row">
+                <div class="ping-dot" id="ping-dot"></div>
+                <span id="status-label" class="status-text data-font">OBSERVER ONLINE</span>
+            </div>
             <div id="earth-clock" class="earth-sync data-font">UPLINK TIMESTAMP: INITIALIZING...</div>
         </div>
         <div id="logs-container"></div>
         <button id="btn-load-more" class="btn-history data-font">QUERY PAST TELEMETRY</button>
     </div>
 
-    <div id="view-timeline" class="view-panel" style="display:none;"><div id="timeline-container" style="max-width: 500px; margin: 0 auto; padding-bottom: 80px;"></div></div>
+    <div id="view-timeline" class="view-panel" style="display:none;">
+        <div id="timeline-container" style="max-width: 500px; margin: 0 auto; padding-bottom: 80px;"></div>
+    </div>
 
     <div id="view-catalog" class="view-panel" style="display:none;">
         <div class="catalog-viewport" style="max-width: 500px; margin: 0 auto; padding-bottom: 80px;">
+            
             <div class="macro-container" style="background: rgba(20,22,35,0.8); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 20px;">
                 <div class="macro-bar-visual">
                     <div id="bar-de" class="bar-de" style="width: 68.3%;"></div>
@@ -116,32 +143,33 @@
                 </div>
             </div>
 
-            <div class="inventory-grid">
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#00E5FF;">NEBULAE</div></div><div id="cat-nebulae-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FFD700;">PROTOSTARS</div></div><div id="cat-protostars-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FFD700;">STARS</div></div><div id="cat-stars-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#00E5FF; margin-bottom: 4px;">NEBULAE</div><div id="cat-nebulae-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#FFD700; margin-bottom: 4px;">PROTOSTARS</div><div id="cat-protostars-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#FFD700; margin-bottom: 4px;">STARS</div><div id="cat-stars-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
                 
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FF8C00;">GIANTS</div></div><div id="cat-giants_supergiants-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#8B4513;">BROWN DWARFS</div></div><div id="cat-brown_dwarfs-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FFFFFF;">WHITE DWARFS</div></div><div id="cat-white_dwarfs-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#FF8C00; margin-bottom: 4px;">GIANTS</div><div id="cat-giants_supergiants-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#8B4513; margin-bottom: 4px;">BROWN DWARFS</div><div id="cat-brown_dwarfs-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#FFFFFF; margin-bottom: 4px;">WHITE DWARFS</div><div id="cat-white_dwarfs-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
                 
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FF3366;">NEUTRON STARS</div></div><div id="cat-neutron_stars-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#B026FF;">BLACK HOLES</div></div><div id="cat-black_holes-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FF8C00;">QUASARS</div></div><div id="cat-quasars-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#FF3366; margin-bottom: 4px;">NEUTRON STARS</div><div id="cat-neutron_stars-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#B026FF; margin-bottom: 4px;">BLACK HOLES</div><div id="cat-black_holes-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#FF8C00; margin-bottom: 4px;">QUASARS</div><div id="cat-quasars-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
                 
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#4CAF50;">PLANETS</div></div><div id="cat-planets-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#FFB6C1;">GAS GIANTS</div></div><div id="cat-gas_giants-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#A0AEC0;">STERILE WORLDS</div></div><div id="cat-sterile_planets-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#4CAF50; margin-bottom: 4px;">PLANETS</div><div id="cat-planets-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#FFB6C1; margin-bottom: 4px;">GAS GIANTS</div><div id="cat-gas_giants-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#A0AEC0; margin-bottom: 4px;">STERILE WORLDS</div><div id="cat-sterile_planets-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
                 
-                <div class="inv-card full-width" style="border: 1px solid rgba(0,255,100,0.4);"><div class="inv-header"><div style="font-size:10px; color:#00FF64; font-weight:bold;">ACTIVE BIOSPHERES</div></div><div id="cat-active_biospheres-val" class="data-font" style="font-size:20px; color:#fff;">0</div></div>
+                <div style="grid-column: 1 / -1; background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(0,255,100,0.4); text-align: center;"><div style="font-size:10px; color:#00FF64; font-weight:bold; margin-bottom: 4px;">ACTIVE BIOSPHERES</div><div id="cat-active_biospheres-val" class="data-font" style="font-size:20px; color:#fff;">0</div></div>
                 
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#A0AEC0;">MOONS</div></div><div id="cat-moons-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#888888;">ASTEROIDS</div></div><div id="cat-asteroids_comets-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
-                <div class="inv-card"><div class="inv-header"><div style="font-size:9px; color:#555577;">DARK MATTER</div></div><div id="cat-dark_matter_structures-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#A0AEC0; margin-bottom: 4px;">MOONS</div><div id="cat-moons-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#888888; margin-bottom: 4px;">ASTEROIDS</div><div id="cat-asteroids_comets-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
+                <div style="background: rgba(20,22,35,0.8); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); text-align: center;"><div style="font-size:9px; color:#555577; margin-bottom: 4px;">DARK MATTER</div><div id="cat-dark_matter_structures-val" class="data-font" style="font-size:16px; color:#fff;">0</div></div>
             </div>
         </div>
     </div>
 
+    <!-- Navigation Menu -->
     <nav id="bottom-nav">
         <div id="btn-explore" class="nav-btn active"><div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg></div><span>Explore</span></div>
         <div id="btn-events" class="nav-btn"><div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg></div><span>Events</span></div>
@@ -150,6 +178,7 @@
         <div id="btn-catalog" class="nav-btn"><div class="icon-wrapper"><svg viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg></div><span>Catalog</span></div>
     </nav>
 
-    <script type="module" src="ui/components.js?v=10"></script>
+    <!-- Force browser to fetch the absolute latest version -->
+    <script type="module" src="ui/components.js?v=11"></script>
 </body>
 </html>
