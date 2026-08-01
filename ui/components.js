@@ -102,11 +102,14 @@ function initApp() {
         const desc = e.description || 'Thermodynamic equilibrium shift detected.';
         const ageFormatted = `${Number(e.age || 0).toFixed(3)} Gyr`;
         
+        // FIXED REGEX: Now accurately catches SEC [x, y, z] even with whole integer numbers and spaces
         let sectorStr = "UNKNOWN SEC";
-        const secMatch = desc.match(/SEC \[[^\]]+\]/);
-        if (secMatch) sectorStr = secMatch[0];
+        const secMatch = desc.match(/SEC \[[-\d\s,]+\]/);
+        if (secMatch) {
+            sectorStr = secMatch[0];
+        }
 
-        let hex = "#00E5FF", rgb = "0, 229, 255", tag = "COSMIC EVENT";
+        let hex = "#00E5FF", tag = "COSMIC EVENT";
         let iconSvg = `<svg class="c-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
         
         const lowerTitle = title.toLowerCase();
@@ -175,7 +178,7 @@ function initApp() {
                     const card = document.createElement("div");
                     card.className = `log-card log-${(log.mode || 'OBSERVE').toLowerCase()}`;
                     card.innerHTML = `
-                        <div class="breadcrumb-bar data-font"><span class="bc-item">${log.sector || "Sector 04"}</span><span class="bc-sep">►</span><span class="bc-item">${log.subject || "Cosmic System"}</span><span class="bc-sep">►</span><span class="bc-tag">${log.type_tag || "Telemetry"}</span></div>
+                        <div class="breadcrumb-bar data-font"><span class="bc-item" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80px;">${log.sector || "Sector 04"}</span><span class="bc-sep">►</span><span class="bc-item" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100px;">${log.subject || "Cosmic System"}</span><span class="bc-sep">►</span><span class="bc-tag">${log.type_tag || "Telemetry"}</span></div>
                         <div class="log-meta data-font"><span>LATENCY: ${Number(log.latency_myr || 1.0).toFixed(3)} MYR</span></div>
                         <div class="logic-step"><div class="logic-icon">▶</div><div class="logic-text"><strong>Data Analysis:</strong> ${log.data_analysis || 'Analyzing'}</div></div>
                         <div class="logic-decision logic-step"><div class="logic-icon">■</div><div class="logic-text">${log.resolution || 'Standard progression'}</div></div>
@@ -199,7 +202,9 @@ function initApp() {
         switchTab(null, 'modal-object-detail');
         
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/celestial_objects?object_type=ilike.*${selectedNode.category}*&limit=1`, { headers: FETCH_HEADERS });
+            // Safe fallback logic for fetching while categories are being realigned
+            const queryCategory = selectedNode.category ? selectedNode.category.split('_')[0] : 'star';
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/celestial_objects?object_type=ilike.*${queryCategory}*&limit=1`, { headers: FETCH_HEADERS });
             if (res.ok) {
                 const data = await res.json();
                 if (data.length > 0) {
@@ -211,10 +216,11 @@ function initApp() {
                     document.getElementById('det-status').innerText = dbObj.is_dead ? "Dead Remnant" : "Active";
                     document.getElementById('det-coords').innerText = `[${dbObj.x_coord || 0}, ${dbObj.y_coord || 0}, ${dbObj.z_coord || 0}]`;
                     document.getElementById('det-hydrogen').innerText = dbObj.hydrogen_pct !== undefined ? `${dbObj.hydrogen_pct}%` : "100%";
-                    return; 
                 }
             }
-        } catch (err) {}
+        } catch (err) {
+            console.warn("Inspector Fetch Failed", err);
+        }
     });
 
     document.getElementById('btn-close-inspect')?.addEventListener('click', () => switchTab('btn-explore', null));
@@ -231,8 +237,9 @@ function initApp() {
                     const hudAge = document.getElementById('hud-age');
                     if (hudAge) hudAge.innerText = localCurrentAge >= 1.0 ? `${localCurrentAge.toFixed(3)} Billion Years` : `${Math.floor(localCurrentAge * 1000000000).toLocaleString()} Years`;
                     
+                    // FIXED: Re-mapped the Epoch String to the top left HUD
                     const hudEpoch = document.getElementById('hud-epoch');
-                    if (hudEpoch) hudEpoch.innerText = data[0].epoch || "Calculating Epoch...";
+                    if (hudEpoch) hudEpoch.innerText = data[0].epoch || "Initializing Epoch...";
 
                     updateTimelineUI(localCurrentAge);
                 }
@@ -247,7 +254,9 @@ function initApp() {
                 const data = await res.json();
                 if (data.length > 0) {
                     const stats = data[0];
-                    updateCanvasFromCatalog(stats, localCurrentAge);
+                    if (typeof updateCanvasFromCatalog === 'function') {
+                        updateCanvasFromCatalog(stats, localCurrentAge);
+                    }
                     const categories = [ 'nebulae', 'protostars', 'stars', 'giants_supergiants', 'brown_dwarfs', 'white_dwarfs', 'neutron_stars', 'black_holes', 'planets', 'gas_giants', 'sterile_planets', 'active_biospheres', 'moons', 'asteroids_comets', 'quasars', 'dark_matter_structures', 'exotic_objects' ];
                     categories.forEach(key => {
                         const el = document.getElementById(`cat-${key}-val`);
@@ -271,9 +280,18 @@ function initApp() {
         } catch (err) {}
     }
 
-    function pollAll() { pollUniverseState(); pollCatalog(); pollEvents(); }
+    function pollAll() { 
+        pollUniverseState(); 
+        pollCatalog(); 
+        pollEvents(); 
+    }
+    
     pollAll(); 
     setInterval(pollAll, 3000);
 }
 
-if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initApp); } else { initApp(); }
+if (document.readyState === 'loading') { 
+    document.addEventListener('DOMContentLoaded', initApp); 
+} else { 
+    initApp(); 
+}
