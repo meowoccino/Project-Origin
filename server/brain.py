@@ -1,4 +1,4 @@
-import json, math, os, random, time, requests, re, sys
+import json, os, random, time, requests, re, sys
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
@@ -11,8 +11,11 @@ HEADERS = {
     "Prefer": "return=minimal"
 }
 
-def log_msg(msg): print(f"[BRAIN] {msg}", flush=True)
-def log_error(context, error): print(f"❌ [BRAIN ERROR] {context}: {error}", file=sys.stderr, flush=True)
+def log_msg(msg): 
+    print(f"[BRAIN] {msg}", flush=True)
+
+def log_error(context, error): 
+    print(f"❌ [BRAIN ERROR] {context}: {error}", file=sys.stderr, flush=True)
 
 def db_get(endpoint):
     try:
@@ -27,12 +30,14 @@ def db_upsert(table, payload):
     try:
         headers = {**HEADERS, "Prefer": "resolution=merge-duplicates"}
         requests.post(f"{SUPABASE_URL}/rest/v1/{table}", headers=headers, json=payload, timeout=10)
-    except Exception as e: log_error(f"UPSERT {table}", e)
+    except Exception as e: 
+        log_error(f"UPSERT {table}", e)
 
 def db_patch(table, obj_id, payload):
     try:
         requests.patch(f"{SUPABASE_URL}/rest/v1/{table}?id=eq.{obj_id}", headers=HEADERS, json=payload, timeout=10)
-    except Exception as e: log_error(f"PATCH {table}", e)
+    except Exception as e: 
+        log_error(f"PATCH {table}", e)
 
 def get_volatile_targets():
     return db_get("celestial_objects?is_dead=is.false&order=created_at.desc&limit=5")
@@ -40,11 +45,14 @@ def get_volatile_targets():
 def execute_physical_intervention(target_id, target_data, ai_response):
     lever = ai_response.get("lever_pulled", "None")
     delta = float(ai_response.get("parameter_delta", 0.0))
-    if lever == "None" or delta == 0.0: return "Passive Monitoring"
+    
+    if lever == "None" or delta == 0.0: 
+        return "Passive Monitoring"
         
     updates = {}
     action_log = ""
     
+    # CONSERVATION OF MASS LOGIC
     if lever in ["mass_ejection", "accretion_friction"]:
         neighbors = db_get(f"celestial_objects?is_dead=is.false&id=neq.{target_id}&limit=1")
         if neighbors:
@@ -66,11 +74,13 @@ def execute_physical_intervention(target_id, target_data, ai_response):
     if updates:
         db_patch("celestial_objects", target_id, updates)
         return action_log
+        
     return "Parameters outside physical limits."
 
 def run_ai_cycle(age_gyr):
     targets = get_volatile_targets()
     if not targets: return
+    
     target = random.choice(targets)
     
     sys_prompt = f"""You are ORIGIN, an autonomous AI directing a cosmic simulation.
@@ -93,14 +103,24 @@ Output strictly in JSON. If Intervention, select ONE lever: ['thermal_convection
         res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers={"Authorization": f"Bearer {GROQ_API_KEY}"}, json=payload, timeout=20)
         if res.status_code == 200:
             match = re.search(r'\{.*\}', res.json()["choices"][0]["message"]["content"], re.DOTALL)
-            if match: ai_response = json.loads(match.group(0))
-    except Exception as e: log_error("GROQ API", e)
+            if match: 
+                ai_response = json.loads(match.group(0))
+    except Exception as e: 
+        log_error("GROQ API", e)
 
     mode = ai_response.get("mode", "OBSERVATION").upper()
-    final_action = execute_physical_intervention(target["id"], target, ai_response) if mode == "INTERVENTION" else "Passive Tracking."
+    
+    if mode == "INTERVENTION":
+        final_action = execute_physical_intervention(target["id"], target, ai_response) 
+    else:
+        final_action = "Passive Tracking."
+
+    # Force x/y integers for the AI log so the mobile UI text does not overflow
+    x_val = int(target.get('x_coord', 0))
+    y_val = int(target.get('y_coord', 0))
 
     db_upsert("origin_logs", {
-        "sector": f"SEC [{int(target.get('x_coord',0))}, {int(target.get('y_coord',0))}]",
+        "sector": f"SEC [{x_val}, {y_val}]",
         "subject": target.get("designation", "Unknown Body"),
         "type_tag": "AI Telemetry",
         "data_analysis": ai_response.get("reasoning", "Nominal tracking."),
@@ -110,7 +130,8 @@ Output strictly in JSON. If Intervention, select ONE lever: ['thermal_convection
     })
 
 if __name__ == "__main__":
-    log_msg("🚀 Origin Brain Engine Online. Mass Conservation Active.")
+    log_msg("🚀 Origin Brain Engine Online. Master Clock Active.")
+    
     res_state = db_get("universe_state?id=eq.1")
     genesis_val = res_state[0].get("genesis_time") if res_state else None
     
@@ -123,15 +144,36 @@ if __name__ == "__main__":
     while True:
         try:
             elapsed = time.time() - genesis
-            age_gyr = (elapsed / 3600.0) * 0.1 if elapsed <= 3600 else 0.1 + ((elapsed - 3600) * (99.9 / (30*24*3600)))
             
-            if age_gyr < 0.001: epoch = "Primordial Inflation"
-            elif age_gyr < 0.01: epoch = "Recombination & Decoupling"
-            elif age_gyr < 0.1: epoch = "Pop-III Star Reionization"
-            elif age_gyr < 1.0: epoch = "Galactic Disk Accretion"
-            else: epoch = "Stellar & Deep Time Era"
+            # THE 1-HOUR / 30-DAY TIMELINE MATH
+            if elapsed <= 3600:
+                # First 1 hour of real time: Speedup to 0.1 Gyr (100 Million Years)
+                age_gyr = (elapsed / 3600.0) * 0.1
+            else:
+                # Next 30 days of real time (2,592,000 seconds): Deep time out to 100 Gyr
+                # 30 days * 24 hours * 60 minutes * 60 seconds = 2,592,000
+                age_gyr = 0.1 + ((elapsed - 3600) / 2592000.0) * 99.9
             
+            # Define Epochs based on the timeline
+            if age_gyr < 0.001: 
+                epoch = "Primordial Inflation"
+            elif age_gyr < 0.01: 
+                epoch = "Recombination & Decoupling"
+            elif age_gyr < 0.1: 
+                epoch = "Pop-III Star Reionization"
+            elif age_gyr < 1.0: 
+                epoch = "Galactic Disk Accretion"
+            else: 
+                epoch = "Stellar & Deep Time Era"
+            
+            # Write master time back to the database for runner.py and frontend to read
             db_patch("universe_state", 1, {"age": age_gyr, "epoch": epoch})
+            
+            # Execute AI cycle
             run_ai_cycle(age_gyr)
-        except Exception as e: log_error("MAIN LOOP", e)
+            
+        except Exception as e: 
+            log_error("MAIN LOOP", e)
+            
+        # The AI only intervenes once every 45 seconds to stay within Groq API limits
         time.sleep(45)
